@@ -998,6 +998,9 @@ Code * Function::parse (Tokenizer * t, bool verbose) {
         exit (1);
     }
     m_code = parseBlock (t);
+    if (m_code) {
+        m_code->append (new Code (Code::CODE_THEEND, NULL));
+    }
     //fprintf (myStderr, "Function '%s' parsed correctly\n", funcName);
     if (verbose) {
         printf ("function %s (", funcName);
@@ -1011,6 +1014,24 @@ Code * Function::parse (Tokenizer * t, bool verbose) {
     return (m_code);
 }
 
+int Function::allocIndex () {
+    int index = m_node->findFieldIdx (getName ());
+    if (index == -1) {
+        if (strcmp (getName(), "initialize") == 0) {
+            index = INITIALIZE_ID;
+        } else {
+            m_node->addField (strdup ("SFDefined"), getName (), true);
+            index = m_node->findFieldIdx (getName ());
+        }
+    } else {
+        Field * field = m_node->findField (getName());
+        if (field->m_type == Field::TYPE_ID_SFTMP) {
+            field->m_type = Field::TYPE_ID_SFDEFINED;
+        }
+    }
+    return index;
+}
+
 void setVarIndex (Var * v, ByteCode * bc) {
     if (v) {
         if (v->m_next) {
@@ -1022,145 +1043,137 @@ void setVarIndex (Var * v, ByteCode * bc) {
 
 void Function::setParamsIndex (ByteCode * bc) {
     setVarIndex (m_vars, bc);
-    Var * v = m_vars;
-    while (v) {
-        //fprintf (myStderr, "Function::setParamsIndex: param %s => %d\n", v->m_name, v->m_index);
-        v = v->m_next;
-    }
 }
 
-// static void exchangeBytes (char * s) {
-//     char t = s[0];
-//     s[0] = s[3];
-//     s[3] = t;
-//     t = s[1];
-//     s[1] = s[2];
-//     s[2] = t;
-// }
-
-Scripter::Scripter (Node * node, char * buffer, FILE * fp, bool verbose, char * fn, int ln, char * filename) {
+Scripter::Scripter (Node * node, Tokenizer * t, FILE * fp, bool verbose) {
+    m_tokenizer = t;  
     m_node = node;
-    m_tokenizer = new Tokenizer (buffer, true, fn, ln);
-    int totalLen = 0;
-    unsigned char totalData [64*1024];
-    int len = 0;
-    unsigned char * data = NULL;
+    m_totalLen = 0;
+    m_maxRegisters = 0;
+    m_verbose = verbose;
+    
+    int len = 0, nbFunctions = 0;
+    unsigned char * data;
+    
     if (s_externClasses == NULL) {
         s_externClasses = new ExternClasses (externCallsDef);
     }
-//     fprintf (myStderr, "---------------------------------------------------\n");
-//     for (int i = 0; i < sizeof(StaticObjectNames)/sizeof(StaticObject); i++) {
-//         fprintf (myStderr, "static %s {\n", StaticObjectNames[i].name);
-//         for (int j = 0; j < StaticObjectNames[i].nbMethods; j++) {
-//             fprintf (myStderr, "    %s\n", StaticObjectNames[i].methods[j]);
-//         }
-//         fprintf (myStderr, "}\n");
-//     }
-//     fprintf (myStderr, "---------------------------------------------------\n");
 
     if (m_tokenizer->checkToken ("javascript")) {
         if (!m_tokenizer->check (':')) {
             fprintf (myStderr, "%s:%d: Warning: the char ':' is expected after token 'javascript'\n", m_tokenizer->getFile(), m_tokenizer->getLine());
         }
     }
-    m_maxRegisters = 0;
-    Function * f = getFunction (verbose);
-    while (f) {
-        int index = m_node->findFieldIdx (f->getName ());
-        if (index == -1) {
-            if (strcmp (f->getName(), "initialize") == 0) {
-                index = INITIALIZE_ID;
-            } else {
-                m_node->addField (strdup ("SFDefined"), f->getName (), true);
-                index = m_node->findFieldIdx (f->getName ());
-            }
-        } else {
-            Field * field = m_node->findField (f->getName());
-            if (field->m_type == Field::TYPE_ID_SFTMP) {
-                field->m_type = Field::TYPE_ID_SFDEFINED;
-            }
-        }
-        if (index > 252) {
-            fprintf (myStderr, "%s:%d: Scripting error: Max number of fields and methods reached in Script node ! (function %s has index > 252)\n", 
-                     filename, m_tokenizer->getLine(), f->getName ());
-            exit (1);
-        }
-        if (index >= 0) {
-            //fprintf (myStderr, "$$ saving func %s with index %d\n", f->getName (), index);
-            data = f->getByteCode (len);
-            totalData[totalLen++] = (index+1) & 0xFF;
-            unsigned char * s = (unsigned char *) &len;
-            totalData[totalLen++] = s[3];
-            totalData[totalLen++] = s[2];
-            totalData[totalLen++] = s[1];
-            totalData[totalLen++] = s[0];
-            memcpy (&totalData[totalLen], data, len);
-            totalLen += len;
-        }
-        f = getFunction (verbose);
-    }
+    
+    while (getFunction ()) nbFunctions++;
+
     // now check all fields for remaining SFTmp, meaning that functions have been used but not defined 
     Field * field = m_node->m_field;
     while (field != NULL) {
         if (field->m_type == Field::TYPE_ID_SFTMP) {
             fprintf (stderr, "%s:%d function called but not defined, or syntax error: %s\n", 
-                     filename, field->m_lineNum, field->m_name);
+                     m_tokenizer->getFile(), field->m_lineNum, field->m_name);
             exit (1);
         }
         field = field->m_next;
     }
 
-    //fprintf (myStderr, "Scripter: save bytecode %d bytes\n", totalLen);
-//     exchangeBytes ((char *)(&totalLen));
-//     fwrite (&totalLen, 1, 4, fp);
-    //exchangeBytes ((char *)(&totalLen));
-    //fprintf (myStderr, "Script: maximum number of registers: %d\n", m_maxRegisters); 
-    fprintf (fp, "%c%c", 255, m_maxRegisters); 
-    fwrite (totalData, 1, totalLen, fp);
+    // Write max registers (<255)
+    // 255 is reserved for detection of older bytecode format on the player side
+    fprintf (fp, "%c", m_maxRegisters);
+    // Write String table size
+    fprintf (fp, "%c", m_stringTable.getSize ());
+    // Write String table
+    data = m_stringTable.generate (len);
+    fwrite (data, 1, len, fp);
+    free (data);
+    // Write Int table size
+    fprintf (fp, "%c", m_intTable.getSize ());
+    // Write Int table
+    data = m_intTable.generate (len);
+    fwrite (data, 1, len, fp);
+    free (data);
+    // Write nb of functions
+    fprintf (fp, "%c", nbFunctions);
+    // Write all functions
+    fwrite (m_totalData, 1, m_totalLen, fp);
 }
 
-Function * Scripter::getFunction (bool verbose) {
-
-    Function * f = new Function (m_node);
-    if (verbose) {
+bool Scripter::getFunction () {
+    int len = 0;
+    unsigned char * data = NULL;
+    Function f (m_node);
+    if (m_verbose) {
         printf ("----------------------\n");
         printf ("-- Parsing function --\n");
     }
-    Code * code = f->parse (m_tokenizer, verbose);
+    Code * code = f.parse (m_tokenizer, m_verbose);
     if (code == NULL) {
-        if (verbose) {
+        if (m_verbose) {
             printf ("-- Empty function --\n");
             printf ("--------------------\n");
         }
-        return NULL;
-    } else {
-        if (verbose) {
-            printf ("-- Generating bytecode for function %s --\n", f->getName ());
-            f->printVars ();
-        }
-        ByteCode bc;
-        f->setParamsIndex (&bc);
-        f->removeVars (1, &bc);
-        code->generateAll (&bc, f);
-        f->removeVars (1, &bc);
-        int len = 0;
-        unsigned char * data = bc.getCode (len);
-        //fprintf (myStderr, "Scripter.getFunction: %s has max regs = %d\n", f->getName (), bc.getMaxRegisters ());
-        if (bc.getMaxRegisters () > m_maxRegisters) {
-            m_maxRegisters = bc.getMaxRegisters ();
-        }
-        if (len > 0) {
-            if (verbose) ByteCode::dump (data, len);
-            f->setByteCode (len, data);
-        } else {
-            data = NULL;
-            fprintf (myStderr, "Scripter.parseFunction: no bytecode generated!\n");
-        }
-        if (verbose) {
-            f->printVars ();
-            printf ("-- Bytecode generated --\n");
-            printf ("------------------------\n");
+        return false;
+    }
+    int index = f.allocIndex ();
+    if (index > 252) {
+        fprintf (myStderr, "%s:%d: Scripting error: Max number of fields and methods reached in Script node ! (function %s has index > 252)\n", 
+                 m_tokenizer->getFile(), m_tokenizer->getLine(), f.getName ());
+        exit (1);
+    }
+    if (m_verbose) {
+        printf ("-- Generating bytecode for function %s --\n", f.getName ());
+        f.printVars ();
+    }
+    ByteCode bc (&m_stringTable, &m_intTable);
+    f.setParamsIndex (&bc);
+    f.removeVars (1, &bc);
+    code->generateAll (&bc, &f);
+    f.removeVars (1, &bc);
+    
+    //fprintf (myStderr, "Scripter.getFunction: %s has max regs = %d\n", f.getName (), bc.getMaxRegisters ());
+    if (bc.getMaxRegisters () > m_maxRegisters) {
+        m_maxRegisters = bc.getMaxRegisters ();
+        if (m_maxRegisters > 254) { // 255 is reserved for detecting the previous bytecode format on player side
+            fprintf (myStderr, "Scripting error: Function %s is using too much registers: %d (maximum 253), refactor your code !\n",
+                     f.getName (), bc.getMaxRegisters ());
+            exit (1);
         }
     }
-    return f;
+    
+    // Copy function index
+    m_totalData[m_totalLen++] = (index+1) & 0xFF;
+    // Copy function jump table
+    data = bc.getJumpTable (len);
+    writeData (data, len);
+    free (data);
+    // Copy function code
+    data = bc.getCode (len);
+    writeData (data, len);
+    if (len > 0) {
+        if (m_verbose) ByteCode::dump (data, len);
+        free (data);
+    } else {
+        fprintf (myStderr, "Scripter.parseFunction: no bytecode generated!\n");
+    }
+    if (m_verbose) {
+        f.printVars ();
+        printf ("-- Bytecode generated --\n");
+        printf ("------------------------\n");
+    }
+    return true;
 }
+
+void Scripter::writeData (unsigned char * data, int len) {
+    //printf ("DBG: writeData: %d (%d)\n", data, len);
+    unsigned char * s = (unsigned char *) &len;
+    m_totalData[m_totalLen++] = s[3];
+    m_totalData[m_totalLen++] = s[2];
+    m_totalData[m_totalLen++] = s[1];
+    m_totalData[m_totalLen++] = s[0];
+    if (len > 0) {
+        memcpy (&m_totalData[m_totalLen], data, len);
+        m_totalLen += len;
+    }
+}
+

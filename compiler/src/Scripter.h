@@ -16,6 +16,8 @@
 
 # define INITIALIZE_ID 0
 
+#include "Code.h"
+
 class Scene; 
 
 class ByteCode;
@@ -126,6 +128,9 @@ public:
     // init the parameters whith register indexes
     void setParamsIndex (ByteCode * bc);
 
+    // allocate a index to this function (called after parsing)
+    int allocIndex ();
+
 private:
     // parse in between { and }
     Code * parseBlock (Tokenizer * t);
@@ -192,7 +197,6 @@ private:
 
     // return the node field if defined, NULL otherwize
     Field * findField (char * name);
-
 };
 
 
@@ -201,9 +205,15 @@ class Scripter {
     char * m_code;
     Node * m_node;
     int m_maxRegisters;
+    IntTable m_intTable;
+    StringTable m_stringTable;
+    unsigned char m_totalData [64*1024];
+    int m_totalLen;
+    bool m_verbose;
 public: 
-    Scripter (Node * node, char * buffer, FILE * fp, bool verbose, char * fn, int lineNumber, char * filename);
+    Scripter (Node * node, Tokenizer * t, FILE * fp, bool verbose);
 private:
-    Function * getFunction (bool verbose);
+    bool getFunction ();
+    void writeData (unsigned char * data, int len);
 };
  

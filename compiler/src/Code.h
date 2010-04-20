@@ -18,6 +18,7 @@
 # define __CODE__
 # include <stdio.h>
 
+#include "CodeTables.h"
 
 class Function;
 
@@ -29,6 +30,7 @@ public:
 };
 
 # define MAX_REGISTERS 256
+# define MAX_LABELS 256
 
 class ByteCode {
     Register m_registery [MAX_REGISTERS];
@@ -42,9 +44,17 @@ class ByteCode {
 
     int m_breakLabel;
     int m_continueLabel;
+
+    // shared accross all Function of the same Script
+    StringTable * m_stringTable;
+    IntTable * m_intTable;
+
+    int m_labels[MAX_LABELS];
+    int m_maxLabels; 
 public:
 
     enum {
+        ASM_ENDOFCODE = 255,
         ASM_ERROR = -1,
         ASM_NOP = 0,
         
@@ -53,7 +63,7 @@ public:
         
         ASM_JUMP,             // label/8: goto label
         ASM_JUMP_ZERO,        // reg label/8: if val(ref) == 0 goto label 
-        ASM_LABEL,            // label/8: marker to a jump point
+        ASM_LABEL,            // DEPRECATED, NOT USED ANYMORE
         ASM_EXT_CALL,         // label/8 label/8 reg
         ASM_INT_CALL,         // label/8 reg
         ASM_RETURN,           // reg
@@ -101,11 +111,12 @@ public:
         //ASM_POP_BASE,
     };
 
-    ByteCode ();
+    ByteCode (StringTable * stringTable, IntTable * intTable);
 
     void addByte (int i);
     void addInt (int i);
     void addFloat (float f);
+    void addString (char * s);
 
     void add (int opcode) ;
     void add (int opcode, int reg1);
@@ -143,7 +154,16 @@ public:
     // return the current bytecode set and its length in bytes
     unsigned char * getCode (int & len);
 
-    int setBreakLabel (int label);
+    // return the current jumptable and its length in bytes
+    unsigned char * getJumpTable (int & len);
+
+    // Set the label at index to the current offset
+    void setLabel (int index);
+
+    // Return a new unique index for a label
+    int getLabel ();
+
+    int setBreakLabel (int labelIndex);
     int setContinueLabel (int label);
     int getBreakLabel ();
     int getContinueLabel ();
@@ -153,6 +173,7 @@ public:
 class Code {
 public:
     enum {
+        CODE_THEEND = -2,
         CODE_ERROR= -1,
         CODE_NOP = 0,       // no operation 
         CODE_ASSIGN = 1,    // =
