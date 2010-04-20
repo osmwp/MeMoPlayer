@@ -229,6 +229,10 @@ public:
         CODE_LOG_AND,       // && 
         CODE_LOG_OR,        // || 
         CODE_TERNARY_COMP,  // ?:
+        CODE_NOT,           // !
+        CODE_PRE_INC,       // ++x
+        CODE_PRE_DEC,       // --x
+        CODE_ASSIGN_AND_RETURN,// = but return value
     };
     enum {
         STORE_FIELD_NUMERIC = 1,
@@ -283,6 +287,9 @@ public:
     Code * getNext ();
     int getLength ();
     bool generateAll (ByteCode * bc, Function * f);
+    static int getOpArity (int op);
+    static int getOpPrecedence (int op);
+    static bool isOpRightAssociative (int op);
 private:
     void init ();
     //void setOperation (int op, Code * first = NULL, Code * second = NULL, Code * third = NULL);

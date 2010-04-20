@@ -159,8 +159,13 @@ private:
     int parseAssign (Tokenizer * t, bool & self);
 
     // parse an operation like +, -, /, *, %, >>, <<, 
-    // if the operation is also an affectation (ex: +=)  self is set to true
-    int parseOperation (Tokenizer * t, int & arity);
+    int parseOperation (Tokenizer * t, bool pushBack=false);
+
+    // check the next operator and get its precedence
+    int checkOperation (Tokenizer * t, int & arity, int & precedence);
+    int checkOperation (Tokenizer * t, int & arity, int & precedence, bool & rightAssocitive);
+
+    Code * selfAssign (int operation, Code * self, Code * value, bool returnValue); 
 
     // parse a litteral value or a var name (including field access)
     Code * parseVarOrVal (Tokenizer * t);
@@ -175,7 +180,16 @@ private:
     Code * parseTest (Tokenizer * t);
 
     // parse a computational expression like (2*i)+3
-    Code * parseExpr (Tokenizer * t);
+    Code * parseExpr (Tokenizer * t, int min_precedence=0);
+    
+    // recursive helper for parseExpr to handle operators precedence
+    Code * parseExprRec (Tokenizer * t, Code * lhs, int min_precedence);
+    
+    // parse a unary expr like explicity parenthesis ( expr ) or unary ops like ++a, !b or ~c
+    Code * parseUnaryExpr (Tokenizer * t);
+
+    // parse a pre operator expr like ++x or --c
+    Code * parsePreOperator (Tokenizer * t, bool returnValue);
 
     // parse call to an external method like Browser.print("hello world");
     //Code * parseExternCall (int objID, Tokenizer * t);

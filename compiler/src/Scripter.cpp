@@ -361,6 +361,30 @@ Code * Function::parseAssign (Tokenizer * t) {
     return (NULL);
 }
 
+Code * Function::parsePreOperator (Tokenizer * t, bool returnValue) {
+    t->skipSpace ();
+    char c = t->GETC ();
+    if ((c == '-' || c == '+') && t->check (c)) {
+        char * s = t->getNextToken ();
+        if (s != NULL) {
+            Code * lvalue = parseLValue (t, s);
+            if (lvalue != NULL) {
+                int operation = c == '-' ? Code::CODE_MINUS : Code::CODE_PLUS;
+                return selfAssign (operation, lvalue, new Code ((int)1), returnValue);
+            }
+        }
+        fprintf (myStderr, "%s:%d: JS syntax error: Pre operator (%c%cX) must only be followed by a variable or a field.\n", t->getFile(), t->getLine (), c, c);
+        exit (1);
+    }
+    t->UNGETC (c);
+    return NULL;
+}
+
+Code * Function::selfAssign (int operation, Code * self, Code * value, bool returnValue) {
+    Code * compute = new Code (operation, self->cloneInvertAccess(), value);
+    Code * tmp = new Code (returnValue ? Code::CODE_ASSIGN_AND_RETURN : Code::CODE_ASSIGN, self, compute);
+}
+
 int Function::parseAssign (Tokenizer * t, bool & self) {
     self = false;
     if (t->check('+')) {
@@ -443,66 +467,85 @@ int Function::parseAssign (Tokenizer * t, bool & self) {
     return (Code::CODE_ERROR);
 }
 
-int Function::parseOperation (Tokenizer * t, int & arity) {
-    arity = 2;
-    if (t->check('+')) {
-        if (t->CHECK ('+')) {
-            arity = 1;
+int Function::checkOperation (Tokenizer * t, int & arity, int & precedence) {
+  int op = parseOperation (t, true);
+  arity = Code::getOpArity (op);
+  precedence = Code::getOpPrecedence (op);
+  return op;
+}
+
+int Function::checkOperation (Tokenizer * t, int & arity, int & precedence, bool & rightAssociative) {
+  int op = checkOperation (t, arity, precedence);
+  rightAssociative = Code::isOpRightAssociative (op);
+  return op;
+}
+
+int Function::parseOperation (Tokenizer * t, bool pushBack) {
+    int op = Code::CODE_ERROR;
+    t->skipSpace ();
+    char c = t->GETC ();
+    switch (c) {
+    case '+':
+        op = t->CHECK ('+', pushBack) ? Code::CODE_INC : Code::CODE_PLUS;
+        break;
+    case '-':
+        op = t->CHECK ('-', pushBack) ? Code::CODE_DEC : Code::CODE_MINUS;
+        break;
+    case '/':
+        op = Code::CODE_DIV;
+        break;
+    case '*':
+        op = Code::CODE_MULT;
+        break;
+    case '%':
+        op = Code::CODE_MODULO;
+        break;
+    case '&':
+        op = t->CHECK ('&', pushBack) ? Code::CODE_LOG_AND : Code::CODE_BIT_AND;
+        break;
+    case '|':
+        op = t->CHECK ('|', pushBack) ? Code::CODE_LOG_OR : Code::CODE_BIT_OR;
+        break;
+    case '=':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_EQUAL;
         }
-        return Code::CODE_PLUS;
-    } else if (t->check('-')) {
-        if (t->CHECK ('-')) {
-            arity = 1;
+        break;
+    case '!':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_NOTEQUAL;
         }
-        return Code::CODE_MINUS;
-    } else if (t->check('/')) {
-        return (Code::CODE_DIV);
-    } else if (t->check('*')) {
-        return (Code::CODE_MULT);
-    } else if (t->check('%')) {
-        return (Code::CODE_MODULO);
-    } else if (t->check('&')) {
-        if (t->CHECK ('&')) {
-            return (Code::CODE_LOG_AND);
+        break;
+    case '<':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_LESSEQ;
+        } else if (t->CHECK ('<', pushBack)) {
+        	  op = Code::CODE_BIT_LSHIFT;
+        } else {
+            op = Code::CODE_LESSER;
         }
-        return (Code::CODE_BIT_AND);
-    } else if (t->check('|')) {
-        if (t->CHECK ('|')) {
-            return (Code::CODE_LOG_OR);
-        }
-        return (Code::CODE_BIT_OR);
-    } else if (t->check('=')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_EQUAL);
-        }
-    } else if (t->check('!')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_NOTEQUAL);
-        }
-    } else if (t->check('<')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_LESSEQ);
-        } else if (t->CHECK ('<')) {
-        	return (Code::CODE_BIT_LSHIFT);
-        }
-        return (Code::CODE_LESSER);
-    } else if (t->check('>')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_GREATEQ);
+        break;
+    case '>':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_GREATEQ;
         } else if (t->CHECK ('>')) {
-          if (t->CHECK ('>')) {
-            return (Code::CODE_BIT_RRSHIFT);
-          }
-        	return (Code::CODE_BIT_RSHIFT);
+            op = t->CHECK ('>', pushBack) ? Code::CODE_BIT_RRSHIFT : Code::CODE_BIT_RSHIFT;
+            t->UNGETC ('>');
+        } else {
+            op = Code::CODE_GREATER;
         }
-        return (Code::CODE_GREATER);
-    } else if (t->check('^')) {
-        return (Code::CODE_BIT_XOR);
-    } else if (t->check('?')) {
-        arity = 3;
-        return (Code::CODE_TERNARY_COMP);
+        break;
+    case '^':
+        op = Code::CODE_BIT_XOR;
+        break;
+    case '?': 
+        op = Code::CODE_TERNARY_COMP;
+        break;
     }
-    return (Code::CODE_ERROR);
+    if (pushBack || op == Code::CODE_ERROR) {
+        t->UNGETC (c);
+    }
+    return op;
 }
 
 static bool checkInside (Tokenizer * t, const char * s) {
@@ -515,80 +558,76 @@ static bool checkInside (Tokenizer * t, const char * s) {
     return (false);
 }
 
-Code * Function::parseExpr (Tokenizer * t) {
-    // cases are :
-    // litteral
-    // var
-    // expr op expr
-    // ( expr op expr )
-    Code * left = NULL;
-    Code * right = NULL;
-    int operation = Code::CODE_NOP;
-    if (t->check ('-')) { // unary minus operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_MULT, new Code (-1), left);
-    }
-    if (t->check ('~')) { // unary ~ bit operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_BIT_INV, left);
-    }
-    if (t->check ('!')) { // unary ! not operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_EQUAL, left, new Code(0));
-    }
-    if (t->check ('(')) {
-        left = parseExpr (t);
-        if (t->check (')') == false) {
-            fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
-            exit (1);
+Code * Function::parseExpr (Tokenizer * t, int min_precedence) {
+    return parseExprRec (t, parseUnaryExpr (t), min_precedence);
+}
+
+Code * Function::parseExprRec (Tokenizer * t, Code * left, int min_precedence) {
+    int arity = 0, precedence = 0;
+    Code * right;
+    int op = checkOperation (t, arity, precedence); // check op and pushback
+    while (arity == 2 && precedence >= min_precedence) {
+        parseOperation (t); // eat operator
+        right = parseUnaryExpr (t);
+        // Lookahead for an operator with higher precedence 
+        bool rightAssociative = false;
+        int lookaheadPrec = 0;
+        int lookahead = checkOperation (t, arity, lookaheadPrec, rightAssociative); // check op and pushback
+        while ((arity == 2 && lookaheadPrec > precedence) ||
+            (rightAssociative && lookaheadPrec == precedence)) {
+            right = parseExprRec (t, right, lookaheadPrec);
+            lookahead = checkOperation (t, arity, lookaheadPrec, rightAssociative); // check op and pushback
         }
-    } else {
-        left = parseVarOrVal (t);
-    }
-    if (checkInside (t, ";],):")) {
-        return left;
-    }
-    int arity = 0;
-    operation = parseOperation (t, arity);
-    if (operation == Code::CODE_ERROR) {
-        fprintf (myStderr, "%s:%d: JS syntax error: missing operator\n", t->getFile(), t->getLine ());
-        exit (1);
+        left = new Code (op, left, right);
+        op = checkOperation (t, arity, precedence); // check op and pushback
     }
     if (arity == 1) {
-        return new Code (operation, left);
+        //TODO: support unary operators
+        fprintf (myStderr, "%s:%d: JS syntax error : unary operator unsupported in this expression.\n", t->getFile(), t->getLine ());
+        exit (1);
+        //parseOperation (t); // eat unary operator
+        //return new Code (op, left);
+    } else if (arity == 3) { // ? : operator
+        parseOperation (t); // eat ? operator
+        right = parseExpr (t, precedence);
+        if (t->check (':')) {
+            return new Code (op, left, right, parseExpr (t, precedence));
+        } else {
+            fprintf (myStderr, "%s:%d: JS syntax error: missing ':' after '?' for ternary expression.\n", t->getFile(), t->getLine ());
+            exit (1);
+        }
+    }
+    return left;
+}
+
+Code * Function::parseUnaryExpr (Tokenizer * t) {
+    // cases are :
+    // unaryOp expr
+    // ( expr )
+    // litteral
+    // var
+    Code * code;
+    if ((code = parsePreOperator (t, true)) != NULL) { // pre inc/decrement operator
+      return code;
+    }
+    if (t->check ('-')) { // unary minus operator
+        return new Code (Code::CODE_MULT, new Code (-1), parseUnaryExpr (t));
+    }
+    if (t->check ('~')) { // unary ~ bit operator
+        return new Code (Code::CODE_BIT_INV, parseUnaryExpr (t));
+    }
+    if (t->check ('!')) { // unary ! not operator
+        return new Code (Code::CODE_EQUAL, parseUnaryExpr (t), new Code(0));
     }
     if (t->check ('(')) {
-        right = parseExpr (t);
+        Code * expr = parseExpr (t);
         if (t->check (')') == false) {
             fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
             exit (1);
         }
+        return expr;
     } else {
-        right = parseVarOrVal (t);
-    }
-    if (arity == 2) {
-        Code * tmp = new Code (operation, left, right);
-        if (t->check ('+')) { // special case of +, mostly for String concat
-            return new Code (Code::CODE_PLUS, tmp, parseExpr (t));
-        } else {
-            return tmp;
-        }
-    }
-    if (t->check (':')) { // arity == 3
-        Code * third = NULL;
-        if (t->check ('(')) {
-            third = parseExpr (t);
-            if (t->check (')') == false) {
-                fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
-                exit (1);
-            }
-        } else {
-            third = parseVarOrVal (t);
-        }
-        return new Code (operation, left, right, third);
-    } else {
-        fprintf (myStderr, "%s:%d: JS syntax error: missing ':' after '?' for ternary expression.\n", t->getFile(), t->getLine ());
-        exit (1);
+        return parseVarOrVal (t);
     }
 }
 
@@ -892,10 +931,8 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             bool self = false;
             int operation = parseAssign (t, self);
             if (operation == Code::CODE_ASSIGN || self == true) {
-                Code * tmp;
                 if (self) {
-                    Code * compute = new Code (operation, lvalue->cloneInvertAccess(), parseExpr (t));
-                    tmp = new Code (Code::CODE_ASSIGN, lvalue, compute);
+                    tmp = selfAssign (operation, lvalue, parseExpr (t), false);
                 } else {
                     tmp = new Code (Code::CODE_ASSIGN, lvalue, parseExpr (t));
                 }
@@ -904,17 +941,23 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
                 }
                 return tmp;
             }
-            int arity = 0;
-            operation = parseOperation (t, arity);
-            if (arity == 1) {
-                Code * compute = new Code (operation, lvalue->cloneInvertAccess(), new Code ((int)1));
-                Code * tmp = new Code (Code::CODE_ASSIGN, lvalue, compute);
+            operation = parseOperation (t);
+            if (Code::getOpArity (operation) == 1) { // ++ or --
+                tmp = selfAssign (operation, lvalue, new Code ((int)1), false);
                 if (checkSemi) {
                     ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);
                 }
                 return (tmp);
             }
             fprintf (myStderr, "%s:%d: JS syntax error (assignement expected)\n", t->getFile(), t->getLine());
+        }
+    } else { // not a token, maybe a pre operator followed by a field or var (eg, ++myVar) ?
+        Code * code = parsePreOperator (t, false);
+        if (code != NULL) { // pre inc/decrement operator
+            if (checkSemi) {
+                ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);
+            }
+            return code;
         }
     }
     fprintf (myStderr, "%s:%d: JS syntax error : unexpected expression\n", t->getFile(), t->getLine());

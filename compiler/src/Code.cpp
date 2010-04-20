@@ -565,10 +565,10 @@ Code * Code::cloneInvertAccess () {
         tmp->m_first = m_first->cloneInvertAccess ();
     }
     if (m_second) {
-        tmp->m_first = m_second->cloneInvertAccess ();
+        tmp->m_second = m_second->cloneInvertAccess ();
     }
     if (m_third) {
-        tmp->m_first = m_third->cloneInvertAccess ();
+        tmp->m_third= m_third->cloneInvertAccess ();
     }
     if (m_next) {
         tmp->m_next = m_next ->cloneInvertAccess (); 
@@ -700,6 +700,7 @@ void Code::print (int indentLevel) {
         if (m_first) { m_first->print (0); }
         break;
     case CODE_ASSIGN:
+    case CODE_ASSIGN_AND_RETURN:
     case CODE_SELFPLUS: 
     case CODE_SELFMINUS: 
     case CODE_SELFDIV: 
@@ -712,6 +713,7 @@ void Code::print (int indentLevel) {
         }
         if (m_second) {
             switch (m_type) {
+            case CODE_ASSIGN_AND_RETURN:
             case CODE_ASSIGN:  printf (" = "); break;
             case CODE_SELFPLUS:  printf (" += "); break;
             case CODE_SELFMINUS:  printf (" -= "); break;
@@ -1140,6 +1142,7 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
         }
         return -1;
     case CODE_ASSIGN: 
+    case CODE_ASSIGN_AND_RETURN: // same as ASSIGN but return the value
         if (m_second) {
             reg1 = m_second->generate (bc, f, reg);
             m_first->generate (bc, f, reg1);
@@ -1149,6 +1152,10 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
             bc->addInt (0);
             m_first->generate (bc, f, reg1);
         }
+        if (m_type == CODE_ASSIGN_AND_RETURN) {
+            return reg1;
+        }
+        bc->freeRegister (reg1);
         return -1;
     case CODE_GET_VAR:
         var = f->findVar (m_first->m_name);
@@ -1168,20 +1175,14 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
         var = f->findVar (m_first->m_name);
         if (var) {
             reg1 = var->getIndex ();
-            reg2 = reg; //m_second->generate (bc, f);
-            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg2);
-            bc->freeRegister (reg2);
+            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg);
         } else {
             fprintf (stderr, "error: no var found for %s\n", m_first->m_name);
             exit (1);
         }
         return -1;
     case CODE_SET_FIELD:
-        //bc->add (ByteCode::ASM_FIELD_PUSH);
-        reg1 = reg; //m_second->generate (bc, f);
-        //bc->add (ByteCode::ASM_FIELD_POP);
-        bc->add (ByteCode::ASM_FIELD_SET_INT_REG, m_first->m_ival, reg1);
-        bc->freeRegister (reg1);
+        bc->add (ByteCode::ASM_FIELD_SET_INT_REG, m_first->m_ival, reg);
         return -1;
     case CODE_GET_FIELD: 
         reg1 = bc->getRegister (f->m_blockLevel);
@@ -1210,8 +1211,10 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
         reg2 = m_next->generate (bc, f, reg);
         //printf ("$$ CODE_USE_FIELD => %d\n", reg1);
         return reg2;
+    case CODE_INC:
     case CODE_PLUS: 
         return (generateBinary (ByteCode::ASM_ADD_REG_REG, bc, f));
+    case CODE_DEC:
     case CODE_MINUS:
         return (generateBinary (ByteCode::ASM_SUB_REG_REG, bc, f));
     case CODE_MULT: 
@@ -1272,4 +1275,102 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
     }
     return (-1);
 };
+
+int Code::getOpArity (int op) {
+    switch (op) {
+    case CODE_NOT:
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_INC:
+    case CODE_DEC:
+        return 1;
+    case CODE_PLUS:
+    case CODE_MINUS:
+    case CODE_MULT:
+    case CODE_DIV:
+    case CODE_MODULO:
+    case CODE_GREATER:
+    case CODE_GREATEQ:
+    case CODE_LESSER:
+    case CODE_LESSEQ:
+    case CODE_EQUAL:
+    case CODE_NOTEQUAL:
+    case CODE_LOG_AND:
+    case CODE_LOG_OR:
+    case CODE_BIT_AND:
+    case CODE_BIT_OR:
+    case CODE_BIT_XOR:
+    case CODE_BIT_LSHIFT:
+    case CODE_BIT_RSHIFT:
+    case CODE_BIT_RRSHIFT:
+        return 2;
+    case CODE_TERNARY_COMP:
+        return 3;
+    default:
+        fprintf (stderr, "Code::getOpArity: unknown code %d\n", op);
+    case CODE_ERROR:
+        return 0;
+    }
+}
+
+int Code::getOpPrecedence (int op) {
+    switch (op) {
+    case CODE_INC:
+    case CODE_DEC:
+        return 12;
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_NOT:
+        return 11;
+    case CODE_MULT:
+    case CODE_DIV:
+    case CODE_MODULO:
+        return 10;
+    case CODE_PLUS:
+    case CODE_MINUS:
+        return 9;
+    case CODE_BIT_LSHIFT:
+    case CODE_BIT_RSHIFT:
+    case CODE_BIT_RRSHIFT:
+        return 8;
+    case CODE_GREATER:
+    case CODE_GREATEQ:
+    case CODE_LESSER:
+    case CODE_LESSEQ:
+        return 7;
+    case CODE_EQUAL:
+    case CODE_NOTEQUAL:
+        return 6;
+    case CODE_BIT_AND:
+        return 5;
+    case CODE_BIT_XOR:
+        return 4;
+    case CODE_BIT_OR:
+        return 3;
+    case CODE_LOG_AND:
+        return 2;
+    case CODE_LOG_OR:
+        return 1;
+    case CODE_TERNARY_COMP:
+        return 0;
+    default:
+        fprintf (stderr, "Code::getOpPrecedence: unknown code %d\n", op);
+    case CODE_ERROR:
+        return 0;
+    }
+}
+
+bool Code::isOpRightAssociative (int op) {
+    switch (op) {
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_NOT:
+    case CODE_TERNARY_COMP:
+        return true;
+    }
+    return false;
+}
 
