@@ -211,17 +211,45 @@ public:
             *r++ = c;
             char cs = c;
             c = GETC ();
-            if (!isFloat (c)) {
+            if (!isInt (c) && c != '.') {
                 UNGETC (c);
                 UNGETC (cs);
                 if (isOK) { *isOK = false; }
                 return 0;
             }
         }
-        while (isFloat (c)) {
-            if (intFlag && !isInt (c)) { *intFlag = false; }
+        while (isInt (c)) { // integer part
             *r++ = c;
             c = GETC ();
+        }
+        if (c == '.') { // float part
+            if (intFlag) { *intFlag = false; }
+            *r++ = c;
+            c = GETC();
+            while (isInt (c)) {
+                *r++ = c;
+                c = GETC ();
+            }
+        }
+        if (c == 'e' || c == 'E') { // exp part
+            if (intFlag) { *intFlag = false; }
+            *r++ = c;
+            c = GETC();
+            if (c == '-'  || c == '+') { // must be followed IMMEDIATELY by a number
+                *r++ = c;
+                char cs = c;
+                c = GETC ();
+                if (!isInt (c)) {
+                    UNGETC (c);
+                    UNGETC (cs);
+                    if (isOK) { *isOK = false; }
+                    return 0;
+                }
+            }
+            while (isInt (c)) {
+                *r++ = c;
+                c = GETC();
+            }
         }
         UNGETC (c);
         *r='\0';
@@ -367,6 +395,5 @@ public:
 private:
     bool isToken (char c) { return ( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'); }
     bool isInt (char c) { return ( (c >= '0' && c <= '9') ); }
-    bool isFloat (char c) { return ( isInt (c) || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-'); }
     bool isSpace (char c) { return (c == ' ' || c == '\t' || c == comma || c == '\r' || c == '\n') || c == comment; }
 };
