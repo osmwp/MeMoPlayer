@@ -15,156 +15,32 @@
  */
 
 package memoplayer;
+
 import java.io.*;
 
 class Function {
     final static int END_OF_CODE = 255;
 
-/*    static String [] opNames = {
-        "NOP", "JUMP", "JUMP_ZERO", "LABEL", //0 .. 3
-        "EXT_CALL", "INT_CALL", "RETURN", "LOAD_REG_INT", // 4 .. 7
-        "LOAD_REG_FLT", "LOAD_REG_STR", "MOVE_REG_REG", "FIELD_PUSH", // 8 .. 11
-        "FIELD_POP", "FIELD_USE_INT", "FIELD_IDX_REG", "FIELD_GET_INT_REG", // 12 .. 15
-        "FIELD_SET_INT_REG", "ADD_REG_REG", "SUB_REG_REG", "MUL_REG_REG", // 16 .. 19
-        "DIV_REG_REG", "MOD_REG_REG", "TEST_EQU", "TEST_NEQ", // 20 .. 23
-        "TEST_GRT", "TEST_GRE", "TEST_LES", "TEST_LEE", // 24 .. 27
-        "TEST_AND", "TEST_OR",
-    };
-*/
     byte [] m_codeTable;
-    int m_curCode, m_nbCode;
-
+    int m_codeOffset; // Offset to the function code
     int [] m_jumpTable;
-    int m_nbJump;
-
     String [] m_strTable;
-    int m_curStr, m_nbStr;
-
     int [] m_intTable;
-    int m_curInt, m_nbInt;
 
-    static StringBuffer s_sb = new StringBuffer(); // for UTF8
-
-    int addConstant (int value) {
-        if (m_curInt >= m_nbInt) {
-            int oldSize = m_nbInt;
-            m_nbInt += 8;
-            int [] tmp = new int [m_nbInt]; 
-            System.arraycopy(m_intTable, 0, tmp, 0, oldSize);
-            m_intTable = tmp;
-        }
-        m_intTable[m_curInt++] = value;
-        return m_curInt-1;
+    Function (byte[] data, int codeOffset, int[] jumpTable, String[] strTable, int[] intTable) {
+        m_codeTable = data;
+        m_codeOffset = codeOffset;
+        m_jumpTable = jumpTable;
+        m_strTable = strTable;
+        m_intTable = intTable;
     }
-
-    int addConstant (String value) {
-        if (m_curStr >= m_nbStr) {
-            int oldSize = m_nbStr;
-            m_nbStr += 8;
-            String [] tmp = new String [m_nbStr]; 
-            System.arraycopy(m_strTable, 0, tmp, 0, oldSize);
-            m_strTable = tmp;
-        }
-        m_strTable[m_curStr++] = value;
-        return m_curStr-1;
-    }
-
-    int addJump (int value) {
-        if (value >= m_nbJump) {
-            int oldSize = m_nbJump;
-            m_nbJump += 8;
-            int [] tmp = new int [m_nbJump]; 
-            System.arraycopy(m_jumpTable, 0, tmp, 0, oldSize);
-            m_jumpTable = tmp;
-        }
-        m_jumpTable[value] = m_curCode;
-        return 2;
-    }
-
-    void addByte (int code) {
-        if (m_curCode >= m_nbCode) {
-            int oldSize = m_nbCode;
-            m_nbCode += 64;
-            byte [] tmp = new byte [m_nbCode]; 
-            System.arraycopy(m_codeTable, 0, tmp, 0, oldSize);
-            m_codeTable = tmp;
-        }
-        m_codeTable[m_curCode++] = (byte)code;
-    }
-
-    /*void addIndex (int b) {
-        while (b > 254) {
-            addByte (255);
-            b -= 254;
-        }
-        addByte (b);
-    }*/
-
-    int add_O (int code) {
-        addByte (code);
-        return 1;
-    }
-
-    int add_OB (int code, DataInputStream is) {
-        add_O (code);
-        addByte (Decoder.readUnsignedByte (is));
-        return 2;
-    }
-
-    int add_OBI (int code, DataInputStream is) {
-        add_OB (code, is);
-        //addIndex (addConstant (Decoder.readInt (is)));
-        addByte (addConstant (Decoder.readInt (is)));
-        return 6;
-    }
-
-    int add_OBS (int code, DataInputStream is) {
-        add_OB (code, is);
-        int size = Decoder.readString (is, s_sb);
-        //addIndex (addConstant (s_sb.toString()));
-        addByte (addConstant (s_sb.toString()));
-        return size + 2;
-    }
-
-    int add_OBB (int code, DataInputStream is) {
-        add_OB (code, is);
-        addByte (Decoder.readUnsignedByte (is));
-        return 3;
-    }
-
-    int add_OBBBB (int code, DataInputStream is) {
-        add_OBB (code, is);
-        addByte (Decoder.readUnsignedByte (is));
-        addByte (Decoder.readUnsignedByte (is));
-        return 5;
-    }
-
-    /*int getIndex () {
-        int idx = 0;
-        int i = ((int) m_codeTable[m_pc++] & 0xFF);
-        while (i == 255) {
-            idx += 254;
-            i = ((int) m_codeTable[m_pc++] & 0xFF);
-        }
-        return idx + i;
-    }
-
-    String getString () { 
-        return m_strTable[getIndex()];
-    }
-
-    int getInteger () {
-        return m_intTable[getIndex()];
-    }*/
-
+    
     boolean run (Machine m, Context c, int regBase) {
-        
-        Register [] register = m.m_register;
+        final Register [] register = m.m_register;
         ScriptAccess currentField = c.script, pushedField = null;
         int currentIndex = -1, pushedIndex = -1;
-
         Register r;
-        int pc = 0;
+        int pc = m_codeOffset;
         int a, b, d, e;
         int opcode = ((int)m_codeTable[pc++]&0xFF);
 
@@ -307,13 +183,14 @@ class Function {
                 r.setInt (r.getInt() >>> register[regBase+b].getInt());
                 break;
             case ByteCode.ASM_JUMP:
-                pc = m_jumpTable [((int)m_codeTable[pc++]&0xFF)]; 
+                a = ((int)m_codeTable[pc++]&0xFF);
+                pc = m_codeOffset + m_jumpTable[a];
                 break;
             case ByteCode.ASM_JUMP_ZERO:
                 a = ((int)m_codeTable[pc++]&0xFF);
                 b = ((int)m_codeTable[pc++]&0xFF);
                 if (register[regBase+a].getInt () == 0) {
-                    pc = m_jumpTable [b]; 
+                    pc = m_codeOffset + m_jumpTable[b];
                 }
                 break;
             case ByteCode.ASM_EXT_CALL:
@@ -375,6 +252,104 @@ class Function {
             opcode = ((int)m_codeTable[pc++]&0xFF);
         }
         return true;
+    }
+
+//#ifdef MM.JsByteCodeCompat
+    /*
+     * CODE FOR DECODING THE OLD BYTECODE FORMAT
+     */
+    
+    int m_curCode, m_nbCode;
+    int m_nbJump;
+    int m_curStr, m_nbStr;
+    int m_curInt, m_nbInt;
+
+    static StringBuffer s_sb = new StringBuffer(); // for UTF8
+
+    int addConstant (int value) {
+        if (m_curInt >= m_nbInt) {
+            int oldSize = m_nbInt;
+            m_nbInt += 8;
+            int [] tmp = new int [m_nbInt]; 
+            System.arraycopy(m_intTable, 0, tmp, 0, oldSize);
+            m_intTable = tmp;
+        }
+        m_intTable[m_curInt++] = value;
+        return m_curInt-1;
+    }
+
+    int addConstant (String value) {
+        if (m_curStr >= m_nbStr) {
+            int oldSize = m_nbStr;
+            m_nbStr += 8;
+            String [] tmp = new String [m_nbStr]; 
+            System.arraycopy(m_strTable, 0, tmp, 0, oldSize);
+            m_strTable = tmp;
+        }
+        m_strTable[m_curStr++] = value;
+        return m_curStr-1;
+    }
+
+    int addJump (int value) {
+        if (value >= m_nbJump) {
+            int oldSize = m_nbJump;
+            m_nbJump += 8;
+            int [] tmp = new int [m_nbJump]; 
+            System.arraycopy(m_jumpTable, 0, tmp, 0, oldSize);
+            m_jumpTable = tmp;
+        }
+        m_jumpTable[value] = m_curCode;
+        return 2;
+    }
+
+    void addByte (int code) {
+        if (m_curCode >= m_nbCode) {
+            int oldSize = m_nbCode;
+            m_nbCode += 64;
+            byte [] tmp = new byte [m_nbCode]; 
+            System.arraycopy(m_codeTable, 0, tmp, 0, oldSize);
+            m_codeTable = tmp;
+        }
+        m_codeTable[m_curCode++] = (byte)code;
+    }
+     
+    int add_O (int code) {
+        addByte (code);
+        return 1;
+    }
+
+    int add_OB (int code, DataInputStream is) {
+        add_O (code);
+        addByte (Decoder.readUnsignedByte (is));
+        return 2;
+    }
+
+    int add_OBI (int code, DataInputStream is) {
+        add_OB (code, is);
+        //addIndex (addConstant (Decoder.readInt (is)));
+        addByte (addConstant (Decoder.readInt (is)));
+        return 6;
+    }
+
+    int add_OBS (int code, DataInputStream is) {
+        add_OB (code, is);
+        int size = Decoder.readString (is, s_sb);
+        //addIndex (addConstant (s_sb.toString()));
+        addByte (addConstant (s_sb.toString()));
+        return size + 2;
+    }
+
+    int add_OBB (int code, DataInputStream is) {
+        add_OB (code, is);
+        addByte (Decoder.readUnsignedByte (is));
+        return 3;
+    }
+
+    int add_OBBBB (int code, DataInputStream is) {
+        add_OBB (code, is);
+        addByte (Decoder.readUnsignedByte (is));
+        addByte (Decoder.readUnsignedByte (is));
+        return 5;
     }
 
     static int s_saved = 0;
@@ -476,4 +451,5 @@ class Function {
 
         pack ();
     }
+//#endif
 }

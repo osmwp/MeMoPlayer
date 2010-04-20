@@ -20,7 +20,9 @@ package memoplayer;
 public class ByteCode {
     final static int ASM_ERROR = -1;
     final static int ASM_NOP = 0;
+//#ifdef MM.JsByteCodeCompat
     final static int ASM_LABEL = 3;
+//#endif
     final static int ASM_JUMP = 1;
     final static int ASM_JUMP_ZERO = 2;
     final static int ASM_EXT_CALL = 4;

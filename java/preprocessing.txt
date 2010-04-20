@@ -49,6 +49,7 @@ Specific features, JSR independent
  - MM.CacheUseFile: Add support to persist data with CacheManager to the File System.
                     This will only be activated if the "MeMo-CachePath" is set.
  - MM.Upload: Adds Upload node for HTTP POST file upload. This is a synchronous upload !! (seems unfinished)
+ - MM.JsByteCodeCompat: Add support for older Javascript bytecode format
 
 Debug features
 --------------
