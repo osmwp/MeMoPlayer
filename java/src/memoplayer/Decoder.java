@@ -489,4 +489,56 @@ public class Decoder {
         ret.append(c);
         return count;
     }
+    
+    public static int bytesToUtf8 (byte[] src, int offset, StringBuffer ret) {
+        byte b = src[offset++];
+        ret.setLength(0);
+        while (b != 0) {
+            char c = 0;
+            if ((b & 0x80) == 0) {
+                c = (char) b;
+            } else if ((b & 0xe0) == 0xc0) {       // 11100000
+                c |= (b & 0x1f) << 6;              // 00011111
+                c |= (src[offset++] & 0x3f) << 0;  // 00111111
+            } else if ((b & 0xf0) == 0xe0) {       // 11110000
+                c |= (b & 0x0f) << 12;             // 00001111
+                c |= (src[offset++] & 0x3f) << 6;  // 00111111
+                c |= (src[offset++] & 0x3f) << 0;  // 00111111    
+            } else if ((b & 0xf8) == 0xf0) {       // 11111000
+                c |= (b & 0x07) << 18;             // 00000111 (move 18, not 16?)
+                c |= (src[offset++] & 0x3f) << 12; // 00111111
+                c |= (src[offset++] & 0x3f) << 6;  // 00111111
+                c |= (src[offset++] & 0x3f) << 0;  // 00111111
+            } else {
+                c = '?';
+            }
+            b = src[offset++];
+            ret.append(c);
+        }
+        return offset;
+    }
+    
+    public static int bytesToInt32 (byte[] src, int offset) {
+        return (src[offset] << 24) +
+               ((src[offset+1] & 0xFF) << 16) +
+               ((src[offset+2] & 0xFF) << 8) +
+               (src[offset+3] & 0xFF);
+    }
+
+    public static int bytesToInt16 (byte[] src, int offset) {
+        return ((src[offset] & 0xFF) << 8) +
+               (src[offset+1] & 0xFF);
+    }
+
+    public static void int32ToBytes (int src, byte[] dst, int offset) {
+        dst[offset] = (byte) (src >>> 24);
+        dst[offset+1] = (byte) (src >>> 16);
+        dst[offset+2] = (byte) (src >>> 8);
+        dst[offset+3] = (byte) src;
+    }
+
+    public static void int16ToBytes (int src, byte[] dst, int offset) {
+        dst[offset] = (byte) (src >>> 8);
+        dst[offset+1] = (byte) src;
+    }
 }

@@ -155,14 +155,14 @@ class RMSCacheManager2 extends CacheManager {
         try { 
             byte[] entriesData = m_recordStore.getRecord (1);
             int count = 0;
-            int nbRecords = bytesToInt16 (entriesData, count); 
+            int nbRecords = Decoder.bytesToInt16 (entriesData, count); 
             count += 2;
             for (int i= 0; i<nbRecords; i++) {
-                int size = bytesToInt16 (entriesData, count); 
+                int size = Decoder.bytesToInt16 (entriesData, count); 
                 count += 2;
                 String name = new String (entriesData, count, size);
                 count += size;
-                int index = bytesToInt32 (entriesData, count); 
+                int index = Decoder.bytesToInt32 (entriesData, count); 
                 count += 4;
                 addEntry (name, index, false);
             }
@@ -177,7 +177,7 @@ class RMSCacheManager2 extends CacheManager {
     private boolean saveEntries () {
         byte[] entriesData = new byte[2048];
         int count = 0;
-        int16ToBytes (m_nbEntries, entriesData, count);
+        Decoder.int16ToBytes (m_nbEntries, entriesData, count);
         count += 2;
         for (int i = 0; i < m_nbEntries; i++) {
             final byte[] d = m_names[i].getBytes ();
@@ -192,11 +192,11 @@ class RMSCacheManager2 extends CacheManager {
                 entriesData = new byte[newSize];
                 System.arraycopy (tmp, 0, entriesData, 0, count);
             }
-            int16ToBytes (l, entriesData, count);
+            Decoder.int16ToBytes (l, entriesData, count);
             count += 2;
             System.arraycopy (d, 0, entriesData, count, l);
             count += l;
-            int32ToBytes (m_indexes[i], entriesData, count);
+            Decoder.int32ToBytes (m_indexes[i], entriesData, count);
             count += 4;
         }
         try {
@@ -207,30 +207,6 @@ class RMSCacheManager2 extends CacheManager {
             Logger.println ("RMSCache: SaveEntries error: "+e);
             return false;
         }
-    }
-
-    private void int16ToBytes (int src, byte[] dst, int offset) {
-        dst[offset] = (byte) (src >>> 8);
-        dst[offset+1] = (byte) src;
-    }
-
-    private void int32ToBytes (int src, byte[] dst, int offset) {
-        dst[offset] = (byte) (src >>> 24);
-        dst[offset+1] = (byte) (src >>> 16);
-        dst[offset+2] = (byte) (src >>> 8);
-        dst[offset+3] = (byte) src;
-    }
-
-    private int bytesToInt16 (byte[] src, int offset) {
-        return ((src[offset] & 0xFF) << 8) +
-               (src[offset+1] & 0xFF);
-    }
-
-    private int bytesToInt32 (byte[] src, int offset) {
-        return (src[offset] << 24) +
-               ((src[offset+1] & 0xFF) << 16) +
-               ((src[offset+2] & 0xFF) << 8) +
-               (src[offset+3] & 0xFF);
     }
 
     private void sortEntries () {
