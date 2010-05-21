@@ -17,12 +17,19 @@
 package memoplayer;
 
 /**
- * Paired strings accessible from Browser.getCooky/setCooky 
+ * Paired strings accessible from Browser.getCooky/setCooky.
+ * 
+ * When using Namespace, protected paired string set in the
+ * "admin" mode (see Namespace.java) can only be read but not
+ * modified from the other Namespaces (where widgets run).
+ * The others Namespaces can still exchanged data by setting
+ * values to keys that are not already in use in the "admin" mode.
  */
 public class CookyManager {
     String m_key, m_value;
     CookyManager m_next;
     static CookyManager s_root;
+    static CookyManager s_protected;
 
     CookyManager (String key, String value, CookyManager next) {
         m_key = key;
@@ -49,22 +56,45 @@ public class CookyManager {
     }
 
     static void set (String key, String value) {
-        //System.err.println ("SetCooky: "+key+", "+value);
+//#ifdef MM.namespace
+        if (Namespace.getName() == "") {
+            // All keys set in admin mode are store are protected
+            s_protected = new CookyManager (key, value, s_protected);
+            return;
+        }
+//#endif
         s_root = new CookyManager (key, value, s_root);
     }
 
     static String get (String key) {
-        //System.err.println ("GetCooky: "+key+" => "+((s_root !=null) ? s_root.find (key) : ""));
+//#ifdef MM.namespace
+        if (s_protected != null) {
+            // Always access first to keys saved in the protected mode
+            String value = s_protected.find (key);
+            if (value != "") {
+                return value;
+            }
+        }
+//#endif
         return (s_root !=null) ? s_root.find (key) : "";
     }
     
     static void remove (String key) {
+//#ifdef MM.namespace
+        if (Namespace.getName() == "" && s_protected != null) {
+            // Only admin mode can delete protected values
+            s_protected = s_protected.removeRec (key);
+        }
+//#endif
         if (s_root != null) {
             s_root = s_root.removeRec(key);
         }
     }
 
     static void clean() {
+//#ifdef MM.namespace
+        s_protected = null;
+//#endif
         CookyManager cm = s_root;
         while (cm != null) {
             cm.m_key = null;
