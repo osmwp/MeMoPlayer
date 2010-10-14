@@ -139,9 +139,7 @@ class SmartHttpConnection implements Connection {
         int responseCode = m_conn.getResponseCode();
         
 //#ifdef MM.pfs
-        if (isTargetPFS()) {
-            parsePfsHeaders();
-        }
+        parseUpdateHeader();
 //#endif
         
         parseCookieHeaders(HTTP_SET_COOKIE_FIELD, m_conn.getHost());
@@ -150,9 +148,7 @@ class SmartHttpConnection implements Connection {
     
     private void addHttpHeaders() throws IOException {
 //#ifdef MM.pfs
-        if (isTargetPFS()) {
-            addPfsHeaders();
-        }
+    	addTagsHeader ();
 //#endif
         
         String cookie = SmartHttpCookies.load(m_conn.getHost());
@@ -240,78 +236,29 @@ class SmartHttpConnection implements Connection {
     
 //#ifdef MM.pfs
     
-    /*
-     * PFS (Server Platform) specific HTTP code 
-     */
-    
-    private final static String HTTP_X_COOKIE_FIELD = "x-cookie";
-    private final static String HTTP_X_SET_COOKIE_FIELD = "x-set-cookie";
-    private final static String TOKEN_RMS_KEY = "PFS-TOKEN";
-    
-    private static String s_token;
-    private static String s_tags;
-    
-    static {
-        // Get tags & token headers from JAD first, if not from RMS
-        s_tags = MiniPlayer.getJadProperty("Tags");
-        s_token = MiniPlayer.getJadProperty("Token");
-        if (s_token == "") {
-//#ifdef MM.namespace
-            s_token = CacheManager.getMasterManager().getRecord (TOKEN_RMS_KEY);
-//#else
-            s_token = CacheManager.getManager().getRecord (TOKEN_RMS_KEY);
-//#endif
-        }
-        
-    }
-
-    
     /**
-     * Return TRUE if the request is for the PFS server
+     * Adds a x-tags header with content of the xtags cookie
+     * if the target server is the same as the baseUrl.
      */
-    public boolean isTargetPFS() {
-        return m_conn.getURL().startsWith(MiniPlayer.getPfsBaseUrl());
+    public void addTagsHeader() throws IOException {
+    	String baseUrl = CookyManager.get ("baseUrl");
+    	if (baseUrl.length() != 0 && m_url.startsWith(baseUrl)) {
+    		String tags = CookyManager.get ("xtags");
+	    	if (tags.length() != 0) {
+	            m_conn.setRequestProperty ("X-Tags", tags);
+	        }
+    	}
     }
     
     /**
-     * When no cookie with JSESSIONID is defined for a PFS request, 
-     * send the Tags and Token headers.
+     * Check for the specific x-update HTTP header.
+     * Open browser on given url.
      */
-    public void addPfsHeaders() throws IOException {
-        String cookie = SmartHttpCookies.load(m_conn.getHost()+"-x-cookie");
-        if (cookie != null && cookie.indexOf("JSESSIONID") != -1) {
-            m_conn.setRequestProperty(HTTP_X_COOKIE_FIELD, cookie);
-        } else { // When no cookie, send specific HTTP headers
-            if (s_tags != "") {
-                m_conn.setRequestProperty("X-Tags", s_tags);
-            }
-            if (s_token != "") {
-                m_conn.setRequestProperty("X-Token", s_token);
-            }
-        }
-    }
-    
-    /**
-     * Check for PFS specific HTTP headers :
-     *  When a x-update is received, force update of the MIDlet.
-     *  When a x-set-token is received, overwrite token in RMS.
-     *  Parse cookies using an .
-     */
-    public void parsePfsHeaders() throws IOException {
+    public void parseUpdateHeader() throws IOException {
         String data = m_conn.getHeaderField("x-update");
-        if (data != null) {
+        if (data != null && data.length() != 0) {
             MiniPlayer.openUrl(data);
         }
-        data = m_conn.getHeaderField("x-set-token");
-        if (data != null) {
-            s_token = data;
-//#ifdef MM.namespace
-            CacheManager.getMasterManager().setRecord (TOKEN_RMS_KEY, data);
-//#else
-            CacheManager.getManager().setRecord (TOKEN_RMS_KEY, data);
-//#endif
-        }
-        parseCookieHeaders(HTTP_X_SET_COOKIE_FIELD, m_conn.getHost()+"-x-cookie");
     }
 
 //#endif
