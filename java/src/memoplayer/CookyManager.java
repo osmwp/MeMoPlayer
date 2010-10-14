@@ -55,7 +55,7 @@ public class CookyManager {
         return this;
     }
 
-    static void set (String key, String value) {
+    static synchronized void set (String key, String value) {
 //#ifdef MM.namespace
         if (Namespace.getName() == "") {
             // All keys set in admin mode are store are protected
@@ -66,7 +66,7 @@ public class CookyManager {
         s_root = new CookyManager (key, value, s_root);
     }
 
-    static String get (String key) {
+    static synchronized String get (String key) {
 //#ifdef MM.namespace
         if (s_protected != null) {
             // Always access first to keys saved in the protected mode
@@ -79,7 +79,7 @@ public class CookyManager {
         return (s_root !=null) ? s_root.find (key) : "";
     }
     
-    static void remove (String key) {
+    static synchronized void remove (String key) {
 //#ifdef MM.namespace
         if (Namespace.getName() == "" && s_protected != null) {
             // Only admin mode can delete protected values
@@ -91,7 +91,7 @@ public class CookyManager {
         }
     }
 
-    static void clean() {
+    static synchronized void clean() {
 //#ifdef MM.namespace
         s_protected = null;
 //#endif
