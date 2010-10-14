@@ -112,12 +112,27 @@ void compile (char * inName, char * dir, bool verbose) {
 }
 
 void usage (char * exeName) {
-    printf ("usage: %s [-v] [-o dir] file.wrl : compile in.wrl and save in dir/file.m4m. By default dir is '.'\n", exeName);
+    printf ("usage:\n");
+    printf ("   %s [-v] [-I dir] [-i media] [-o dir] file.wrl : compile in.wrl and save in dir/file.m4m. By default dir is '.'\n", exeName);
+    printf ("   %s -d file.java : dump Node table in a java file\n", exeName);
+    printf ("   %s -b file.java : dump ByteCode table in a java file\n\n", exeName);
+    printf ("options:\n");
+    printf ("   -b : output ByteCode table as a class with a collection of final static.\n");
+    printf ("   -d : output the Node table as a class with a collection of final static.\n");
+    printf ("   -h : display this help message.\n");
+    printf ("   -I : add paths to search for ressources inclusions.\n");
+    printf ("        Multiple paths can be defined by using ';' as a separator.\n");
+    printf ("   -o : output dir for the generated M4M file. Default is '.'.\n");
+    printf ("   -v : display debug messages during compilation.\n\n");
     printf ("examples:\n");
-    printf ("       ./compiler index.wrl # compile index.wrl and store the result in ./index.m4m\n");
-    printf ("       ./compiler -o res index.wrl # compile index.wrl and store the result in ./res/index.m4m\n");
-    printf ("usage: %s -d file.java : dump Node table in a java file (as a class with a collection of final static)\n", exeName);
-    printf ("usage: %s -b file.java : dump ByteCode table in a java file (as a class with a collection of final static)\n", exeName);
+    printf ("   compile index.wrl and store the result in ./index.m4m\n");
+    printf ("       ./compiler index.wrl\n");
+    printf ("   compile index.wrl and store the result in ./res/index.m4m\n");
+    printf ("       ./compiler -o res index.wrl\n");
+    printf ("   compile index.wrl and search for ressources (images, protos, etc...) in forlder ./images.\n");
+    printf ("       ./compiler -I images/ index.wrl\n");
+    printf ("   compile index.wrl and include the bg.png PNG image in the index.m4m.\n");
+    printf ("       ./compiler -i bg.png index.wrl\n");
     exit (1);
 }
 
@@ -161,6 +176,9 @@ int main (int argc, char * argv []) {
         } else if (strcmp (argv[start], "-I") == 0) {
             MultiPathFile::addMultiplePaths (argv[start+1]);
             start++;
+        } else if (strcmp (argv[start], "-h") ==0) {
+            usage (argv[0]);
+            return (0);
         } else {
             file = argv [start];
         }
