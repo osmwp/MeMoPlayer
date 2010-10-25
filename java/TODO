@@ -1,0 +1,15 @@
+TODO:
+
+MemoPlayer:
+ * Add a *rich* text node ;)
+ * api.traffic: send Message node events on traffic updates
+ * WrapText: Merge new code from the BBTM branch (size_changed corrections).
+ 
+BBTM specific:
+ * api.jsonrpc: TaskQueue, Task, JsonTask : Simplify this implementation of JSON-RPC client now the FileTask class has been removed
+ * api.jsonrpc: Use MessageNode to send information on progress and states of Tasks (JSON-RPC) progress.
+ * api.namespace: Add a Context or Namespace node to ease control of application contexts from VRML/JS code.
+ * api.bbtm: Add a Widget specific JS API : Widget.displaySettingsDialog(), Widget.exit(), Widget.getSettings(), etc...
+ * api.bbtm: Get token and style information from file in JAR ressource instead of the JAD properties ?
+ * Removed MobilePlatform preprocessing command, replace with specific APIs.
+ * Remove all MobilePlatform MIDlet code

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<antlib>
+   <taskdef name="RemoveJadUrlAndSizeProperties" classname="RemoveJadUrlAndSizeProperties" />
+   <taskdef name="GenerateMemoJavaFromProperties" classname="GenerateMemoJavaFromProperties" />
+   <taskdef name="PackageMemoRimApp" classname="PackageMemoRimApp" />
+</antlib>

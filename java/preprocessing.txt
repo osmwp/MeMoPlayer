@@ -1,0 +1,64 @@
+
+This is the list of the preprocessing options that can be used in profiles.
+
+Optional JavaScript APIs
+------------------------
+
+ - api.lcdui: Adds support for various LCDUI Alerts and Textboxes (for native T9 intput)
+ - api.array: Adds support for Java Hashtables & Arrays
+ - api.persist: Adds support to serialize Arrays & Hastables in the RMS. Requires api.array to work.
+ - api.rpc: Adds support for RPC calls using JSON-RPC protocol. Requires api.array to work.
+ - api.traffic: Allows the VRML scene to track basic HTTP traffic.
+ - api.contact: Adds access to address book contacts with PIM API (JSR-75 PIM)
+ - api.xparse: Adds support for XML/JSON parsing and XML push using sockets.
+ - api.pushlet: Adds support of pushlet protocol communication (Warning : must include "/lib/Pushlet/Pushlet.jar" library)
+ - api.socket: Adds support of simple socket communication
+ - api.bml: Adds support for parsing BML (Binary XML) data from the XML API.
+ - api.bmlEncoder: Add support for encoding BML (Binary XML) data. Used by api.domEdition for saving DOM.
+ - api.domEdition: Add support for manipulating the DOM in the XML API.
+ 
+ 
+JSR dependent features
+---------------------
+
+ - jsr.file: Local file support in the File class & in the File JS API using File API (JSR-75 File)
+ - jsr.nokia-ui: Adds support for the Nokia UI JSR, allows to keep the screen backlight always on.
+ - jsr.mm: Adds support for video/sound playback VRML nodes using the Mobile Media API (JSR-135).
+ - jsr.wma: Adds support for SMS (JSR-120), required by MM.pushSMS or jsr.wma2
+ - jsr.wma2: Adds support for MMS (JSR-205), requires jsr.wma
+ - jsr.sensor: Adds support for MotionSensor VRML node with the Sensor API (JSR-256).
+ - jsr.amms: Adds support for more control during snapshot using the Advanced Multimedia Supplements API (JSR-234)
+
+
+Specific features, JSR independent
+----------------------------------
+
+ - MM.pfs: Adds support for authentication to the PFS serveur using special JAD parameters
+ - MM.namespace: Adds support for the VRML namespace node to prevent name collisions in RMS access and per namespace traffic accounting. 
+ - MM.pause: Pauses the MyCanvas thread when the canvas is not displayed
+ - MM.lowmemory: Special low memory optimizations
+ - MM.weakreference: Use weak references in pools to keep track of used objects (Image & FunctionBank objects in DataLink).
+                     WARNING: Nokia N70 does not support WeakReference (crashes the Memo) even if it's a CDLC1.1 KVM !
+ - MM.overlay: Add support for video overlay for SE JP7 phones.
+ - MM.base64: base64 encoder/decoder
+ - MM.pushSms: Adds support for pushSMS and application wakeup. Requires jsr.wma2 to work.
+ - MM.blitWithImage: Use Graphics.drawImage() instead of Graphic.drawARGB() to blit an image to prevent bugs on some Windows Mobile VMs
+                     This will only be activated if the "MeMo-BlitWithImage" is set to "true".
+ - MM.SamsungClipBug: Prevent display error by "manually" clipping calls to Graphic.drawRGB().
+ - api.richText: Support for the RichText VRML node (should be called MM.richText)
+ - MM.CacheUseFile: Add support to persist data with CacheManager to the File System.
+                    This will only be activated if the "MeMo-CachePath" is set.
+ - MM.Upload: Adds Upload node for HTTP POST file upload. This is a synchronous upload !! (seems unfinished)
+
+Debug features
+--------------
+
+ - debug.clipping: Displays a red rectangle around the clip zone on each paint and prints clip region in stdout.
+ - debug.safePaint: Try/catch around paint(): This prevents OutOfMemoryException during paint() of locking the Canvas thread, this is not safe as it can render screen partially !
+ - debug.console: Allows the console to be displayed by the user when pressing #*# or when an error occurs.
+ 
+Platform dependent
+------------------
+
+ - platform.android: Activates several speed hacks on Image transformations
+ 

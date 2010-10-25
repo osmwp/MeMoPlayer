@@ -1,0 +1,120 @@
+<project name="MemoPlayer-trunk" default="Build.Emulate">
+	<dirname property="basedir" file="${ant.file.common}"/>
+	<import file="ant/functions.xml" />
+	<import file="ant/subtargets.xml" />
+	
+	<path id="libs">
+        <fileset dir="ant/lib" includes="*.jar" />
+    </path>
+	
+	<taskdef classpathref="libs" resource="antenna.properties"/>
+	<taskdef classpathref="libs" resource="net/sf/antcontrib/antlib.xml"/>
+
+	<!-- Defines which profile to load -->
+	<property file="profile.properties"/>
+	
+	<!--The profile properties -->
+    <property file="ant/profiles/${current.profile}.properties" />
+		
+	<!--The default properties  -->
+	<property file="ant/default.properties"/>
+		
+	<!-- The default device for emulation -->
+	<property file="ant/devices.properties" prefix="device"/>
+	<expand name="device.emu" value="device.${resolution}.emu" />
+	<expand name="device.odd" value="device.${resolution}.odd" />
+
+	<!-- Default name for the MIDlet is the profile's name -->
+	<property name="midlet.name" value="${current.profile}" />
+	
+	<property name="pkg.dir" location="pkg"/>
+	
+	<!-- Emulator tasks -->
+
+	<target name="Emulate" description="test on emulator">
+		<exec executable="${wtk.emulator.bin}">
+			<arg line="-Xdevice:${device.emu}" />
+			<arg line="-Xdescriptor:'${pkg.dir}/${midlet.name}.jad'"/>
+		</exec>
+	</target>
+	
+	<target name="Emulate-Debug" description="test on emulator with debug">
+		<exec executable="${wtk.emulator.bin}">
+			<arg line="-Xdevice:${device.emu}" />
+			<arg line="-Xdescriptor:'${pkg.dir}/${midlet.name}.jad'"/>
+			<arg line="-Xdebug"	/>
+			<arg line="-Xrunjdwp:'transport=dt_socket,address=8000,server=y'" />
+		</exec>
+	</target>
+	
+	<target name="OnDevice" description="test on odd device">
+		<exec executable="${se.odd.bin}">
+			<arg line="-Xdevice:${device.odd}" />
+			<arg line="-Xdescriptor:'${pkg.dir}/${midlet.name}.jad' "/>
+		</exec>
+	</target>
+
+
+	<target name="OnDevice-Debug" description="debug on device">
+		<exec executable="${se.odd.bin}">
+			<arg line="-Xdevice:${device.odd}" />
+			<arg line="-Xdescriptor:'${pkg.dir}/${midlet.name}.jad' "/>
+			<arg line="-Xdebug"	/>
+			<arg line="-Xrunjdwp:'transport=dt_socket,address=8000,server=y'" />
+		</exec>
+	</target>
+
+
+	<!-- Cleaning tasks -->
+
+	<target name="Clean-RMS" description="Clean the RMS entries on the emulator">
+		<delete>
+			<fileset dir="${wtk.emulator.rms}/${device.emu}" includes="*.db" />
+		</delete>
+	</target>
+
+	<target name="Clean">
+		<delete includeemptydirs="true" failonerror="false">
+			<fileset dir="classes" includes="**/*" />
+			<fileset dir="psrc" includes="**/*" />
+		</delete>
+	</target>
+
+	<!-- Global  operations -->
+	
+	<target name="Build" description="Just builds the MIDlet for the current profile">
+		<call pre-target="Clean" target="Build" />
+	</target>
+	
+	<target name="Build.Emulate" depends="Build, Emulate" description="Launch emulator after build"/>
+
+	<target name="Build.OnDevice" depends="Build, OnDevice" description=""/>
+
+	<target name="Build.ToSDK" description="Copy MIDlet to SDK dir after build." if="sdk.dir">
+		<call pre-target="Clean" target="Build-ForSDK" />
+		<copy file="${pkg.dir}/${midlet.name}.jar" todir="${sdk.dir}" overwrite="true" />
+	</target>
+		    	
+	<target name="Package" description="Build all the profiles and put them in one zip file (midlet.zip)">
+		<property name="profiles" value="${profilesForRelease}"/>
+		<delete includeemptydirs="true" failonerror="false">
+            <fileset dir="${pkg.dir}" includes="**/*" />
+        </delete>
+        <call pre-target="Clean" target="Build-ForRelease" iterations="iter-on-profiles" />
+		<zip destfile="midlets.zip">
+			<zipfileset dir="${pkg.dir}" includes="**/*"/>
+	    </zip>
+    </target>
+    
+	<target name="Package.ToSDK" description="Build all the profiles and put them in the SDK">
+		<property name="profiles" value="${profilesForSDK}"/>
+		<delete includeemptydirs="true" failonerror="false">
+            <fileset dir="${pkg.dir}" includes="**/*" />
+        </delete>
+        <call pre-target="Clean" target="Build-ForSDK" iterations="iter-on-profiles" />
+		<copy todir="${sdk.dir}" overwrite="true">
+			<fileset dir="${pkg.dir}" includes="*.jar"/>
+		</copy>
+	</target>
+	
+</project>

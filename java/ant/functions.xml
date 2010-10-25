@@ -1,0 +1,34 @@
+<project name="functions">
+	
+	<macrodef name="expand">
+		<attribute name="value"/>
+		<attribute name="name"/>
+        <sequential>
+        	<property name="@{name}" value="${@{value}}"/>
+        </sequential>
+    </macrodef>
+	
+	<macrodef name="call">
+		<attribute name="pre-target" default="dummy"/>
+		<attribute name="target"/>
+		<attribute name="post-target" default="dummy"/>
+		<attribute name="iterations" default="call-subtarget"/>
+		<sequential>
+	        <antcall target="@{iterations}">
+	        	<param name="pre-target" value="@{pre-target}"/>
+	        	<param name="target" value="@{target}"/>
+				<param name="post-target" value="@{post-target}"/>
+        	</antcall>
+		</sequential>
+    </macrodef>
+	
+	<macrodef name="print-fileList">
+		<attribute name="refid"/>
+		<attribute name="message" default="FileList:"/>
+		<sequential>
+			<pathconvert property="output" refid="@{refid}" pathsep=", "/>
+			<echo message="@{message}${output}" />
+		</sequential>
+	</macrodef>
+	
+</project>

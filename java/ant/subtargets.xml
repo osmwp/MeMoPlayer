@@ -1,0 +1,21 @@
+<project name="subtargets">
+
+	<target name="iter-on-profiles">
+		<foreach list="${profiles}" param="current.profile" target="call-subtarget" inheritall="true" />
+	</target>
+	
+	<target name="call-subtarget">
+		<antcall target="${pre-target}"/>
+		<sequential>
+    		<echo>==============================================================================</echo>
+    		<echo>Target "${target}" for profile: ${current.profile}.</echo>
+    		<subant target="${target}" genericantfile="ant/common.xml" inheritall="false" buildpath=".">
+    			<property name="current.profile" value="${current.profile}"/>
+    		</subant>
+		</sequential>
+		<antcall target="${post-target}"/>
+	</target>
+	
+	<target name="dummy"/>
+	
+</project>

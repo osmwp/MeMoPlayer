@@ -1,0 +1,801 @@
+# File: Javascript Reference
+#  Javascript comes with a set of classes with static methods that provide access to additional
+#  functionality through call to external java code. Class is a convenient way to group these
+#  methods with the same semantic or functionality
+
+# Class: Browser
+# The Browser class provides access to Browser level characteristics to functionality,
+# like terminal size, debug output, cookies.
+#
+# Functions:
+#  int getWidth () - Returns the screen width
+#  int getHeight () - Returns the screen height
+#  void print (String message) - Display message in the console
+#  void exit () - Quit the player
+#  void setCooky (String s1,String s2) - Set an association between s1 and s2 in a temporary storage area 
+#                                       (cleared at player exit)
+#  String getCooky (String s) - Returns the string associated with s.
+#  String getIntCooky (String s) - Same as getCooky but return the integer stored in the cooky string
+#  int getNbMimeTypes () - Returns the number of MIME types supported by this JME platform.
+#  String getMimeType (int i) - Returns the MIME type at index i in the list of supported types.
+#  int getFps () - Returns the number of rendered frames per second
+#  int getIdle () - Returns the percentage of available CPU
+#  void vibrate (float duration) - Make the phone vibrate for duration seconds 
+#                                  (A value of zero should stop vibrations)
+#  String setRecord (String s1, String s2) - Associate permanently the value s2 to the key s1 
+#                                            (persistent across sessions)
+#  String getRecord (String s) - Returns the permanent cooky associated with s
+#  String getVersion () - Returns the current version of the player. Ex: 1.0b4 for
+#                         1.0 beta 4, 1.0rc2 for 1.0 release candidate 2, 1.0 for
+#                         final released version (so next one will be at least 1.1)
+#  int getSessionTraffic () - Returns the HTTP traffic since startup of the application
+#  int getTotalTraffic () - Returns the HTTP traffic since MIDlet deployment or last reset.
+#  void resetTraffic () - Resets the total and session HTTP traffic counters
+#  void sendMessage (String messageURL, String data1, ..., String dataN) - send multiple strings message to Message nodes matching messageURL.
+#  void displayTextBox (String title, String text, int maxLength, int type, String okLabel, String cancelLabel) - 
+#  void displayAlert(String title, String text)
+#  String getProperty (String key) - Gets the system property indicated by the specified key.
+#  void setTimeout (Function callback, int timeout, [args]) - Set a timer to call back a function with optional comma-separated args after a given time.
+#  String getCountryCode () - Returns the two letters country code based on the SMS-C information.
+#  void deleteRecord (String s) - Delete the persistent record matching the s string.
+#  void deleteAllRecords () - Delete all the persistent records.
+#  String getLanguage () - Returns the two letters language used by the phone interface.
+#  int getFreeMemory () - Returns the avaiable memory.
+#  int getTotalMemory () - Returns the total memory. This value can changed dynamicaly on some phones. 
+#                         The garbage collector each time this function is called. Use carefully.
+#  boolean forceBacklight(boolean force) - Force the backlight on when force is true. Returns true if forcing backlight on is supported.
+#  void deleteStore (String storename) - Delete all records of a given store.
+#  void setStore (String storename) - Use another place to store the records of setRecord/getRecord.
+#  boolean hasRecord (String record) - Return true if record exists.
+#
+# Widget SDK:
+#  In a widget context, some of these methods are not available for security constraints:
+#  exit, getTotalTraffic, resetTraffic, deleteCooky, cleanCookies, getJadProperty, cleanRMS.
+#  Some other functions behave differently (e.g. setRecord/getRecord only allow access to data of the widget).
+#
+Browser {
+    print exit 
+    setCooky getCooky getIntCooky
+    getWidth getHeight              
+    getNbMimeTypes getMimeType
+    getFps getIdle
+    getRecord setRecord
+    getSessionTraffic getTotalTraffic resetTraffic
+    deleteCooky cleanCookies
+    getJadProperty
+    cleanRMS
+    displayTextBox displayAlert
+    getVersion
+    vibrate logCapability wakeUp 
+    transformImage sendMessage
+    getProperty
+    setTimeout
+    getCountryCode
+    deleteRecord deleteAllRecords
+    getLanguage
+    getFreeMemory getTotalMemory
+    forceBacklight
+    deleteStore setStore
+    hasRecord
+}
+
+
+# Class: Math
+# The Math class provides to compute numbers.
+#
+# Functions:
+#  float cos (float v) -  Returns the cosinus value of v (in radians)
+#  float sin (float v) - Returns the sinus value of v (in radians)
+#  float floor (float v) - Returns the closest smaller integer of the param
+#  float ceil (float v) - Returns the closest bigger integer of the param
+#  float sqrt (float v) - Returns the square root of the parameter
+#  float rand (float v) - Returns a random number between 0 and 1
+#  float abs (float v)  - Returns the positive version of the parameter
+#  float acos (float v) - Returns the arc cosinus of the parameter
+#  float asin (float v) - Returns the arc sinus of the parameter
+#  float atan (float v) - Returns the arc tangent of the parameter
+#
+# Constants:
+#  PI - The constant value for PI (3.141592)
+#  E - The constant value for E (2.71828182)
+#
+#  double functions using strings that return strings ( to have better range and precision than FixFloat )
+#  ex: var result = Math.dadd('999999.5','0.51'); // result is a string with the value of '1000000.1'  
+#  String dadd(String d1, Stringd2) - Returns the addition of the double values contained in Strings 
+#  String dsub(String d1, Stringd2) - Returns the subtraction of the double values contained in Strings 
+#  String dmul(String d1, Stringd2) - Returns the multiplication of the double values contained in Strings 
+#  String ddiv(String d1, Stringd2) - Returns the division of the double values contained in Strings 
+#  String dsin(String d1) - Returns the sinus of the double value contained in String
+#  String dasin(String d1) - Returns the arc sinus of the double value contained in String 
+#  String dcos(String d1)  - Returns the cosinus of the double value contained in String 
+#  String dacos(String d1) - Returns the arc cosinus of the double value contained in String 
+#  String dtan(String d1)  - Returns the tangent of the double value contained in String 
+#  String datan(String d1) - Returns the arc tangent of the double value contained in String 
+#  String datan2(String d1,String d2) - Returns the arc tangent 2 of the double values contained in Strings 
+#  String dfloor(String d1) - Returns the closest smaller integer of the param 
+#  boolean dsup(String d1,String d2)   - Returns the true if value of d1 is greater than the value of d2, else false
+#  boolean dsupeq(String d1,String d2) - Returns the true if value of d1 is greater or equale than the value of d2, else false
+#  boolean dinf(String d1,String d2)   - Returns the true if value of d1 is smaller than the value of d2, else false
+#  boolean dinfeq(String d1,String d2) - Returns the true if value of d1 is smaller or equal than the value of d2, else false
+#  String dabs(String d1) - Returns the positive version of the parameter
+# 
+Math {
+     cos sin floor ceil sqrt rand abs acos asin atan PI E dadd dsub dmul ddiv dsin dasin dcos dacos dtan datan datan2 dfloor dsup dsupeq dinf dinfeq dabs
+}
+
+
+# Class: String
+# The String class provides means to manipulate arrays of chars (Strings)
+# 
+# Functions:
+#  int length (String s) - Returns the number of chars in s.
+#  int charAt (String s, int i) - Returns the char at index i inside string s
+#  String substring (String s, int start, int len) - Returns the substring of s, starting at start, with len chars. 
+#                                                    if len < 0, return up to the end of the string.
+#  bool startsWith (String s, string t) - Returns true if s starts with t
+#  bool endsWith (String s, String t) - Returns true if s ends with t
+#  int indexOf (String s, int char, int index) - Returns the first position of char in s, starting at index.
+#  int lastIndexOf (String s, int char, int index) - Returns the last position of char in s, 
+#                                                    starting (backward) at index.
+#  String toLower (String s) - Returns the lower case version of s
+#  String toUpper (String s) - Returns the upper case version of s
+#  int strIndexOf (String s, String t, int index) - Returns the first position of t in s, starting at index
+#  int toInt (String s) - Returns the integer that can be converted from s
+#  float toFloat (String s) - Returns the float that can be converted from s
+#  String trim (String s) - Returns the trimmed version of s (space removed at both ends)
+#  int width (String s, Node fontStyle) - Returns the width (in pixels) of the string rendered using
+#                                         the specified fontstyle node. 
+#                                         *Warning:* The fontsyle node must not be switched ! 
+#  int height (Node fontStyle) - Returns the height (in pixels) of the string rendered using
+#                                the specified fontstyle node.
+#                                *Warning:* The fontsyle node must not be switched !
+#  String makeAscii (int) - Returns a string with a single char made that has the parameter as ascii code
+#  String encodeBase64 - Return a string encoded in Base 64 from s
+#  String decodeBase64 - Return a string decoded in Base 64 from s
+#  void split (String src, MFString dest, String sep) - Split a string in an MFString (default sep: ',')
+#  String join (MFString src, String sep, int max) - Join strings from an MFString (default sep: ',', default max=0)
+#  String replace (String src, String tok, String rep) - Replace all occurrences of tok in src by rep.
+#
+# Widget SDK:
+#  In the widget context, the encodeBase64 and decodeBase64 methods are not available.
+#
+String {
+    length charAt substring
+    startsWith endsWith
+    indexOf lastIndexOf
+    toLower toUpper
+    strIndexOf toInt toFloat trim
+    width height
+    URLdecode
+    makeAscii
+    decodeUrl
+    encodeUrl
+    encodeBase64
+    decodeBase64
+    split join replace
+}
+
+
+# Class: Date
+# The Date class provides means to manipulate current date.
+# 
+# Functions:
+#  int getYear () - Returns the current year
+#  int getMonth () - Returns the current month number
+#  int getDay () - Returns the current day of the month
+#  int getHour () - Returns the current hour
+#  int getMinute () - Returns the current minute
+#  int getSecond () - Returns the current second
+#  int getTime () - Returns the current time in seconds since midnight, January 1, 1970 UTC.
+#  int getDayOfWeek () - Returns day of the week (sunday=1)
+#  int time () - DEPRECATED, same as getTime() method.
+#  int getWeek () - Returns the number of the week
+#  int parseDate () - Returns the date from the formated string
+#  String toString () - Returns the string of the current date
+#
+# Constants:
+#  MINUTE - Number of seconds in a minute
+#  HOUR - Number of seconds in an hour
+#  DAY - Number of seconds in a day
+#  WEEK - Number of seconds in a week
+#
+Date {
+    getYear getMonth getDay getHour getMinute getSecond time getDayOfWeek getTime getWeek
+    MINUTE HOUR DAY WEEK
+    parseDate toString
+}
+
+
+# Class: File
+# The File class provides means to read data from the file system and from an HTTP connection.
+# 
+# Functions:
+#  int list (String path) - Returns the number of files residing in the phone local file
+#      system and located at "path", considered as a directory. Path must start with "file://".
+#      The file system often define root partitions to differentiate the phone memory from an extension card.
+#      These roots are automatically managed by this function and are treated as sub directories of "file://".
+#  String getName (int n) - Returns the name of the file at position n inside path 
+#       (list() must have been called before).
+#  bool isDir (int n) - Returns true if the entry at position n in the directory
+#       referenced by the last list command is also a directory 
+#       (so list() must have been obviously called before)
+#  String getFullPath (int n) - Returns the full path of the entry n.   
+#  int open (String path, bool async) - Open the file referenced by the path parameter for reading
+#       and return an identifier for future reference (close, getLine, oef, getStatus, ...).
+#       If path starts with "http://" an HTTP connection is opened. 
+#       If path starts with "file:///" a file connection with the file system is created.
+#       Otherwise, the content is read from the midlet resource. 
+#       If async is true the function returns immediately and the script must call getStatus
+#       periodically to check whether getLine or getData can be called.
+#  void close (int i) - Close the stream associated with identifier i.
+#  String getLine (int i) - Returns the next line (chars up to "\n") in stream associated with identifier i.
+#  bool eof (int i) - Returns whether the stream associated with i reached end of file.
+#  int getData (int i, bool async) - starts reading data. if async is true returns immediately "",
+#                                    otherwise returns all available data.
+#  int getStatus (int i) - Returns the current status, see constants below
+#  bool isAvailable () - Returns true (1) if the device supports file system functions.
+#  clean - Clean all opened files
+#
+# Constants:
+#  ERROR - An error occured (e.g. file does not exists)
+#  READY - File is open and ready for starting data transfer
+#  OPENING - File is being open (i.e. communication in progress) 
+#  LOADING - Data is loading (transfering)
+#  LOADED - Data is fully loaded but not read yet
+#  CLOSED - Data has been read
+#
+# Widget SDK:
+#  In a widget context, the acess to files on the file system is not available and the following
+#  methods will not work : list, getName, isDir, getFullPath. The 'file://' scheme is not supported
+#  in the open() method.
+#
+File {
+    list getName isDir
+    getFullPath open close
+    getLine eof getData
+    getStatus isAvailable
+    ERROR READY OPENING LOADING LOADED CLOSED STOPPED
+    clean
+    getLength
+    write
+    WRITE SYNC ASYNC
+}
+
+# Class: Rpc
+#  Make asynchronous & queued JSON-RPC calls.
+# 
+# Functions:
+#  int call(Bool async, String method, param1, ..., paramN) - Create a JSON-RPC request.
+#     If async is true, the request will be asynchronous, and method will return an ID or -1 on error.
+#     If async is false, the request is done synchronously (freezing the interface if request is too long) and method returns the result of the request.
+#
+#  int addCallback(int ID, Str monitoredState, callback, param1, ..., paramN) - Add a callback to monitor state of an async request.
+#     The diffrent states that can be monitored are: ALL_STATES, ON_PROGRESS, ON_START, ON_SUCCESS and ON_ERROR.
+#     When a callback is called, the following parameters are passed : ID of the request, current state if ALL_STATES mode or current progress 
+#     (between 0 to 100) if ON_PROGRESS mode, followed by the N parameters and current time.
+#     Retuns -1 if addCallback method failed.
+#     
+#  int getResult(int ID) - Get request result identified by the ID.
+#     WARNING: This function needs to be called in a callback on ON_SUCCESS or ON_ERROR to free resources associated to the request.
+#     Can return a simple value (string, int, bool) or an ID to be used with the Array API or -1 on error.
+#
+#  void cancel(int ID) - Cancel asynchronous task identified by the ID. 
+#
+#  void clean() - Cancel all asynchronous tasks and clean all IDs.
+#
+# Constants:
+#  ALL_STATES - The callback will be called each time the request changes its state (ON_START, ON_SUCCESS or ON_ERROR).
+#  ON_PROGRESS - The callback will be called frequently to allow user to track progress of request (eg, file download).
+#  ON_START -The callback is called once when the request is intiated.
+#  ON_SUCCESS - The callback is called if the request is sucessfull (HTTP return code 200)
+#  ON_ERROR - The callback is called if the request is not sucessfull (network error, HTTP return code not 200)
+#
+# Example:
+# (start code)
+# function onProgressCb (id, progress) {
+#  Browser.print(id+' progress: '+progress+'/100');
+# }
+#
+# function onStateCb (id, state, param1, param2) {
+#   if (state == Rpc.ON_START) {
+#     Browser.print(id+' starting...');
+#   } else if (state == Rpc.ON_SUCCESS) {
+#     var data = Rpc.getResult(id); // get result & free Rpc handler
+#     Browser.print(id+' success: '+data);
+#   } else if (state == Rpc.ON_ERROR) {
+#     Rpc.getResult(id); // free Rpc handler
+#     Browser.print(id+' error !');
+#   }
+# }
+#
+# function makeRpcCall() {
+#   var id = Rpc.call(true, "Package.Method", "arg1", "arg2");
+#   Rpc.addCallback(id, Rpc.ALL_STATES, onStateCb, "param1", "param2");
+#   Rpc.addCallback(id, Rpc.ON_PROGRESS, onProgressCb);
+# }
+#(end code)
+Rpc {
+    call getResult cancel addCallback clean
+    ALL_STATES
+    ON_PROGRESS
+    ON_START
+    ON_SUCCESS
+    ON_ERROR
+}
+
+# Class: Persist
+#  Allows to persist arrays & collections from the <Array> API in the RMS (the mobile database)
+#
+# Persisted values:
+#  Persisted values can be a simple type (string, integer, float)
+#  or collections or arrays of the <Array> API.
+# 
+# Functions:
+#  int exists(string key) - Returns true if a value is associated to the key, else false.
+#  int setRecord(string key, object value) - Add or replace value associated to the key.
+#  int getRecord(string key) - Returns data associated to the key or -1 on error.
+#  int deleteRecord(string key) - Delete value associated to the key.
+#  void setStore (sting name) - Switch to another store.
+#  void deleteStore (string name) - Delete a given store.
+#
+# Widget SDK:
+#  In the widget context, the setStore and deleteStore methods are not available.
+#
+Persist {
+    exists setRecord getRecord deleteRecord deleteStore setStore getSizeAvailable
+}
+
+# Class: Array
+#  Array and collection support using integers as reference pointers.
+#
+# Differences between Arrays and Collections:
+#  An array behaves like a Vector in Java. An array value only can be acceded 
+#  by a numerical indicator superior or equal to 0.  
+#  An array cannot return an enumeration of keys with the 'keys()' method.
+#  A collection behaves like a Hashtable in Java. 
+#  The keys can be of any plain type (integers, float, string).                     
+#  Values of arrays and collections can be any plain type (string, integer, float), or
+#  collections or arrays to create complex structures (with sub arrays or sub collections).
+#  
+# References on sub arrays and sub collections: 
+#  In the case of imbricated array or collection, the Array.getElement()
+#  method can return a new ID corresponding to a sub array or a sub collection. 
+#  Do not forget to *free* it with a call to Array.free().
+#
+# Limited number of references:
+#  Arrays & collections are globals and will not be freed automaticaly. 
+#  The references to arrays and collections are limited to 30 at a time.
+#  *Do not forget to free references with the Array.free() method.*
+#
+# Scope:
+#  Arrays are used with some APIs like <Rpc>, <Persists> and <Puslets>.  
+#  They are used as arguments or returned as values.
+#  Array and collections have global scope. They can be shared between scenes.
+#
+# Functions:
+#  int newArray() - Create new array, return the corresponding ID or -1 if error.
+#  int newCollection() - Create new collection, return the corresponding ID or -1 if error.
+#  int free(int ID) - Free array or collection identified by its ID.
+#  int addElement(int ID, String value) - Allows an element add to an array or collection. 
+#       Returns an integer for an array or a unique key for collection, or -1 on error.
+#
+#  int setElement(int ID, object key, object value) - Allows a element modification. 
+#       *Warning:* key must be a signed integer if ID references an array.
+#  int getElement(int ID, object key) - Get element of an array or collection. 
+#       This element can be a simple type (string, integer, float), a collection or an array.
+#       *Warning:* key must be a signed integer if ID references an array.
+#       Returns -1 on error.
+#  int removeElement(int ID, String key) - Delete array or collection element. 
+#       *Warning:* key must be a signed integer if ID references an array.
+#  int isArray(int ID) - Returns true (1) if ID references an array, else false (0), -1 on error.
+#  int isCollection(int ID) - Returns true (1) if ID references a collection, else false (0), -1 on error.
+#  int size(ID) - Returns the array or collection size or -1 on error.
+#  int elements(int ID) - Returns new enumeration ID which allows to explore array or collection values (See Enumeration), -1 on error.
+#  int keys(int ID) - Returns new enumeration ID which allows to explore collection keys (See Enumeration), -1 on error or if ID is an array.
+#  String dump(int ID) - Print in console the array content.
+#  void removeAllElements(int ID) - Remove all elements of the array.
+Array {
+    newArray newCollection free clean
+    addElement setElement getElement removeElement
+    isArray isCollection size elements keys dump removeAllElements
+}
+
+
+# Class: Enumeration
+#  Allows to iterate on array or collection elements (from Array).  
+#  To get iterator typed Enumeration, use elements() and keys() functions from Array         
+# 
+# Functions:
+#  Enumeration.hasMoreElements(ID) - Returns true if other elements are available of the 
+#      iterator represented by ID, else false. Returns -1 on error.
+#  Enumeration.nextElement(ID) - Returns next iterator element represented by ID.
+#       Value can be a simple type (string, integer, float) or collections or array IDs of
+#       the <Array> API. Returns -1 on error. 
+#  Enumeration.free(ID) - free data associated identified by ID.
+#
+# Exemple:
+# (start code)
+# var arrayId = ... // an array
+# var enum = Array.values(arrayId);
+# while (Enumeration.hasMoreElements(enum)) {
+#   var e = Enumeration.nextElement (enum);
+#   // do something with e
+# }
+# Enumeration.free (enum); // free the enumeration
+# (end code)
+Enumeration {
+    hasMoreElements nextElement free 
+}        
+
+
+# Class: Messaging
+#  The Messaging class provides means to send SMS and MMS with a picture.
+# 
+# Functions:
+#  bool isAvailbale() - Returns True if mobile sending SMS and MMS is supported.   
+#  bool sendSMS(String phoneNumber, String message) - Send a SMS. Returns true if sucessful, false on error.
+#  bool sendMMS(String phoneNumber, String subject, String message, String imageUrl) - Send a MMS.
+#
+Messaging {
+    isAvailable sendSMS sendMMS 
+}
+
+
+# Class: XML
+#
+#  The XML class provides means to load, parse and use XML or BML (Binary XML) data.
+#  It shares a lot of common feature with the <JSON> parser below.
+#  *Warning:* indexes start at 1 and not 0 to be more compliant to XPATH.
+#
+# Functions: 
+#  int open (String buffer, int mode) - Read data contained in buffer, build an internal tree (DOM) and return an identifier that must be used for all subsequent operations on this DOM.
+#
+# The meaning of buffer is given by mode.
+# * If XML.URL is used, then data must represent a url to valid XML data.
+# * If XML.BUFFER is used, then buffer must contain actual XML data.
+# 
+# In addition modifiers can be applied using the '+' operator. XML.DEBUG can be added to display debug information during parsing.  
+# If XML.ASYNC is added to XML.URL, then the connection is done asynchronously (the function returns immediately) and DOM availability can be later checked with the isNewData function.
+# If XML.BML_ENCODING, the parser will expect XML data to be encoded the BML format.
+# 
+#
+# In case of error, returns -1.
+# 
+# Examples
+# 
+# * id = XML.open ("<foo> ... </foo>", XML.BUFFER); // create from data 
+# 
+# * id = XML.open ("http://server/path/foo.xml", XML.URL+XML.ASYNC); // create from url, asynchronously 
+#
+# * id = XML.open ("http://server/path/foo.bml", XML.URL+XML.ASYNC+XML.BML_ENCODING); // create from a bml url, asynchronously 
+#
+#  int open (String buffer, int mode, Function callback) - Same as open (String buffer, int mode), but will call a callback on completion.
+#   Adding a function callback with its optionnal args will force asynchronous mode (same as adding XML.ASYNC to mode).
+#   The function will be called on completion of the parsing and must match the following signature: 
+#   function callback (String url, int responseCode, int id, int time) { some code... }.
+#
+#  void close (id) - Free all resources associated to a DOM. the value id cannot be used 
+#    anymore after this call. You should use this function when you are done with the XML data.
+#  bool isNewData (id) - Return true when new data just become available  (i.e. when ASYNC has been used).
+#  
+#  bool find (int id, String path) - Try to follow the path and keep a marker to the resulting element. return true on success and false when the path cannot 
+#  be matched. Path must follow a specific syntax that is supposed to be closed to XPATH: 
+#  * */* represents a branch in the DOM 
+#  * *foo* represents a node (tag) 
+#  * *[n]* represents the nth occurrence (the first one is at 1) 
+#  * *'** represents any node 
+#  * *:root* represents the root 
+#  * *:parent* represents the parent node of the current node 
+#  * *:next* represents the next sibling of the current node 
+#  
+#  if path starts with '/' the path is absolute, otherwise the path starts from the previous find result. Once a node as been marked, its value, attributes or children can me retrieved using dedicated functions.
+#  For instance:
+#  
+#  * XML.find (id, '/foo/bar[2]/);  // set a marker to the second child named bar of the root node foo. (they may be extra children in between) 
+#  * XML.find (id, '*[3]); // find the third child of the current node 
+#  
+#  String getValue (int id) -  Return the tag name or the CDATA of the current node (marked by a previous find command) 
+#  int getNbAttributes (int id) - Return the number of attributes of the current node. 
+#  String getAttrName (int id, int n) - Return the name of the nth attribute if the current node is a tag (and thus not a CDATA), with at least n attributes. Return  the empty string otherwise 
+#  String getAttrValue (int id, int n) - Return the value of the nth attribute if the current node is a tag (and thus not a CDATA) with at least n attributes. Return the empty string otherwise 
+#  String getAttrValue (int id, String name) - Return the value of the first attribute that has the specified name, if the current node is a tag (and thus not a CDATA). Return the empty string otherwise 
+#  int getNbChildren (int id) - Return the number of children of the current node if it is a tag (and thus not a CDATA). Return 0 otherwise 
+#  bool isTextChild (int id, int index) - Return true if the current node has a child of type text (CDATA) at the specified index (starting at 1) 
+#  String getChildValue (int id, int index) - Return the name of the tag or the CDATA of the child of current node at specified index (starting at 1) Return the empty string otherwise.
+#  bool setValue (int id, String value) - Update the tag name or the CDATA of the current node. Return true on success.
+#  bool setChildValue (int id, int index, String value) - Update the tag name or the CDATA of the child of currentnode at specified index (starting at 1). Return true on success.
+#  bool setAttrValue (int id, String name, String value) - Update or add an attribute with the geven value if the current node is a tag. Return true on success.
+#  String serialize () - Serialize the XML tree to a string. This method works on subtrees when the current node is not the root node.
+#  bool save (String recordName) - Save the XML tree to a RMS record. This method works on subtrees when the current node is not the root node.
+#
+# Constants:
+#  BUFFER - Constant for using direct xml data in open method 
+#  URL - Constant for using url in open method 
+#  DEBUG - Constant to display debug information during parsing 
+#  ASYNC - Constant for opening the connection  in asynchronous mode
+#  BML_ENCODING - Constant to tell the parser the content is Binary XML and not regular XML
+#
+XML {
+    open           #0
+    close          #1
+    isNewData
+    find
+    goto
+    getValue
+    getNbAttributes
+    getAttrName
+    getAttrValue
+    getNbChildren
+    isTextChild
+    getChildValue
+    BUFFER URL BML_ENCODING DEBUG ASYNC HTML
+    isSelfClosing
+    isSelfClosingChild
+    setValue
+    setChildValue
+    setAttrValue
+    serialize
+    save
+}
+
+
+# Class: JSON
+#  Load and parse JSON data.
+# 
+# Functions:
+#  int open (String buffer, int mode) - Create a JSON DOM by parsing the provided buffer or url according to mode. 
+#     The value returned must be used for all subsequent operations on this DOM.
+#  bool find (String path) - Set a pointer to an element defined by the path. 
+#     The form of this path is nodeName1/nodeName2/... 
+#     If the value of the node is an array and not an Object, then the form *index can be used instead.
+#     Ex: main/table*1/key points to the key element that is stored at the second position
+#     inside the array associated to table, child of main, like in:
+#     {"main" : { "table" : [ { "id" : 1234}, {"key" : 2} ] }, "list" : [ 1, 2] }}
+#     This obviously implies that the structure is known in advance!
+#  int/String getValue (int id) - Returns the value located to the previous find command. 
+#     This will return 0 for types other that string, number and constants (true, false and null).
+#     In the example above, returns the number 2.
+#  int getType (int id) - Returns the type of the value located to the previous find
+#                         command. In the example above, return JSON.NUMBER.       
+#  int getSize (int id) - Returns the size of the value located to the previous find
+#                         command. Returns always 1 except for arrays.
+#  void clean (int id) - Destroy the DOM and release any resources associated to id   
+# 
+# Constants:
+#  NUMBER, STRING, OBJECT, ARRAY, TRUE, FALSE, NULL, ERROR
+#  BUFFER, URL, DEBUG, ASYNC
+#
+JSON {
+    open #0
+    close #1
+    isNewData #2
+    find #3
+    getType #4 
+    getSize #5
+    getValue #6
+    STRING NUMBER OBJECT ARRAY TRUE FALSE NULL ERROR
+    BUFFER URL KEEP_ALIVE_UNSUPPORTED DEBUG ASYNC
+}
+
+
+# Class: Contact
+#  Access to contact of the PIM database.
+#
+# Functions:
+#  bool isAvailable () - Returns TRUE (1) if PIM contact data is available.
+#  int open () 	       - Loads contacts information in memory. Must be called before acessing getInfo() method.
+#                        Returns the number of contacts.
+#  void close ()       - Free contacts information.
+#  String getInfo (int contactId, int info) - Returns the info for a given a contactId
+#         (between 0 and max contacts). Info can be one of the constants.
+#  int createContact () - Create a new contact and returns a contactId used to add new fields by using setInfo method.
+#  int deleteContact (int contactId) - Delete a contact given by contactId (between 0 and max contacts). 
+#                        Returns 1 if success otherwise returns 0.
+#  void setInfo (int contactId, int info_constant, String info_string) - Sets info_string in a contact 
+#                      given by contactId (between 0 and max contacts). The info_constant can be one of the constants.
+#                      This method must be called after a createContact() or 
+#                      if field given by info_contact is already set (even empty value).
+#  void addInfo (int contactId, int info_constant, String info_string) - Sets info_string in a contact 
+#                      given by contactId (between 0 and max contacts). The info_constant can be one of the constants.
+#                      Unlike setInfo() method, addInfo() must not called after a createContact() and 
+#                      must be called on empty fields.
+#
+# Constants:
+#  FULL_NAME, FIRST_NAME, LAST_NAME, ADDRESS, MOBILE, MOBILE_HOME, MOBILE_WORK,
+#  HOME, WORK, FAX, OTHER, PREFERRED, EMAIL, PHOTO_URL
+#
+Contact {
+    isAvailable
+    open
+    close
+    getInfo
+    FULL_NAME
+    FIRST_NAME
+    LAST_NAME
+    ADDRESS
+    MOBILE
+    MOBILE_HOME
+    MOBILE_WORK
+    HOME
+    WORK
+    FAX
+    OTHER
+    PREFERRED
+    EMAIL
+    PHOTO_URL
+    createContact
+    deleteContact
+    setInfo
+    addInfo
+}
+
+
+# Class: Location
+#  Location API. Undocumented.
+#
+# Widget SDK:
+#  This API is not available in the widget context.
+#
+Location {
+    isAvailable
+    getDistance
+}
+
+
+# Class: IM
+#  Instant Messaging API. Undocumented.
+#
+# Widget SDK:
+#  This API is not available in the widget context. 
+#
+IM {
+    login
+    logout
+    updateAlias
+    updatePresence
+    sendMessage
+    blockContact
+    unblockContact
+    addContact
+    removeContact
+    respondInvitation
+}
+
+
+# Class: Pushlet
+#  Pushlets HTTP-based publish/subscribe API. 
+#  See http://pushlets.org for more information.
+#
+# Functions:
+#  void join () - Instantiate the pushlet thread on url defined int the JAD file as PUSHLET_SERVLET_URL
+#  void leave () - stop the pushlet thread
+#  void listen (String subject) - listen the subject
+#  void stopListen () - stop listen all subjects
+#  void publish (String subject, String key, String value) - publish value associate with a key on a subject
+#
+# All these functions must be called one by one after receiving a response from the
+# Pushlets server (see type JOINED, LEFT, LISTENED, STOPPED_LISTENED, PUBLISHED).
+# The values received by the thread are send in a collection (of the <Array> API)
+# to a <Message> node which listens to the url "PUSHLET_SIGNAL".
+#
+# The type of the data received is given by the value associated with the key "type":
+#
+# Constants:
+#  JOINED - notify that join is done
+#  LEFT - notify that leave is done
+#  LISTENED - notify that listening a subject (associated with the key "subject")
+#  STOPPED_LISTENED - notify that stop listening all subjects
+#  PUBLISHED - notify that a value (associated with the key "value") was published with a key (associated with the key "key") on a subject (associated with the key "subject")
+#  DATA - undocumented
+#  ABORT - undocumented
+#  HEART_BEAT - signal received to maintenain the pushlets connection
+#  ERROR - an error occured on the pushlets connection
+#
+# Widget SDK:
+#  This API is not available in the widget context. 
+#
+Pushlet {
+   join
+   leave
+   listen
+   stopListen
+   publish
+}
+
+
+# Class: Socket
+# Socket API
+#
+# Functions:
+#  int newSocket (String socketHost, int socketPort) - new socket on "socketHost" host and "socketPort" port. Returns the socket id.
+#  void free (int socketId) - free slot
+#  void connect (int socketId) - start socket thread
+#  void disconnect (int socketId) - stop socket thread
+#  bool isConnected (int socketId) - return true if socket is connected
+#  void send (int socketId, String msg) - send msg on the socket
+#  void sendFile (int socketId, int fileId) - send file data on the socket
+#  void sendToBuffer (int socketId, String msg) - send msg in the buffer of the socket
+#  void sendFileToBuffer (int socketId, int fileId) - send file data in the buffer of the socket
+#  void sendBuffer (int socketId, bool async) - send buffer (sync or async)
+#
+# Note:
+#  The string data received on the socket are sent on <Message> nodes which listens to url "[socketHost]:[socketPort]"
+#
+# Widget SDK:
+#  This API is not available in the widget context.
+# 
+Socket {
+   newSocket
+   free
+   connect
+   disconnect
+   isConnected
+   send
+   sendFile
+   sendToBuffer
+   sendFileToBuffer
+   sendBuffer
+}
+
+
+# Class: Ad
+#  Advertising API
+#
+# Functions:
+#  bool isAvailbale() - Know if mobile can support Ad functionalities. If true Ad API can be used.   
+#  void clickTo (String mail) - open browser on last served ad link
+#
+# Widget SDK:
+#  This API is not available in the widget context. 
+#
+Ad {
+    isAvailable
+    clickTo
+}
+
+# Class: Http
+#  Asynchronous HTTP(S) request API.
+#
+# Functions:
+#  void get (String url, Function callback, String encoding) - Send an HTTP GET request, callback is called on response. Encoding is optional (Default: UTF-8).
+#  void post (String url, String postData, Function callback, String encoding) - Send an HTTP POST request, callback is called on response. Encoding is optional (Default: UTF-8).
+#
+Http {
+    get
+    post
+}
+
+# Class Style
+# Connects to teh Style node and retreive properties
+#
+# Functions:
+#  void getColor (String class, String id, String attribute, SFColor color); - fill color with the color attribute defined for class.id
+#  void getCoord (String class, String id, String attribute, SFVec2f vector); - fill vector with the pair attribute defined for class.id
+#  int getInt (String class, String id, String attribute); - return the integer value associated with the attribute defined for class.id
+#  float getFloat (String class, String id, String attribute); - return the float value associated with the attribute defined for class.id
+#  String getString (String class, String id, String attribute); - return the String value associated with the attribute defined for class.id
+
+Style {
+    getColor
+    getCoord
+    getInt
+    getFloat
+    getString
+    getBool
+    getFontStyle
+}
+
+# Class: GPS
+#  GPS Location API., if available, give current GPS position
+#
+# Functions:
+#  boolean isAvailable (); - check if JSR179 is available on device
+#  boolean start(int period); - init JSR179 api to recieve a position every specified "period" seconds, with Message "GPS_POSITION", true if succes otherwise false
+#  void stop(); - stops periodical position sending, and free JSR179 resources
+
+GPS {
+    isAvailable
+    init
+    stop
+}
+

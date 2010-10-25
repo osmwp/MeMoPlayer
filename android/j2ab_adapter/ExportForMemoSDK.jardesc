@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jardesc>
+    <jar path="MeMoAndro/MeMoAndro.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/MeMoAndro/ExportForMemoSDK.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
+    <selectedProjects/>
+    <manifest generateManifest="true" manifestLocation="" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
+        <sealing sealJar="false">
+            <packagesToSeal/>
+            <packagesToUnSeal/>
+        </sealing>
+    </manifest>
+    <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.media"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.pim"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;com.orange.memoplayer"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.rms"/>
+        <javaElement handleIdentifier="=MeMoAndro/gen"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.media.control"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.io.file"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.pim"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.midlet"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.media"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.lcdui.game"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.media.control"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.io"/>
+        <javaElement handleIdentifier="=MeMoAndro/psrc"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.lcdui"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.io"/>
+        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.io.file"/>
+    </selectedElements>
+</jardesc>

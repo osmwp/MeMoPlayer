@@ -1,0 +1,725 @@
+# File: Nodes Reference
+# Below is the list of all supported nodes with the implemented fields, with their applicable
+# context. Do not try to use a node in a context it does not support.
+#
+# The nodes have been implemented to follow as much as possible the VRML / MPEG-4
+# specifications. However any deviation, addition or difference with the standards are
+# mentioned or described below.
+
+# Node: Group
+# Used to group nodes together. Mostly useful in Switch or
+# with TouchSensor. First elements are drawn first.
+Group {
+    # field: children
+    # Children nodes
+    MFNode children NULL        
+}
+
+# Node: OrderedGroup
+# Identical to Group but the drawing order can be changed
+# using the order field. Each node of children must have a
+# corresponding float value in order and the node that has the
+# smallest value is drawn first.
+OrderedGroup {
+    # field: children
+    # Children nodes
+    MFNode children NULL 
+    # field: order
+    # Order of children      
+    MFFloat order
+}
+
+# Node: Layer2D
+# Open a 2D drawing area of specified size. Its position origin
+# is the result of above transformation. A value of -1 in size
+# represents the screen width (or height).
+Layer2D {
+    # field: children
+    MFNode children NULL  
+    # field: size    
+    SFVec2f size -1 -1
+}
+
+# Node: Transform2D
+#  Apply a 2D transformation to the current axis for all nodes
+#  in children. Arbitrary rotations may not be supported by all
+#  geometry nodes.
+Transform2D { 
+    # field: rotationAngle 
+    MFNode children NULL     
+    # field: translation     
+    SFVec2f translation 0 0  
+    # field: scale     
+    SFVec2f scale 1 1     
+    # field: rotationAngle 
+    SFFloat rotationAngle 0      
+}
+
+# Node: Switch
+# The value of whichChoice is the index, in choice, of the
+# node to be drawn.
+Switch { 
+    # field: whichChoice
+    SFInt32 whichChoice 0       
+    # field: choice
+    MFNode choice NULL         # field ID: 2
+}
+
+# Node: ImageTexture
+# Used to map a texture to any geometry to a Rectangle in 2D.
+# All items are included in the M4M file and
+# thus availble later though a script execution. and if the first
+# one is empty (eg url ["" "image1.jpg"]) no image is
+# displayed. Image can be scaled by setting newSize to non
+# null values, aspect ratio is not kept.
+ImageTexture {
+    # field: url
+    MFString url []
+    # field: size
+    SFVec2f size 0 0
+    # field: alternateUrl
+    MFString alternateUrl []
+    # field: newSize
+    SFVec2f newSize | maxSize 0 0
+    # field: filter
+    SFBool filter FALSE
+}
+
+# Node: MovieTexture
+# Map a video to a Rectangle or a Bitmap. The url can
+# identify a resource file (movie.3gp), a local file(file://e/
+# videos/movie.3gp), a distant file (http://server/movie.3gp)
+# or a streamed file (rtsp://server/movie). The supported
+# codecs and transport protocols strongly depend on the phone.
+MovieTexture { 
+    #field: url
+    MFString url [] 
+    #field: startTime            
+    SFTime startTime 0
+    #field: stopTime
+    SFTime stopTime 0
+}
+
+#  Node: Shape
+# Draw a shape with the specified appearance and geometry.
+Shape {
+    #field: appearance
+    SFNode appearance NULL      
+    # field: geometry
+    SFNode geometry NULL        
+}
+
+#  Node: Appearance
+#  The field material can be set to a Material2D.
+#  The field texture can be set to an ImageTexture
+#  or a MovieTexture. Some restrictions
+#  may apply depending of the geometry.
+Appearance {
+    # field: material
+    SFNode material NULL   
+    # field: texture
+    SFNode texture NULL         
+}
+
+# Node: Material2D
+# Specify the rendering attribute of the related 2D geometry.
+Material2D {
+    # field: emissiveColor
+    SFColor emissiveColor 1 1 1 
+    # field: transparency
+    SFFloat transparency 0      
+    # field: filled
+    SFBool  filled TRUE         
+}
+
+# Node: Rectangle
+#  Display a rectangle centered with the axis and according to
+#  the related material. The field size is in pixels and is
+#  modified by the above transformations with the following
+#  specificity when material is:
+#  - a solid color, scaling rotation and transparency are fully
+#  supported.
+#  - an image texture, scaling and transparency are fully
+#  supported. Rotation is only supported by multiple of 90 degree.
+#  If any size component is negative, it is replaced by the
+#  corresponding image dimension (i.e. size -1 -1 uses
+#  actual image dimension)
+#  - a movie texture, scaling is supported but transparency is
+#  not. If rotation is not zero, video is displayed in
+#  landscape mode if supported by the device.
+#  The field cornerRadius allows to display rounded corners for 
+#  solid rectangle but not with image or video textures. 
+#
+Rectangle { 
+    # field: size 
+    SFVec2f  size 1 1
+    # field: cornerRadius
+    #  When cornerRadius has non zero values, the rectangle is 
+    #  rendered with rounded corners. The above rotation & scaling 
+    #  transformations also apply to these values. 
+    #  Rounded corners are only supported for Material2D 
+    #  (solid color, transparency and filled properties).
+    SFVec2f  cornerRadius 0 0           
+}
+
+# Node: Bitmap
+# Similar to rectangle but for images only. No rotation at all
+# is supported. It is preferable to use Rectangle when possible.
+Bitmap { 
+    # field: scale 
+    SFVec2f  scale 1 1           
+}
+
+# Node: Text 
+#  Display the text stored in the field string (one item per line),
+#  according to the fontStyle field.
+#  Transparency, scaling and 90 degree rotation is fully supported
+#  (including alpha based antialiasing) but may consume extra
+#  memory.
+Text {
+    # field: string 
+    MFString string [] 
+    # field: fontStyle 
+    SFNode fontStyle NULL
+}
+
+# Node: FontStyle
+# Size is limited by the tree internal Java fonts: small (size <
+# 10), large ( 10 <= size <= 16) and huge (size > 16) .
+FontStyle {
+    # field: size
+    SFFloat size
+    # field: style
+    SFString style ""
+    # field: justify
+    MFString justify ["MIDDLE" "MIDDLE"]
+    # field: family
+    MFString family ["SERIF"]      
+    # field: filterMode
+    SFBool filter FALSE
+}
+
+# Node: Circle
+# Draw a circle or an arc circle according to the related material.
+# Transparency is supported (Extra processing power will
+# be used when animating radius or angles with transparency > 0).
+#
+# When -2*PI < <arcAngle> < 2*PI, the resulting arc begins at
+# <startAngle> and extends for <arcAngle> radians. 
+# Angles are interpreted such that 0 radians is at the 3 o'clock position.
+# A positive value indicates a counter-clockwise rotation while a negative 
+# value indicates a clockwise rotation.
+Circle {
+    # field: radius
+    # Circle radius in pixels.
+    SFFloat radius 1
+    
+    # field: startAngle
+    # Start angle of the arc in radians. The above rotation transformations
+    # also apply to this value but only for multiple of PI/2. 
+    SFFloat startAngle 0
+    
+    # field: arcAngle
+    #  Angle of the arc in radians.
+    SFFloat arcAngle 0
+}
+
+# Node: IndexedFaceSet2D
+# Display a polygon. Transparency is not supported. Color is
+#only by triangle (not by vertex).
+IndexedFaceSet2D {
+    # field: coordIndex
+    MFInt32 coordIndex []
+    # field: coord
+    SFNode coord NULL
+    # field: color
+    SFNode color NULL
+}
+
+UnusedNode { }
+
+# Node: Coordinate2D
+# Utility class for IndexedFaceSet2D.
+Coordinate2D {
+    # field: point
+    MFVec2f point []
+}
+
+# Node: Color
+# Utility class for IndexedFaceSet(2D).
+Color {
+    # field: color
+    MFColor color []
+}
+
+UnusedNode { }
+UnusedNode { }
+
+# Node: TimeSensor
+#  Generates periodic values. Basis of most animations.
+#  Should work exactly as defined in VRML.
+TimeSensor { 
+    # field: startTime
+    SFTime  startTime 0 
+    # field: stopTime
+    SFTime  stopTime 0          
+    # field: loop 
+    SFBool  loop FALSE    
+    # field: cycleInterval    
+    SFTime  cycleInterval 1     
+    # field: fraction_changed
+    SFFloat fraction_changed 0  
+    # field: isActive 
+    SFBool  isActive FALSE   
+    # field: cycleTime     
+    SFTime  cycleTime 0     
+}
+
+# Node: ScalarInterpolator
+# Interpolate between scalar values. Should work exactly
+# as defined in VRML.
+ScalarInterpolator { 
+    # field: set_fraction 
+    SFFloat  set_fraction 0     
+    # field: value_changed 
+    SFFloat  value_changed 0
+    # field: key 
+    MFFloat  key            
+    # field: keyValue     
+    MFFloat  keyValue           
+}
+
+# Node: PositionInterpolator2D
+#
+PositionInterpolator2D { 
+    # field: set_fraction 
+    SFFloat  set_fraction 0     
+    SFVec2f  value_changed 0 0  # field ID: 2
+    MFFloat  key                # field ID: 3
+    MFVec2f  keyValue           # field ID: 4
+}
+
+UnusedNode { }
+UnusedNode { }
+
+# Node: ColorInterpolator
+#
+ColorInterpolator { 
+    # field: set_fraction
+    SFFloat set_fraction 0     
+    # field: value_changed 
+    SFColor value_changed 0 0  
+    # field: key
+    MFFloat key                
+    # field: keyValue
+    MFColor keyValue           
+}
+
+# Node: CoordinateInterpolator2D 
+# Interpolate between arrays of 2D vectors. Should work
+# exactly as defined in VRML.
+CoordinateInterpolator2D { 
+    # field: set_fraction 
+    SFFloat  set_fraction 0     
+    # field: value_changed
+    MFVec2f  value_changed 0 0  
+    # field: key
+    MFFloat key                
+    # field: keyValue
+    MFVec2f keyValue
+}
+
+UnusedNode { }
+
+# Node: Script
+# Implements scripting facility with some limitations (see FAQ).
+Script {
+    # field: url 
+    SFString url ""             
+}
+
+# Node: InputSensor
+# If field activate is TRUE, generates a event of the current
+# time if one of the keys specified in the filed url is pressed.
+# Multiple keys may be set, and thus sensed, in url. The keys
+# in urls are from 0 1 2 3 4 5 6 7 8 9 * # for corresponding
+# keys and as on the screenshot below for others:
+InputSensor {
+    # field: url 
+    SFString url ""  
+    # field: eventTime     
+    SFTime  eventTime 0         
+    # field: activate
+    SFBool activate TRUE        
+    # field grabFocus
+    SFBool grabFocus FALSE
+}
+
+# Node: Inline
+# Display an external scene as it was defined at this point of
+# the scene graph.
+#
+# At M4M creation time, each item that is a path to a local
+# and valid VRML file triggers the compilation and inclusion of
+# the resulting M4M file. The process is recursive.
+# If the child scene, through the use of an Anchor node,
+# changed itself, the name of this new scene (including empty
+# string) is set as first item of the url field.
+Inline {
+    # field: url 
+    MFString url []             
+    MFString languages [] # array pairs of langID locname (ex: "EN" "english.loc")
+    MFString use [] # usually "auto" and a above langID (ex ["auto" "FR"]
+}
+
+# Node: Anchor
+# An anchor node can be activated only by setting the
+# activate field to true (no geometry picking supported yet).
+# and then, the behavior depends of the first item of url:
+# - M4M file and parameter is "self": only the Inline part
+# containing this Anchor is replaced.
+# - M4M file and parameter is NOT "self": the whole scene is replaced.
+# - anything else: the external html browser is invoked with
+# this url and the parameter (that can be a reference to a
+# frame by instance)
+# The url may be local (i.e. refer a M4M stored in the initial
+# file) or distant (i.e. stored on an http server). Getting the
+# data is not deal by the Anchor node but rather by the
+# underlying Inline or master controller.
+Anchor {
+    # field: url
+    MFString url ""
+    # field: parameter
+    MFString parameter "" 
+    # field: activate
+    # field: $ 
+    SFBool activate FALSE
+}
+
+# Node: Sound2D
+# Draw a shape with the specified appearance and geometry.
+Sound2D {
+    # field: intensity
+    SFFloat intensity 1.0
+    # field: source
+    SFNode source NULL
+}
+
+#  Node: AudioClip
+#  Plays the audio clip which referenced by the first item of
+#  the url field.
+AudioClip {
+    # field: url
+    MFString url []
+    # field: startTime
+    SFTime startTime 0
+    # field: stopTime
+    SFTime stopTime 0
+}
+
+# Node: MediaControl
+# Control which the part of a media will be played. This
+# media (i.e. the url) must be displayed elsewhere (i.e.
+# through MovieTexture or AudioClip). Changing
+# mediaStartTime or mediaStopTime has an immediate
+# effect. This may results in a rstp request (and a
+# bufferisation) for streamed media. Prerolling may be not
+# supported by devices.
+MediaControl {
+    # field: url
+    MFString url ""
+    # field: mediaStartTime
+    SFTime mediaStartTime 0
+    # field: mediaStopTime
+    SFTime mediaStopTime 0
+    # field: loop
+    SFBool loop FALSE
+    #field: preRoll 
+    SFBool preRoll TRUE
+    # field: isPreRolled
+    SFBool isPreRolled FALSE
+    SFInt32 volume 50
+    SFBool pause FALSE
+}
+
+# Node: MediaSensor
+# Report the state of a media currently played (or not). As
+# for MediaControl, the specified url must be also used in a
+# MovieTexture or an AudioClip. The field isActive reports#
+# the current playing status. The mediaDuration contains
+# the duration of the media when available while
+# mediaCurrentTime returns the timestamp of the last medi
+# unit played. 
+# The field status is set at index 0 to the last state occured (stopped, playing, buffering, error ...) 
+# In case of error, the index 1 is set to the error message, like "Invalid URL", "Connection error" or "unsupported format"
+MediaSensor {
+    # field: url
+    MFString url ""
+    # field: mediaCurrentTime
+    SFTime mediaCurrentTime 0
+    # field: mediaDuration
+    SFTime mediaDuration 0
+    # field: isActive
+    SFBool isActive FALSE
+    # field: status
+    MFString status []
+}
+
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+
+# Node: KeySensor
+# Same functionality as InputSensor but pressTime is set
+# when the key is pressed and releaseTime is set when the
+# key is released. In addition this key is output in activeKey,
+# useful when url contains more than one char (can save a lot
+# of keysensors)
+KeySensor {
+    # field: url
+    SFString url ""
+    # field: pressTime
+    SFTime  pressTime 0
+    # field: activate
+    SFBool activate TRUE  
+    # field grabFocus
+    SFBool grabFocus FALSE
+    # field: releaseTime
+    SFTime releaseTime 0
+    # field: activeKey
+    SFString activeKey ""
+    # field: repeatInterval
+    SFTime repeatInterval 0
+    # field: repeatTime
+    SFTime repeatTime 0
+    # field: repeatDelay
+    SFTime repeatDelay 0
+}
+
+UnusedNode { }
+
+# Node: CompositeTexture2D
+# This texture node acts as an image with its content
+# resulting of the composition and rendering of the nodes
+# contained in the children field.
+CompositeTexture2D {
+    # field: children 
+    MFNode children NULL 
+    # field: size 
+    SFVec2f size 128 128
+}
+
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+UnusedNode { }
+
+# Node: Recordtexture
+# Display the camera input as an ImageTexture and record its
+# content according to startTime and stopTime. The resulting
+# file is stored in a file called "video.3gp" for video or photo.jpg stored in the usual
+# video dir. This file can be used later on by the node Upload.
+Recordtexture {
+    # field: url
+    MFString url ""
+    # field: startTime
+    SFTime startTime -1
+    # field: stopTime
+    SFTime stopTime -1
+    # field: singleShot
+    SFBool singleShot false
+    # field: size
+    SFVec2f size 320 240
+    # field: enabled
+    SFBool enabled TRUE
+    # field: fileUrl
+    MFString fileUrl ""
+}
+
+# Node: Upload
+#  Upload the specified file to the server using HTTP POST
+#  request at the specified url when activate is set to TRUE.
+#  If file is "local", the file video.3gp generated by RecordTexture
+#  is used.
+#
+#  The url is appended with a temporary name made by the
+#  name of the file, a random number and the ext (ex:
+#  video327.3gp).
+#
+#  If the file is more that 6144 bytes, several requests of 6144
+#  are made in order to bypass some routers (enough calls are
+#  made to transfer the whole file). It is the responsibility of the
+#  server to concatenate these small files.
+#
+#  The field progress indicates the transfer state and
+#  responseCode contains the HTTP result code.
+Upload {
+    # field: url of the video file to upload
+    MFString file ""
+    # field: url of the server
+    MFString url ""
+    # field: activate
+    SFBool activate FALSE
+    # field: isActive
+    SFBool isActive FALSE
+    # field: responseCode
+    SFInt32 responseCode 0
+    # field: progress
+    SFFloat progress 0
+    # field: array of custom param names
+    MFString names ""
+    # field: array of custom param values
+    MFString values ""
+    # field: array of custom param types
+    MFString types ""
+    # field: array of custom param file urls
+    MFString fileUrls ""
+}
+
+UnusedNode { }
+
+# Node: WrapText
+#  Display the text stored in the field string but concatenated
+#  to fit a box of maxWidth pixels width and maxLines of text
+#  height. If the text cannot fit entirely it is cropped and "..."
+#  are displayed at the right low corner.
+#  the field size_changed is set the the exact box size used.
+WrapText {
+    # field: string
+    MFString string []          
+    # field: fontStyle
+    SFNode fontStyle NULL
+    # field: size_changed
+    SFVec2f size_changed 0 0
+    # field: maxWidth
+    SFInt32 maxWidth 0
+    # field: maxLines
+    SFInt32 maxLines 0
+    # field: maxSize
+    SFVec2f maxSize 0 0
+    # field SFBool editable FALSE
+    SFBool editable FALSE
+    # field: set_cursor
+    SFInt32 set_cursor -1
+    # field: cursor_changed
+    SFInt32 cursor_changed -1
+}
+
+# Node: Message
+# Message nodes allow inter-scene communication.
+# Nodes having the same url can communicate with each other.
+# String arrays messages can be sent using set_data field or by
+# using the Browser.sendMessage(url, string1, ..., stringN) method.
+# Receiving data can done by routing data_changed field to a script.
+Message {
+    # field: url
+    MFString url []
+    # field: set_data
+    MFString set_data []
+    # field: data_changed
+    MFString data_changed []
+}
+
+# Node: IndexedLineSet2D
+# Display lines. Transparency is not supported.
+IndexedLineSet2D {
+    # field: coordIndex
+    MFInt32 coordIndex []
+    # field: coord
+    SFNode coord NULL
+    # field: color
+    SFNode color NULL
+}
+
+UnusedNode { }
+
+# Node: MotionSensor
+# If available and enabled is set to TRUE, output the
+# accelerometers values in the field acceleration (from -1 to
+# 1 in each direction)
+MotionSensor {
+    # field: enabled
+    SFBool enabled TRUE
+    # field: acceleration
+    SFVec3f acceleration 0 0 0
+    # field: rotation
+    SFInt32 rotation 0
+    # field: isAvailable
+    SFBool isAvailable FALSE
+}
+
+UnusedNode { }
+
+# Node: TouchSensor
+# Detects touch screen events on all Shapes included in the same <Group> in
+# which the TouchSensor is declared.
+# When the user touches a Shape's bounding box, isActive, isOver, touchTime and
+# hit_PointChanged fields will emit signals until the user ends the touch.
+TouchSensor {
+    # field: enabled
+    # Enabled by default, set enabled to FALSE to disable the TouchSensor.
+    SFBool enabled TRUE
+    # field: isActive
+    # Will emit TRUE when user start touching a Shape, FALSE when user ends the touch
+    # (i.e. lifts its finger or stylus from the screen).
+    SFBool isActive FALSE
+    # field: isOver
+    # During drag, TRUE when user is over the touched Shape, FALSE when user goes out of the touched Shape. 
+    SFBool isOver FALSE
+    # field: touchTime
+    # Emits the time when the user ends the touch.
+    SFTime touchTime 0
+    # field: hitPoint_changed
+    # Position of the touch relative to the touched Shape. Useful to track dragging events.
+    SFVec3f hitPoint_changed 0 0 0
+    # field: mode
+    # TouchSensors support several modes. List of modes:
+    #  - normal: Default. Only the top TouchSensor will receive touch events when multiple
+    #            TouchSensors overlap in 'normal' mode.
+    #  - grabAll: TouchSensor will receive touch events independently of over
+    #             overlapping TouchSensors.
+    #  - vScroll: Only catches vertical and press events. If a horizontal event is detected,
+    #             it will delegate event other TouchSensors in 'normal' or 'hscroll' mode.
+    #  - hScroll: Sames as 'vscroll' but for horizontal events.
+    SFString mode "normal"
+}
+
+# Node: Namespace
+# TODO
+Namespace {
+    # field: children
+    MFNode children NULL
+    # field: name
+    MFString name []
+    # field: exception
+    MFString exception []  
+}
+
+# Interface RichText 
+RichText {
+    MFString string []    # exposedField: Use the concatenation of all items
+    SFVec2f size 128 128  # The size, in pixels, of the rendering box, similar to Layer2D.size
+    SFFloat height 0      # eventOut : the real height, in pixels, of the whole text
+    SFFloat start 0       # eventIn : the starting position, in pixels, of the displayed text
+    SFString style   ""   # eventIn: to specify a style sheet that will superceed the usual XHTML ones
+    SFFloat jump          # eventIn: go to the next visible link or increase start by the specified amount of pixels
+    SFVec2f position 0 0  # eventIn: the coordinates, in the node reference, of a "button press"
+    SFTime selectTime 0   # eventIn: the time at which a validation of the current link, if any, is requiered. This results in teh output of a URL in linkSelected
+    SFString linkSelected # eventOut: output the newly selected link, if any, by one of the above command.
+    SFFloat start_changed # eventOut: output the new start position when cahnged by jump or start.
+}
+
+# Interface Style 
+# this is a place holder to define CSS styling that can be retrieve later on using the javascript API "Style"
+Style {
+      MFString url [] # contains the cascaded style sheets. If files are local they are embededed in the M4M
+}
+
+#NOTE: Next new node can be added in place of the "UnusedNode"
+#      without breaking compatibility. 
