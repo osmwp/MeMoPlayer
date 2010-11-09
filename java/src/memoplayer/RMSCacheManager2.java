@@ -30,16 +30,21 @@ import javax.microedition.rms.RecordStoreException;
  * This ensure that only one close/pack is done per RecordStore as this operation
  * is also a very very slow operation on some phones.
  * This implementation uses the special __SAFE RecordStore to know if the all
- * RecordStores where properly closed. 
+ * RecordStores where properly closed. If this is not the case, all the RecordStores
+ * are removed ! 
+ * To prevent loosing important data, the application can still use Managers with
+ * names starting with a '_' (e.g. '_SECURE'). This will ensure that the RecordStore
+ * is closed when not used, and that they are not erased when the __SAFE marker is not
+ * found. 
  */
 class RMSCacheManager2 extends CacheManager {
     private final static int INITIAL_CAPACITY = 10;
 
-    // deleteAllRMS, deleteRMS, addReference are synchronized
-    // to prevent concurent access to s_references 
+    // deleteAllRMS, deleteRMS, getInstance are synchronized
+    // to prevent concurrent access to s_instances 
     private static RMSCacheManager2 s_instances;
     
-    // Delete all RecordStores, with checking deletion for the LG Rodeo
+    // Delete all RecordStores
     public static synchronized void deleteAllRMS () {
         RMSCacheManager2 cm = s_instances;
         while (cm != null) {
@@ -48,17 +53,12 @@ class RMSCacheManager2 extends CacheManager {
         }
         String[] list = RecordStore.listRecordStores();
         int size = list != null ? list.length : 0;
-        int max = size > 10 ? size : 10;
-        int cnt = 0;
-        while (size > 0 && cnt++<max) {
-            for (int i=0; i<size; i++) {
-                try { RecordStore.deleteRecordStore (list[i]); } catch (Exception e) {}
+        for (int i=0; i<size; i++) {
+            String name = list[i];
+            if (name.charAt(0) != '_') {
+                try { RecordStore.deleteRecordStore (name); } 
+                catch (Exception e) { Logger.println("RMSCache: Could not erase "+name); }
             }
-            list = RecordStore.listRecordStores ();
-            size = list != null ? list.length : 0;
-        }
-        if (size > 0) {
-            Logger.println ("RMSCache: deleteAllRMS Error: Did not delete all RS !?");
         }
     }
 
@@ -363,7 +363,11 @@ class RMSCacheManager2 extends CacheManager {
     }
     
     // This implementation never closes the RecordStore until application exit.
+    // Except for RecordStore starting with an _
     public synchronized void close () {
+        if (m_storeName.charAt(0) == '_') {
+            finalClose();
+        }
     }
 
     // Called only by closeAll() on application exit. 
