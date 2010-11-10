@@ -1520,6 +1520,13 @@ class ExternCall {
         	registers[r].setInt(MessagingHelper.isRegisteredConnection(registers[r].getInt()));
             return;
 //#endif
+        case 8: // isPushSMSAvailable()
+//#ifdef MM.pushSMS
+        	registers[r].setBool(true);
+//#else
+        	registers[r].setBool(false);
+//#endif
+            return;
 //#endif
         default:
             System.err.println ("doMessaging (m:"+m+")Static call: Invalid method");

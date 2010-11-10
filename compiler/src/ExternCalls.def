@@ -432,17 +432,18 @@ Enumeration {
 #  The Messaging class provides means to send SMS and MMS with a picture.
 # 
 # Functions:
-#  bool isAvailbale() - Returns True if mobile sending SMS and MMS is supported.   
+#  bool isAvailable() - Returns true if mobile sending SMS and MMS is supported, else false.
 #  bool sendSMS(String phoneNumber, String message) - Send a SMS. Returns true if sucessful, false on error.
 #  bool sendMMS(String phoneNumber, String subject, String message, String imageUrl) - Send a MMS.
 #  bool startListeningSMS(int port,String messageName) - register a message for an listening any incoming SMS on specified port 
 #  bool stopListeningSMS(int port)  - unregister previously registered SMS port
 #  bool registerPushSMS(int port)   - resgister a port to wake up the midlet by push
 #  bool unregisterPushSMS(int port) - unregister previously registered push port
-#  int isRegisteredPushSMS(int port) - check if push port is registered ( 0 unregistered / 1 registered / -1 registered by another app / -2 error
+#  int  isRegisteredPushSMS(int port) - check if push port is registered ( 0 unregistered / 1 registered / -1 registered by another app / -2 error
+#  bool isPushSMSAvailable() - Returns true if SMS application wake up API is supported, else false.
 #
 Messaging {
-    isAvailable sendSMS sendMMS startListeningSMS stopListeningSMS registerPushSMS unregisterPushSMS isRegisteredPushSMS
+    isAvailable sendSMS sendMMS startListeningSMS stopListeningSMS registerPushSMS unregisterPushSMS isRegisteredPushSMS isPushSMSAvailable
 }
 
 
