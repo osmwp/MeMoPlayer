@@ -41,7 +41,7 @@ public class Rectangle extends Node {
         if (m_type == AppearanceContext.TYPE_BITMAP) {
             m_ac.m_image.drawImage (c.gc, m_region.x0, m_region.y0, w, h, m_ac.m_transparency,/*RCA*/m_rotation);
 //#ifdef api.mm
-        } else if (m_type == AppearanceContext.TYPE_VIDEO && m_ac.m_mediaObject.getInternalState() != MediaObject.STATE_PLAYING) {
+        } else if (m_type == AppearanceContext.TYPE_VIDEO && m_ac.m_mediaObject.getState() != Loadable.PLAYING) {
             //FT - m_ac.m_mediaObject.setRegion (m_region.x0, m_region.y0, w, h);
             c.gc.setColor (m_ac.m_color);
             c.gc.fillRect (m_region.x0, m_region.y0, w, h);
@@ -129,7 +129,7 @@ public class Rectangle extends Node {
                 Logger.println ("Rectangle: rotating video");
                 updated = true;
             }
-            if (m_ac.m_mediaObject.getInternalState() == MediaObject.STATE_PLAYING){
+            if (m_ac.m_mediaObject.getInternalState() == Loadable.PLAYING){
                 c.m_hasVideo = true; //RCA: should be set only when video *is* active
                 if (m_isVideo == false) { //  nok sur w910=> && m_ac.m_mediaObject.m_player.getMediaTime()>0) {
                     m_isVideo = true;

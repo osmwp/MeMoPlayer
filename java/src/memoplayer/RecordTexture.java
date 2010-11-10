@@ -84,7 +84,7 @@ public class RecordTexture extends MediaNode  {
             if ( Manager.getSupportedProtocols("video/mpeg") != null && !m_stopped) {
                 return super.compose (c, clip, forceUpdate);
             }
-            if (m_stopped && super.m_media!=null && super.m_media.m_state == MediaObject.STATE_PLAYING) {
+            if (m_stopped && super.m_media!=null && super.m_media.m_state == Loadable.PLAYING) {
                 // System.out.println("recordTexture appel stop sur mn");
                 stop (c);
             }
@@ -104,7 +104,7 @@ public class RecordTexture extends MediaNode  {
             int oldStartTime = m_startTime;
             super.fieldChanged(f);
             if (super.m_media != null && 
-                super.m_media.m_state == MediaObject.STATE_PLAYING &&
+                super.m_media.m_state == Loadable.PLAYING &&
                 ((SFTime)super.m_field[1]).getValue() == -1000) { //-1000 in Java <=> -1 in VRML file 
                 m_stopped = true;
             } else {
