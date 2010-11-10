@@ -428,7 +428,7 @@ class FileCacheManager extends CacheManager {
 
     private boolean checkDir (String path) {
         FileConnection fc = null;
-        boolean exists = false;
+        // boolean exists = false;
         //Logger.println ("%% checkDir: trying '"+path+"'");
         try {
             fc = (FileConnection) Connector.open (path);

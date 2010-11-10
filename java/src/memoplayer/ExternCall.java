@@ -1417,7 +1417,6 @@ class ExternCall {
     }
 
     static void doContact  (Context c, int m, Register [] registers, int r, int nbParams) {
-        boolean success = false;
         switch (m) {
         case 0: // isAvailable()
 //#ifdef api.pim
@@ -1475,7 +1474,6 @@ class ExternCall {
     }
 
     static void doMessaging (Context c, int m, Register [] registers, int r, int nbParams) {
-        boolean success = false;
         switch (m) {
 
         case 0: // isAvailable()
@@ -1485,14 +1483,18 @@ class ExternCall {
             registers[r].setBool(true);
             return;
         case 1: // sendSMS(phoneNumber, msgToSend)
-            success = MessagingHelper.sendSMS(registers[r].getString(), registers[r+1].getString());
+        {
+            boolean success = MessagingHelper.sendSMS(registers[r].getString(), registers[r+1].getString());
             registers[r].setBool(success);
             return;
+        }
 
         case 2: // send MMS(phoneNumber, subject, msgToSend, imagePath)
 //#ifdef jsr.wma2
-            success = MessagingHelper.sendMMS(registers[r].getString(), registers[r+1].getString(), registers[r+2].getString(), registers[r+3].getString(), c.decoder);
+        {
+            boolean success = MessagingHelper.sendMMS(registers[r].getString(), registers[r+1].getString(), registers[r+2].getString(), registers[r+3].getString(), c.decoder);
             registers[r].setBool(success);
+        }
 //#else
             registers[r].setBool(false);
 //#endif
@@ -1605,7 +1607,6 @@ class ExternCall {
 //#endif
 
     static void doLocation (Context c, int m, Register [] registers, int r, int nbParams) {
-        int result = 0;
         switch (m) {
 
         case 0: // isAvailable()
@@ -1615,9 +1616,11 @@ class ExternCall {
             registers[r].setBool(true);
             return;
         case 1: // getDistance(latSrc, longSrc, latDest, longDest)
-            result = JSLocation.getDistance(registers[r].getInt(), registers[r+1].getInt(), registers[r+2].getInt(), registers[r+3].getInt());
+        {
+            int result = JSLocation.getDistance(registers[r].getInt(), registers[r+1].getInt(), registers[r+2].getInt(), registers[r+3].getInt());
             registers[r].setInt(result);
             return;
+        }
 //#endif
         default:
             System.err.println ("doLocation (m:"+m+")Static call: Invalid method");

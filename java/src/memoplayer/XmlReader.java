@@ -103,7 +103,6 @@ class XmlReader extends BaseReader {
     }
 
     XmlNode parseElement () {
-        XmlNode e = null;
         boolean space = isWhite (getChar());
         char c = skipSpaces ();
         if (c == '\0') { // end of data
@@ -143,11 +142,12 @@ class XmlReader extends BaseReader {
     }
 
     XmlNode parseCData (boolean space) {
-        int start = m_pos;
         int end = m_pos;
         boolean ss, ts;
         String data;
-        /*if (m_buffer.startsWith ("![CDATA_AVIRER[", start)) { // pure XML CDATA Definition keep all data
+        /*
+            int start = m_pos;
+            if (m_buffer.startsWith ("![CDATA_AVIRER[", start)) { // pure XML CDATA Definition keep all data
             end = m_buffer.indexOf ("]]>", m_pos);
             if (end == -1) { 
                 return null;

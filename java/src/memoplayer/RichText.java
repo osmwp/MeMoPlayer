@@ -472,7 +472,6 @@ class HtmlContext {
     }
 
     void setMargin (CSSProp p, int edge) {
-        String val = p.m_val;
         if (m_margins == null) { m_margins = new int [8]; }
         int type = 0;
         int amount = 0;
@@ -1468,13 +1467,13 @@ class BlockFragment extends Fragment {
     void draw (Graphics g, HtmlContext hc, int x, int y, int start, int end) {
         // draw background
         int y0 = m_dxy >> 16;
-        int y1 = y0+(m_size >> 16);
+        // int y1 = y0+(m_size >> 16);
         if (m_display == BLOCK && (y0 > end || (y0+(m_size >> 16)) < start)) {
             return;
         }
         //Logger.println ("Clip: from "+start+" to "+end+" against block of "+
         //                y0+" to "+(y0+(m_size >> 16))+" / "+this);
-        int bw = m_data[BORDER_WIDTH];
+        // int bw = m_data[BORDER_WIDTH];
         int x0 = x+(m_dxy&0xFFFF)+m_x0;
         y0 += y + m_y0;
         drawBackground (g, x0, y0, m_w0, m_h0);

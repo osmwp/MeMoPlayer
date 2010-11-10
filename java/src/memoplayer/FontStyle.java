@@ -113,7 +113,6 @@ public class FontStyle extends Node {
     public void openFont (Context c) {
         stop (c);
         // size
-        boolean needSystemFont = true;
         int tmpSize = FixFloat.fix2int (((SFFloat)m_field[0]).getValue ());
         size = getNativeFontSize (tmpSize);
 

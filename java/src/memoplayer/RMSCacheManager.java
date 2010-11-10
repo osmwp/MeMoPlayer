@@ -134,7 +134,7 @@ class RMSCacheManager extends CacheManager {
         } finally {
             close ();
         }
-        return 0;
+        return result;
     }
 
     private int unsecureFind (String s) throws Exception {
