@@ -94,7 +94,7 @@ int FontManager::dumpAll (char * execPath, FILE * fp) {
     return total;
 }
 
-extern int includeFile (FILE * fp, const char * fileName, char * name, int magic, bool mandatory = true);
+extern int includeFile (FILE * fp, const char * fileName, const char * name, int magic, bool mandatory = true);
 
 int FontManager::dump (char * execPath, FILE * fp) {
     int total = 0;

@@ -72,7 +72,7 @@ static void createTmpFileName (char * buffer, char * file, char * ext) {
 }
 
 static const char * imgExt [6] = { ".png", ".PNG", ".jpg", ".JPG", ".gif", ".GIF" };
-bool isImageName (char * name) {
+bool isImageName (const char * name) {
     if( isNonLocal(name) )
         return false;
     for (int i = 0; i < 6; i++) {
@@ -89,7 +89,7 @@ static const char * mmediaExt [] = { ".amr", ".mp3", ".m4a",
                                      ".mpg", ".mp4", ".avi",
                                      ".wmv", NULL };
 // check if filename contains multimedia extensions
-bool isMMediaName (char * name) {
+bool isMMediaName (const char * name) {
 
     if( isNonLocal(name) )
         return false;
@@ -176,10 +176,10 @@ class ChunkList {
         m_next = next; 
     }
 public:
-    static void add (char * name) {
+    static void add (const char * name) {
         s_root = new ChunkList (strdup (name), s_root); 
     }
-    static bool find (char * name) {
+    static bool find (const char * name) {
         ChunkList * tmp = s_root;
         while (tmp) {
             if (strcmp (tmp->m_name, name) == 0) {
@@ -202,7 +202,7 @@ public:
 
 ChunkList * ChunkList::s_root = NULL;
 
-int includeFile (FILE * fp, const char * fileName, char * name, int magic, 
+int includeFile (FILE * fp, const char * fileName, const char * name, int magic, 
                         bool mandatory = true) {
     if (ChunkList::find (name)) {
         //myPrintf (0, "    -- include %s already included]\n", name);
