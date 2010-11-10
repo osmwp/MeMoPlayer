@@ -435,9 +435,14 @@ Enumeration {
 #  bool isAvailbale() - Returns True if mobile sending SMS and MMS is supported.   
 #  bool sendSMS(String phoneNumber, String message) - Send a SMS. Returns true if sucessful, false on error.
 #  bool sendMMS(String phoneNumber, String subject, String message, String imageUrl) - Send a MMS.
+#  bool startListeningSMS(int port,String messageName) - register a message for an listening any incoming SMS on specified port 
+#  bool stopListeningSMS(int port)  - unregister previously registered SMS port
+#  bool registerPushSMS(int port)   - resgister a port to wake up the midlet by push
+#  bool unregisterPushSMS(int port) - unregister previously registered push port
+#  int isRegisteredPushSMS(int port) - check if push port is registered ( 0 unregistered / 1 registered / -1 registered by another app / -2 error
 #
 Messaging {
-    isAvailable sendSMS sendMMS 
+    isAvailable sendSMS sendMMS startListeningSMS stopListeningSMS registerPushSMS unregisterPushSMS isRegisteredPushSMS
 }
 
 

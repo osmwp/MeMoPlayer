@@ -23,7 +23,7 @@ public class MediaNode extends Node  {
     final static int STATE_CREATED = -1;
     Region m_region;
 
-    boolean m_urlChanged; 
+    boolean m_urlChanged=false; 
     int m_startTime, m_restartTime, m_stopTime, m_type, m_recording;
     MediaObject m_media;
 
@@ -79,6 +79,7 @@ public class MediaNode extends Node  {
                     c.removeLoadable (m_media);
                     m_media.close ();
                     m_media = null;
+                    m_urlChanged = false;
                 }
             }
         }

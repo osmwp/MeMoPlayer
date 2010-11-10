@@ -36,11 +36,6 @@ import javax.microedition.io.*;
 //#endif
 
 public class MediaObject implements PlayerListener, Runnable, Loadable {
-    final static int STATE_ERROR = -1;
-    final static int STATE_OPENING = 0;
-    final static int STATE_PLAYING = 1;
-    final static int STATE_BUFFERING = 2;
-    final static int STATE_STOPPED = 3;
 
     final static int AUDIO = 0;
     final static int VIDEO = 1;
@@ -58,6 +53,8 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     VideoControl m_videoControl;
     VolumeControl m_volumeControl;
     int m_state;
+    int m_srcWidth=-1;
+    int m_srcHeight=-1;
     
     // for rewind or forward
     boolean m_bPaused = false;
@@ -101,24 +98,38 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     }
 
     public void playerUpdate (Player player, java.lang.String event, java.lang.Object eventData) {
-        if (event.equals ("sizeChanged") == false) {
-            Logger.println ("[DBG] playerUpdate: "+event);
+        if (event.equals (PlayerListener.SIZE_CHANGED) == true) {
+        	VideoControl vc = (VideoControl)eventData;
+        	m_srcWidth = vc.getSourceWidth();
+        	m_srcHeight= vc.getSourceHeight();
+        } else {
+        	if(event.equals (PlayerListener.ERROR)) {
+        		Logger.println ("[DBG] playerUpdate: "+event+" "+eventData);
+        	} else { 
+        		Logger.println ("[DBG] playerUpdate: "+event);
+        	}
         }
-        if (event.equals ("started")) {
-            setState (STATE_PLAYING);
-        } else if (event.equals ("endOfMedia")) {
-            setState (STATE_STOPPED);
-        } else if (event.equals ("bufferingStarted")) {
-            setState (STATE_BUFFERING);
-        } else if (event.equals ("bufferingStopped")) {
-            setState (STATE_PLAYING);
-        } else if (event.equals ("stopped")) {
-            setState (STATE_STOPPED);
-        } else if (event.equals ("error")) {
-            setState (STATE_ERROR);
+
+        if (event.equals (PlayerListener.STARTED)) {
+            setState (Loadable.PLAYING);
+        } else if (event.equals (PlayerListener.END_OF_MEDIA)) {
+            setState (Loadable.EOM);
+        } else if (event.equals (PlayerListener.BUFFERING_STARTED)) {
+            setState (Loadable.LOADING);
+        } else if (event.equals (PlayerListener.BUFFERING_STOPPED)) {
+            setState (Loadable.PLAYING);
+        } else if (event.equals (PlayerListener.STOPPED)) {
+        	if(m_bPaused==true)
+        		setState (Loadable.PAUSED);
+        	else
+        		setState (Loadable.STOPPED);
+        } else if (event.equals (PlayerListener.ERROR)) {
             closePlayer ();
-        } else if (event.equals ("volumeChanged")) {
-            Logger.println ("[DBG] new volume : "+m_volumeControl.getLevel ());
+            setErrorMessage (eventData.toString());
+            setState (Loadable.ERROR);
+        } else if (event.equals (PlayerListener.VOLUME_CHANGED)) {
+        	if(m_volumeControl!=null)
+        		Logger.println ("[DBG] new volume : "+m_volumeControl.getLevel ());
         }
         MiniPlayer.wakeUpCanvas();
     }
@@ -141,7 +152,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         if (m_name == null || m_name.compareTo (name) != 0){
             m_pauseTime = 0; //nouveau flux:pas de reprise
         }
-        setState (STATE_OPENING);
+        setState (Loadable.OPENING);
         m_name = name;
         m_canvas = c;
         if (m_running) {
@@ -178,25 +189,18 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                 }
                 m_player = null;//
                 System.gc (); // get back freed memory
-                setState (STATE_STOPPED);
+                setState (Loadable.STOPPED);
             } catch (Exception e) { 
-                setState (STATE_ERROR);
-                setErrorMessage ("Error during close");
+                setErrorMessage ("Error during close "+e);
+                setState (Loadable.ERROR);
                 Logger.println ("Exception in MediaObject.closed: "+e);
             }
+            m_srcWidth=-1;
+            m_srcHeight=-1;
         }
     }
 
-    public synchronized int getState () {
-        switch (m_state) {
-        case STATE_ERROR: return (Loadable.ERROR);
-        case STATE_OPENING: return (Loadable.OPENING);
-        case STATE_BUFFERING: return (Loadable.LOADING);
-        case STATE_PLAYING: return (Loadable.PLAYING);
-        case STATE_STOPPED: return (Loadable.STOPPED);
-        }
-        return (Loadable.READY);
-    }
+    public synchronized int getState () { return m_state; }
 
     public String getErrorMessage () { return m_errorMessage; }
 
@@ -250,11 +254,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
           if( m_player != null ) {
             // check if not already in seek mode
             if( m_bSeekMode == false ) {
-              if( m_state == STATE_PLAYING ) {
+              if( m_state == Loadable.PLAYING ) {
                 m_bSeekMode = true;
                 m_player.stop();
                 // wait player to be in stop state
-                while( m_state != STATE_STOPPED ) {
+                while( m_state != Loadable.STOPPED ) {
                   try {
                     Thread.sleep(10);
                   }
@@ -271,7 +275,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                 ret = m_player.setMediaTime(mediaTime);
                 m_player.start();
                 // wait player to be in play state
-                while( m_state != STATE_PLAYING ) {
+                while( m_state != Loadable.PLAYING ) {
                   try {
                     Thread.sleep(10);
                   }
@@ -401,7 +405,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     public void setRegion (int x, int y, int w, int h, int rotation) { // RC 13/10/07 fix the method behavior
         //Logger.println ("MediaObject.setRegion: "+x+", "+y+", "+w+", "+h);
         if (m_type == VIDEO && m_videoControl != null && (!m_region.equals2 (x, y, w, h) || rotation != m_rotation)){  
-            if (getInternalState () == STATE_PLAYING) {
+            if (getInternalState () == Loadable.PLAYING) {
                 if (rotation != m_rotation) {
                     m_rotation = rotation;
                     if (m_rotation == 90) { w++; h++; } // apparently a small bug when video is rotated
@@ -426,10 +430,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             try {
                 m_player.start ();
                 setVisible (true);
-                setState (STATE_PLAYING);
+                setState (Loadable.PLAYING);
             } catch (Exception e) {
-                setState (STATE_ERROR);
                 closePlayer ();
+                setErrorMessage (e.toString());
+                setState (Loadable.ERROR);
                 Logger.println ("Exception in MediaObject.start: "+e.getMessage());
             }
         }
@@ -458,10 +463,10 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                         m_player.deallocate ();
                     }
                 }
-                setState (STATE_STOPPED);
+                setState (Loadable.STOPPED);
             } catch (Exception e) {
-                setState (STATE_ERROR);
-                setErrorMessage ("Error during stop");
+                setErrorMessage ("Error during stop "+e);
+                setState (Loadable.ERROR);
                 Logger.println ("Exception in MediaObject.stop: "+e);
             }
         }
@@ -612,6 +617,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                 String rmsRecord = m_name.substring(8);
                 Logger.println ("MediaObject.opening from cache: '"+rmsRecord+"'");
                 byte[] data = CacheManager.getManager().getByteRecord(rmsRecord);
+                if(data==null) {
+                    setErrorMessage ("cannot open from cache, not found "+rmsRecord);
+                    setState (Loadable.ERROR);
+                    return null;
+                }
                 InputStream bais = new ByteArrayInputStream(data);
                 InputStream is = bais;
 //#ifdef mm.gzip
@@ -649,6 +659,13 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             	// now look in jar
                 Logger.println ("MediaObject.opening from jar: '"+m_name+"'");
                 InputStream is = getClass ().getResourceAsStream ("/"+m_name);
+                
+                if(is==null) {
+                    setErrorMessage ("not found in m4m or jar: "+m_name);
+                    setState (Loadable.ERROR);
+                    return null;
+                }
+
                 try {
                     String mimeType = getMimeType (m_name, m_type == AUDIO);
                     return Manager.createPlayer (is, mimeType);
@@ -659,8 +676,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         } catch (Exception e) {
             Logger.println ("Exception during player creation for "+m_name+" : "+e);
         }
+    	Logger.println("Cannot create player for url: "+m_name);
         setErrorMessage ("Cannot create player for url: "+m_name);
-        setState (STATE_ERROR);
+        setState (Loadable.ERROR);
         return null;
     }
 
@@ -709,9 +727,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 
     private void checkState (int state, String msg) {
         if (m_player.getState () != state) {
-            setErrorMessage ("Cannot "+msg+" player");
-            setState (STATE_ERROR);
             closePlayer ();
+            setErrorMessage ("Cannot "+msg+" player");
+            setState (Loadable.ERROR);
         }
         Logger.println ("MediaObject: player "+msg+"ed");
     }
@@ -770,9 +788,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             }
 
         } catch (Exception e) {
-            Logger.println ("Exception in MediaObject.Run with "+m_name+" : "+e);
+        	String errorMsg = e.toString();
+            Logger.println ("Exception in MediaObject.Run with "+m_name+" : "+errorMsg);
             closePlayer ();
-            setState (STATE_ERROR);
+            setErrorMessage (errorMsg);
+            setState (Loadable.ERROR);
         }
     }
 }

@@ -47,6 +47,17 @@ extern bool startsWith (const char * t, const char * e); // defined in Compiler.
 
 //static char * indexS;
 
+static bool isNonLocal(const char* name) {
+    if( (name!=NULL) && (
+            startsWith (name, "cache://") || 
+            startsWith (name, "http://") || 
+            startsWith (name, "file://") || 
+            startsWith (name, "jar://")  ) ) {
+        return true;
+    }
+    return false;
+}
+
 static void createTmpFileName (char * buffer, char * file, char * ext) {
     int i = lastIndexOf (file, '/');
     if (i > -1) {
@@ -62,6 +73,8 @@ static void createTmpFileName (char * buffer, char * file, char * ext) {
 
 static const char * imgExt [6] = { ".png", ".PNG", ".jpg", ".JPG", ".gif", ".GIF" };
 bool isImageName (char * name) {
+    if( isNonLocal(name) )
+        return false;
     for (int i = 0; i < 6; i++) {
         if (endsWith (name, imgExt[i])) {
             return (true);
@@ -77,6 +90,9 @@ static const char * mmediaExt [] = { ".amr", ".mp3", ".m4a",
                                      ".wmv", NULL };
 // check if filename contains multimedia extensions
 bool isMMediaName (char * name) {
+
+    if( isNonLocal(name) )
+        return false;
 
     // check if not null
     if( name == NULL )
@@ -607,7 +623,8 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
                     char * name = f->getValue(i); 
                     //fprintf (myStderr, "Node::encodeSpecial: saving image %s\n", name);
                     if (name && strncmp (name, "@[", 2) != 0) {
-                        total += includeFile (fp, name, name, MAGIC_IMAGE);
+                        if(isNonLocal(name)==false)
+                            total += includeFile (fp, name, name, MAGIC_IMAGE);
                     }
                 }
                 i++;
@@ -625,7 +642,8 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
                	    char * name = f->getValue(i); 
                    	//fprintf (myStderr, "Node::encodeSpecial: saving sound %s\n", name);
                     if (name && strncmp (name, "@[", 2) != 0) {
-   	                    total += includeFile (fp, name, name, MAGIC_MMEDIA);
+                        if(isNonLocal(name)==false)
+   	                        total += includeFile (fp, name, name, MAGIC_MMEDIA);
        	            }
            	    }
               	i++;
@@ -654,6 +672,7 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
             for (int i = 0; i < f->getSize (); i++) {
                 char * buffer = f->getValue(i); 
                 if (buffer && strlen (buffer) > 0&& 
+                    !startsWith (buffer, "cache://") && 
                     !startsWith (buffer, "http://") && 
                     !startsWith (buffer, "file://") && 
                     !startsWith (buffer, "jar://") ) {
@@ -782,6 +801,7 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
                         //fprintf (myStderr, "Node::encodeSpecial of proto: try to save image %s\n", name);
                         total += includeFile (fp, name, name, MAGIC_IMAGE, false);
                     } else if (endsWith (name, "m4m") && 
+                               !startsWith (name, "cache://") && 
                                !startsWith (name, "http://") && 
                                !startsWith (name, "file://") && 
                                !startsWith (name, "jar://") ) {

@@ -24,19 +24,37 @@ package memoplayer;
  *
  */
 interface Loadable {
-    final static int QUEUED  = -2;
-    final static int ERROR   = -1;
-    final static int READY   = 0;
-    final static int OK   = 0;
-    final static int OPENING = 1;
-    final static int LOADING = 2;
-    final static int LOADED  = 3;
-    final static int CLOSED = 4;
-    final static int STOPPED = 5;
+    final static int READY    = 1;
+    final static int OK       = 1;
+    final static int QUEUED   = 2;
+    final static int ERROR    = 3;
+    final static int OPENING  = 4;
+    final static int LOADING  = 5;
+    final static int LOADED   = 6;
+    final static int CLOSED   = 7;
+    final static int STOPPED  = 8;
+    final static int PLAYING  = 9;
+    final static int PAUSED   = 10;
+    final static int EOM      = 11;
+    final static int BUFFERING= 12;
     
-    final static int PLAYING  = 32;
-
-    int getState (); // return teh current state : one of the above consts
+    final static String[] STATE_MSG = {
+    	"",
+        "ready",
+        "queued",
+        "error",
+        "opening",
+        "playing",
+        "loaded",
+        "closed",
+        "stopped",
+        "playing",
+        "paused",
+        "endOfMedia",
+        "buffering"
+    };
+    
+    int getState (); // return the current state : one of the above constants
 
     int getCurrent (); // Return the current 
 

@@ -1496,8 +1496,29 @@ class ExternCall {
 //#else
             registers[r].setBool(false);
 //#endif
-//#endif
             return;
+        case 3: // startListeningSMS(port,messageName)
+            success = MessagingHelper.startListenSMS(registers[r].getInt(),registers[r+1].getString());
+            registers[r].setBool(success);
+            return;
+        case 4: // stopListeningSMS(port)
+            success = MessagingHelper.stopListenSMS(registers[r].getInt());
+            registers[r].setBool(success);
+            return;
+//#ifdef MM.pushSMS
+        case 5: // registerPushSMS(port)
+            success = MessagingHelper.registerConnection(registers[r].getInt());
+            registers[r].setBool(success);
+            return;
+        case 6: // unregisterPushSMS(port)
+            success = MessagingHelper.unregisterConnection(registers[r].getInt());
+            registers[r].setBool(success);
+            return;
+        case 7: // isRegisteredPushSMS(port)
+        	registers[r].setInt(MessagingHelper.isRegisteredConnection(registers[r].getInt()));
+            return;
+//#endif
+//#endif
         default:
             System.err.println ("doMessaging (m:"+m+")Static call: Invalid method");
             return;

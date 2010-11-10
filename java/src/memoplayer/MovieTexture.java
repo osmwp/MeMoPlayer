@@ -19,13 +19,23 @@ package memoplayer;
 
 public class MovieTexture extends MediaNode  {
 
+    int m_srcWidth=-1;
+    int m_srcHeight=-1;
+
     MovieTexture () {
-        super (MediaObject.VIDEO, MediaObject.PLAYBACK);
+        super (4,MediaObject.VIDEO, MediaObject.PLAYBACK);
         //System.out.println ("MovieTexture created");
+        m_field[3] = new SFVec2f(-1,-1,null); // movieSize : video src size
     }
 
 
     boolean specificCompose (Context c, Region clip, boolean forceUpdate) {
+    	if( m_media != null ) {
+	    	if( (m_srcWidth != m_media.m_srcWidth) || (m_srcHeight != m_media.m_srcHeight) ) {
+	    		updateVideoSize(m_media.m_srcWidth,m_media.m_srcHeight);
+	    	}
+    	}
+    	
         /*if (m_media != null){
           if (c.time >= ((SFTime)m_field[1]).getValue ()) {
           if (m_media.getState () == MediaObject.STATE_READY){
@@ -35,6 +45,15 @@ public class MovieTexture extends MediaNode  {
           }
           }*/
         return (false);
+    }
+
+    public void updateVideoSize(int width, int height){
+    	SFVec2f vec = (SFVec2f)m_field[3];
+    	width  = width<<16;
+    	height = height<<16;
+    	if( (vec.m_x != width ) || (vec.m_y != height) ) {
+    		vec.setValue(width,height);
+    	}
     }
 
 }
