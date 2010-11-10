@@ -64,7 +64,7 @@ void dumpTable (char * o) {
     fclose (out);
 }
 
-void compile (char * inName, char * dir, bool verbose) {
+void compile (char * inName, char * dir, MediaList &includeMedia, bool verbose) {
     char * orgName = inName;
 
     MultiPathFile::addPath (inName);
@@ -100,7 +100,8 @@ void compile (char * inName, char * dir, bool verbose) {
         fprintf (myStderr, "Cannot open %s for writing, please check if path exists\n", outName);
         exit (1);
     }
-    int total = scene.encode (out, verbose);
+    int total = includeMedia.dump (out);
+    total += scene.encode (out, verbose);
     total += FontManager::dumpAll (execPath, out);
     write (out, 0xFFFF); // final end of file
     printf ("<< End of scene %s [%d B]\n", inName, total);
@@ -122,6 +123,8 @@ void usage (char * exeName) {
     printf ("   -h : display this help message.\n");
     printf ("   -I : add paths to search for ressources inclusions.\n");
     printf ("        Multiple paths can be defined by using ';' as a separator.\n");
+    printf ("   -i : include static ressources to the final M4M file (only image, video, audio, css and bml).\n");
+    printf ("        Multiple files can be defined by using ',' as a separator.\n");
     printf ("   -o : output dir for the generated M4M file. Default is '.'.\n");
     printf ("   -v : display debug messages during compilation.\n\n");
     printf ("examples:\n");
@@ -131,8 +134,8 @@ void usage (char * exeName) {
     printf ("       ./compiler -o res index.wrl\n");
     printf ("   compile index.wrl and search for ressources (images, protos, etc...) in forlder ./images.\n");
     printf ("       ./compiler -I images/ index.wrl\n");
-    printf ("   compile index.wrl and include the bg.png PNG image in the index.m4m.\n");
-    printf ("       ./compiler -i bg.png index.wrl\n");
+    printf ("   compile index.wrl and include one image and one BML file in the index.m4m.\n");
+    printf ("       ./compiler -i icon.png,text.bml index.wrl\n");
     exit (1);
 }
 
@@ -149,6 +152,7 @@ void setExePath (char * path) {
 
 
 int main (int argc, char * argv []) {
+    MediaList includeMedia;
     myStderr = stderr;
     printf ("MeMo Compiler v%s\n", VERSION);
     setExePath (argv[0]);
@@ -171,11 +175,14 @@ int main (int argc, char * argv []) {
         } else if (strcmp (argv[start], "-s") == 0) {
             myStderr = stdout;
         } else if (strcmp (argv[start], "-o") == 0) {
-            dir = strdup (argv[start+1]);
             start++;
+            dir = strdup (argv[start]);
         } else if (strcmp (argv[start], "-I") == 0) {
-            MultiPathFile::addMultiplePaths (argv[start+1]);
             start++;
+            MultiPathFile::addMultiplePaths (argv[start]);
+        } else if (strcmp (argv[start], "-i") == 0) {
+            start++;
+            includeMedia.addMedia (argv[start]);
         } else if (strcmp (argv[start], "-h") ==0) {
             usage (argv[0]);
             return (0);
@@ -185,7 +192,7 @@ int main (int argc, char * argv []) {
         start++;
     }
     if (file != NULL && endsWith (file, "wrl")) {
-        compile (file, dir, verbose);
+        compile (file, dir, includeMedia, verbose);
     } else {
         usage (argv[0]);
     }

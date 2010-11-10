@@ -160,3 +160,30 @@ char* MultiPathFile::find (const char * filename, const char * mode) {
 }
 
 Link * MultiPathFile::s_path = NULL;
+
+// MediaList section
+
+extern int includeMediaFile (FILE * fp, const char * name, bool mandatory = true); // from Type.cpp :-/
+
+int MediaList::dump (FILE * fp) {
+    Link * l = root;
+    int size = 0;
+    while (l) {
+        size += includeMediaFile (fp, l->value);
+        l = l->next;
+    }
+    return size;
+}
+
+void MediaList::addMedia (const char * files) {
+    char * tmp = strdup(files);
+    int i = lastIndexOf(tmp,',');
+    while (i>=0) {
+        char * p = tmp+i+1;
+        tmp[i] = '\0';
+        root = new Link (strdup(p), root);
+        i = lastIndexOf(tmp,',');
+    }
+    root = new Link (strdup(tmp), root);
+    free (tmp);
+}

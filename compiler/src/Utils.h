@@ -42,4 +42,15 @@ public:
     static char * find (const char * filename, const char * mode);
 };
 
+
+class MediaList {
+    Link * root;
+  public:
+    MediaList () { root = NULL; }
+    // Add multiple media
+    void addMedia (const char * files);
+    // Include all listed media in final M4M file
+    int dump (FILE * fp);
+};
+
 int lastIndexOf (char * s, char c);

@@ -232,6 +232,25 @@ int includeFile (FILE * fp, const char * fileName, const char * name, int magic,
     return (size);
 }
 
+int includeMediaFile (FILE * fp, const char * name, bool mandatory = true) {
+    int magic = 0;
+    if (isImageName (name)) {
+        magic = MAGIC_IMAGE;
+    } else if (isMMediaName (name)) {
+        magic = MAGIC_MMEDIA;
+    } else if (endsWith (name, ".bml")) {
+        magic = MAGIC_BML;
+    } else if (endsWith (name, ".css")) {
+        magic = MAGIC_CSS;
+    }
+    if (magic) {
+        return includeFile (fp, name, name, magic, mandatory);
+    }
+    fprintf (stderr, "Error: Unsupported type for direct inclusion of file: %s.", name);
+    exit (1);
+}
+
+
 const char * assoc [] = { 
     "unknown",
     "SFBool",     //1
