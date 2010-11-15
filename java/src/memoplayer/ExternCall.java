@@ -1474,8 +1474,8 @@ class ExternCall {
     }
 
     static void doMessaging (Context c, int m, Register [] registers, int r, int nbParams) {
+        boolean success;
         switch (m) {
-
         case 0: // isAvailable()
 //#ifndef jsr.wma
             registers[r].setBool(false);
@@ -1483,18 +1483,13 @@ class ExternCall {
             registers[r].setBool(true);
             return;
         case 1: // sendSMS(phoneNumber, msgToSend)
-        {
-            boolean success = MessagingHelper.sendSMS(registers[r].getString(), registers[r+1].getString());
+            success = MessagingHelper.sendSMS(registers[r].getString(), registers[r+1].getString());
             registers[r].setBool(success);
             return;
-        }
-
         case 2: // send MMS(phoneNumber, subject, msgToSend, imagePath)
 //#ifdef jsr.wma2
-        {
-            boolean success = MessagingHelper.sendMMS(registers[r].getString(), registers[r+1].getString(), registers[r+2].getString(), registers[r+3].getString(), c.decoder);
+            success = MessagingHelper.sendMMS(registers[r].getString(), registers[r+1].getString(), registers[r+2].getString(), registers[r+3].getString(), c.decoder);
             registers[r].setBool(success);
-        }
 //#else
             registers[r].setBool(false);
 //#endif
