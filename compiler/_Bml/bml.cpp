@@ -367,10 +367,22 @@ bool Encoder::parseXml (char * in, char * charset) {
 }
 
 void usage (char * exeName) {
+    fprintf (stderr, "%s [-v] [--charset CHARSET] [--toXml] inFile outFile\n\n", exeName);
+    fprintf (stderr, "options:\n");
+    fprintf (stderr, "  -v : prints some messages about the processing.\n");
+    fprintf (stderr, "  --charset : force the charset for the xml document (default is UTF-8, or retrieved from the xml declaration).\n");
+    fprintf (stderr, "  --toXml : inform the program that stdin will be BML and output will be XML.\n");
+    fprintf (stderr, "            this is usefull when using - - as file names for stdin/stdout mode.\n\n");
     fprintf (stderr, "usage: \n%s file.xml file.bml\n", exeName);
-    fprintf (stderr, "    convert a textual xml file into a binary file\n");
+    fprintf (stderr, "    convert a xml file into a bml file\n");
     fprintf (stderr, "\n%s file.bml file.xml\n", exeName);
-    fprintf (stderr, "    convert a textual xml file into a binary file\n");
+    fprintf (stderr, "    convert a xml file into a bml file\n");
+    fprintf (stderr, "usage: \n%s --charset ISO-8859-15 file.xml file.bml\n", exeName);
+    fprintf (stderr, "    convert a xml file encoded in ISO-8859-15 into a bml file\n");
+    fprintf (stderr, "\n%s - -\n", exeName);
+    fprintf (stderr, "    convert xml from stdin to bml on stdout.\n");
+    fprintf (stderr, "\n%s --toXml - -\n", exeName);
+    fprintf (stderr, "    convert bml from stdin to xml on stdout.\n");
     exit (1);
 }
 
