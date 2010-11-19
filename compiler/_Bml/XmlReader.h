@@ -138,7 +138,7 @@ public:
     iconv_t m_iconv; // used for character conversion to UTF-8
     
 
-    XmlReader (char * buffer);
+    XmlReader (char * buffer, char * charset);
 
     ~XmlReader ();
     

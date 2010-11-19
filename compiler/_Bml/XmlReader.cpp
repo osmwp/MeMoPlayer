@@ -148,7 +148,7 @@ void XmlNode::visit (XmlVisitor * v) {
 }
 
 
-XmlReader::XmlReader (char * buffer) {
+XmlReader::XmlReader (char * buffer, char * encoding = NULL) {
     m_nbLines = 1;
     m_sbSize = 4096;
     m_sb = (char*) malloc (sizeof(char) * m_sbSize);
@@ -158,6 +158,14 @@ XmlReader::XmlReader (char * buffer) {
     m_len = strlen (buffer);
     m_pos = 0;
     m_iconv = NULL;
+    if (encoding) {
+        iconv_t iv = iconv_open ("UTF-8", encoding);
+        if (iv == (iconv_t)-1) { // unsupported target encoding
+            MESSAGE ("Warning: ignoring unsupported encoding: %s\n", encoding);
+        } else {
+          m_iconv = iv;
+        }
+    }
 }
 
 XmlReader::~XmlReader () {
@@ -445,9 +453,13 @@ bool XmlReader::parseXmlHeader () {
     }
     XmlAttribute * attr = parseAttribute ();
     while (attr != NULL) {
-        if (strcmp (attr->m_name, "encoding") == 0 && strcmp (attr->m_value, "UTF-8") != 0) {
+        if (m_iconv == NULL && strcmp (attr->m_name, "encoding") == 0 && strcmp (attr->m_value, "UTF-8") != 0) {
             // Setup caracter conversion as encoding is not UTF-8
             m_iconv = iconv_open ("UTF-8", attr->m_value);
+            if (m_iconv == (iconv_t)-1) { // unsupported target encoding
+                MESSAGE ("Error: unsupported encoding in xml declaration: %s\n", attr->m_value);
+                return false;
+            }
         }
         delete attr;
         attr = parseAttribute ();
@@ -558,7 +570,7 @@ XmlNode * XmlReader::parseTag (char c) {
 XmlNode * XmlReader::parseNode (XmlNode * node) {
     if (node == NULL) {
         if ( (node = parseElement ()) == NULL) {
-            MESSAGE ("cannot parse node at all");
+            MESSAGE ("Error: cannot parse node at all\n");
             return NULL; // parsing problem
         }
     }

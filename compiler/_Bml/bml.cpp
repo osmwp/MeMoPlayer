@@ -255,11 +255,11 @@ public:
 };
 
 
-Encoder::Encoder (char * in, char * out, bool verbose, bool decode) {
+Encoder::Encoder (char * in, char * out, bool verbose, bool decode, char * charset) {
     m_root = NULL;
     s_debug = verbose;
     if (endsWith (in, "xml") || (strcmp (in, "-") == 0 && decode == false)) {
-        if (!parseXml (in)) {
+        if (!parseXml (in, charset)) {
             fprintf (stderr, "Error during XML parsing\n");
             exit (1);
         }
@@ -326,7 +326,7 @@ bool Encoder::parseBml (char * in) {
     return m_root != NULL;
 }
 
-bool Encoder::parseXml (char * in) {
+bool Encoder::parseXml (char * in, char * charset) {
     FILE * fp;
     if (strcmp (in, "-") == 0) {
         fp = stdin;
@@ -360,7 +360,7 @@ bool Encoder::parseXml (char * in) {
       }
     }
     data[size] = '\0';
-    XmlReader t (data);
+    XmlReader t (data, charset);
     m_root = t.parseNode (NULL);
     free (data);
     return m_root != NULL;
@@ -378,6 +378,7 @@ int main (int argc, char * argv []) {
     int i;
     s_debug = false;
     bool decode = false;
+    char * charset = NULL;
     for (i = 1; i < argc; i++) {
         if (strcmp (argv[i], "-p") == 0) {
             //propertyFile = argv [++i];
@@ -385,6 +386,8 @@ int main (int argc, char * argv []) {
             s_debug = true;
         } else if (strcmp (argv[i], "--toXml") == 0) {
             decode = true;
+        } else if (strcmp (argv[i], "--charset") == 0) {
+            charset = argv[++i];
         } else {
             break;
         }
@@ -392,5 +395,5 @@ int main (int argc, char * argv []) {
     if ( (argc - i) < 2) {
         usage (argv[0]);
     }
-    Encoder encoder  (argv[i], argv[i+1], s_debug, decode);
+    Encoder encoder  (argv[i], argv[i+1], s_debug, decode, charset);
 }

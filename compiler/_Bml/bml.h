@@ -20,9 +20,9 @@ class Encoder {
 public:
     XmlNode * m_root;
 
-    Encoder (char * in, char * out, bool verbose, bool decode);
+    Encoder (char * in, char * out, bool verbose, bool decode, char * charset);
     ~Encoder ();
     XmlNode * parseNode (XmlReader * t);
-    bool parseXml (char * name);
+    bool parseXml (char * name, char * charset);
     bool parseBml (char * name);
 };
