@@ -482,7 +482,10 @@ XmlNode * XmlReader::parseElement () {
                 m_pos += end+3;  // avoid trailing ]]>
                 return new XmlNode (data, CDATA);
             } 
-            if (parseSpecial ('-', '-', "-->")) {
+            if (parseSpecial ('-', '-', "-->")) { // ignore comments <!-- -->
+                return parseElement ();
+            } else if (parseSpecial ('D', 'O', ">")) { // ignore external document type declaration <!DOCTYPE >
+                // TODO: support parsing (and ignoring) internal doctype declaration
                 return parseElement ();
             }
             return NULL;
