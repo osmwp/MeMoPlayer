@@ -120,30 +120,6 @@ void XmlNode::addAttribute (XmlAttribute * a) {
     m_nbAttributes++;
 }
 
-bool XmlNode::parseAttributes (XmlReader * p) {
-    char c = p->skipSpaces ();
-    while (c != '\0' && c != '/' && c != '>') {
-        char * attr = p->getNextToken ();
-        if (attr == NULL || *attr == 0) {
-            MESSAGE ("parseAttributes: name expected at line #%d (read %c)\n", p->m_nbLines, c);
-            return false; // something unexpected: not an iden nor '/' or '>'
-        }
-        if (p->skipSpaces () != '=') {
-            MESSAGE ("parseAttributes: '=' expected after %s at line #%d\n", attr, p->m_nbLines);
-            return false;
-        }
-        p->getNextChar (); // eat '='
-        char * value = p->getString (); // getString will eat spaces if needed
-        if (value == NULL) {
-            MESSAGE ("parseAttributes: '=' expected after %s\n", attr);
-            return false;
-        }
-        addAttribute (new XmlAttribute (attr, value));
-        c = p->skipSpaces ();
-    }
-    return true;
-}
-
 
 void XmlNode::visit (XmlVisitor * v) {
     if (m_type == CDATA) {
@@ -487,7 +463,11 @@ XmlNode * XmlReader::parseTag (char c) {
     }
     XmlNode * e = new XmlNode (name, closing ? CLOSE_TAG : OPEN_TAG);
     if (!closing) { // may have some attributes
-        e->parseAttributes (this);
+        XmlAttribute * attr = parseAttribute ();
+        while (attr != NULL) {
+            e->addAttribute (attr);
+            attr = parseAttribute ();
+        }
     }
     // final '>'
     c = getChar ();
@@ -547,5 +527,23 @@ XmlNode * XmlReader::parseNode (XmlNode * node) {
         return NULL;
     }
     return node;
+}
+
+XmlAttribute * XmlReader::parseAttribute () {
+    char * attr = getNextToken ();
+    if (attr == NULL || *attr == 0) {
+        return NULL; // something unexpected: not an iden nor '/' or '>'
+    }
+    if (skipSpaces () != '=') {
+        MESSAGE ("parseAttributes: '=' expected after %s at line #%d\n", attr, m_nbLines);
+        return NULL;
+    }
+    getNextChar (); // eat '='
+    char * value = getString (); // getString will eat spaces if needed
+    if (value == NULL) {
+        MESSAGE ("parseAttributes: '=' expected after %s\n", attr);
+        return NULL;
+    }
+    return new XmlAttribute (attr, value);
 }
 

@@ -122,8 +122,6 @@ public:
 
     void addAttribute (XmlAttribute * a);
 
-    bool parseAttributes (XmlReader * p);
-
     void visit (XmlVisitor *);
 };
 
@@ -184,6 +182,7 @@ public:
 
     XmlNode * parseNode (XmlNode * node);
 
+    XmlAttribute * parseAttribute ();
 
 private:
     // Add char to buffers with dynamic resize
