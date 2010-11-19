@@ -16,6 +16,7 @@
 
 # include <stdio.h>
 # include <string.h>
+# include <iconv.h>
 
 # define MESSAGE(...) if (s_debug) fprintf (stderr, __VA_ARGS__)
 
@@ -134,6 +135,8 @@ public:
     char * m_sb; // a temporary buffer to parse CDATA
     char * m_charBuf; // a temporary buffer to html char (ex: &deg;)
     int m_sbSize, m_charBufSize;
+    iconv_t m_iconv; // used for character conversion to UTF-8
+    
 
     XmlReader (char * buffer);
 
@@ -171,6 +174,7 @@ public:
     bool isAlpha (char c) { return ( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'); }
     bool isSpecial (char c) { return (c == '-' || c == ':'  || c == '.' || c == '#' || c == '%'); }
 
+    bool parseXmlHeader ();
 
     bool parseSpecial (char c1, char c2, const char * s);
 
@@ -188,5 +192,8 @@ private:
     // Add char to buffers with dynamic resize
     void setSb (int position, char c);
     void setCharBuf (int position, char c);
+
+    // Duplicate a string (and convert to UTF8 if required)
+    char * toUTF8 (char * string, int size);
 };
 

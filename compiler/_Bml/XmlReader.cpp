@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "XmlReader.h"
 //# include "Trace.h"
@@ -152,15 +153,19 @@ XmlReader::XmlReader (char * buffer) {
     m_sbSize = 4096;
     m_sb = (char*) malloc (sizeof(char) * m_sbSize);
     m_charBufSize = 4096;
-    m_charBuf = (char*) malloc (sizeof(char) * m_sbSize);
+    m_charBuf = (char*) malloc (sizeof(char) * m_charBufSize);
     m_buffer = buffer; // will not be freed by this class
     m_len = strlen (buffer);
     m_pos = 0;
+    m_iconv = NULL;
 }
 
 XmlReader::~XmlReader () {
     free (m_sb);
     free (m_charBuf);
+    if (m_iconv) {
+        iconv_close (m_iconv);
+    }
 }
 
 void XmlReader::setSb (int position, char c) {
@@ -177,6 +182,37 @@ void XmlReader::setCharBuf (int position, char c) {
         m_charBuf = (char*) realloc (m_charBuf, sizeof(char) * m_charBufSize);
     }
     m_charBuf[position] = c;
+}
+
+char * XmlReader::toUTF8 (char * string, int size) {
+    int multiplier = 2; // initial multiplier between original size and maximum buffer size
+    while (m_iconv != NULL) {
+        int maxSize = size * multiplier;
+        if (m_charBufSize < maxSize) { // ensure maxSize for dest buffer
+            fprintf (stderr, "realloc to: %i\n", maxSize);
+            m_charBufSize = maxSize;
+            m_charBuf = (char*) realloc (m_charBuf, sizeof(char) * m_charBufSize);
+        }
+        size_t inSize = size;
+        char * inBuff = string;
+        size_t outSize = m_charBufSize;
+        char * outBuff = m_charBuf;
+        int ret = iconv (m_iconv, &inBuff, &inSize, &outBuff, &outSize);
+        if (ret == -1) {
+            if (errno == E2BIG && multiplier == 2) {
+                // not enough space in m_charBuf, retry with a bigger multiplier
+                // an UTF-8 string can only be 4 time bigger (worst case) than a one byte encoding string
+                multiplier = 4;
+                continue;
+            }
+            MESSAGE ("toUTF8: could not convert string to UTF8: %s\n", string);
+            return NULL;
+        }
+        *outBuff = 0; // mark end of string
+        return strdup (m_charBuf);
+    }
+    // m_iconv is not initialized (UTF-8 conversion not required)
+    return strdup (string);
 }
 
 // return the current char to read or '\0' if end of buffer
@@ -339,7 +375,7 @@ char * XmlReader::getString () {
     }
     if (eatChar (quote)) {
         setSb (curPos, 0);
-        return strdup (m_sb);
+        return toUTF8 (m_sb, curPos);
     } else {
         return NULL;
     }
@@ -387,7 +423,7 @@ char * XmlReader::getNextNumber () {
 }
 
 bool XmlReader::parseSpecial (char c1, char c2, const char * s) {
-    // shoudl check for "--"
+    // should check for "--"
     if (getNextChar () != c1 || getNextChar () != c2) {
         return false;
     }
@@ -400,14 +436,38 @@ bool XmlReader::parseSpecial (char c1, char c2, const char * s) {
     return true;
 }
 
+bool XmlReader::parseXmlHeader () {
+    eatChar ('?');
+    char * name = getNextToken ();
+    if (name == NULL || strcmp (name, "xml") != 0) {
+        MESSAGE ("Error: XML must start with a valid xml declaration <?xml ?> !'\n");
+        return false;
+    }
+    XmlAttribute * attr = parseAttribute ();
+    while (attr != NULL) {
+        if (strcmp (attr->m_name, "encoding") == 0 && strcmp (attr->m_value, "UTF-8") != 0) {
+            // Setup caracter conversion as encoding is not UTF-8
+            m_iconv = iconv_open ("UTF-8", attr->m_value);
+        }
+        delete attr;
+        attr = parseAttribute ();
+    }
+    if (eatChar ('?') && eatChar ('>')) {
+      return true;
+    }
+    MESSAGE ("Error: <?xml declaration must end with a valid '?>' value !'\n");
+    return false;
+}
+
 XmlNode * XmlReader::parseElement () {
     //XmlNode * e = NULL;
     char c = skipSpaces ();
     if (c == '\0') { // end of data
         return NULL;
     } else if (c == '<') { // we have a XML fragment
-        if ( (c = getNextChar ()) == '?') {
-            if (parseSpecial ('x', 'm', "?>")) {
+        c = getNextChar ();
+        if (c == '?') {
+            if (parseXmlHeader ()) {
                 return parseElement ();
             }
             return NULL;
@@ -418,7 +478,7 @@ XmlNode * XmlReader::parseElement () {
                 if (end == -1) {
                     return NULL; // CDATA not terminated
                 }
-                char * data = strdup (m_buffer, m_pos, m_pos+end);
+                char * data = toUTF8 (m_buffer+m_pos, end);
                 m_pos += end+3;  // avoid trailing ]]>
                 return new XmlNode (data, CDATA);
             } 
@@ -446,7 +506,7 @@ XmlNode * XmlReader::parseCData () {
         c = getNextChar ();
     }
     setSb (currentPos, 0);
-    return new XmlNode (strdup (m_sb), CDATA);
+    return new XmlNode (toUTF8 (m_sb, currentPos), CDATA);
 }
 
 XmlNode * XmlReader::parseTag (char c) {
