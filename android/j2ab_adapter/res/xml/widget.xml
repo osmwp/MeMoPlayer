@@ -3,4 +3,4 @@
     android:minWidth="100dip"
     android:minHeight="100dip"
     android:updatePeriodMillis="3600"
-    android:initialLayout="@layout/widget" />
+    android:initialLayout="@layout/widget_loader" />

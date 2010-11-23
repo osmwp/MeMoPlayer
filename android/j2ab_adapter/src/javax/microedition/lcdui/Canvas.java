@@ -349,22 +349,15 @@ public abstract class Canvas extends Displayable {
             if (mBuffer == null) {
                 mBuffer = Bitmap.createBitmap (mWidth, mHeight, Bitmap.Config.ARGB_8888);
                 mGraphics = new javax.microedition.lcdui.Graphics (mBuffer);
+                mMidlet.invokeAndWait(new Runnable() {
+                    public void run() {
+                        ((WidgetUpdate)mMidlet.getContext()).setImageBuffer(mBuffer);
+                    }
+                });
                 mRepaint = true;
             }
             if (mRepaint && mMidlet != null) {
                 Canvas.this.paint (mGraphics);
-                mMidlet.invokeAndWait(new Runnable() {
-                    public void run() {
-                        ((WidgetUpdate)mMidlet.getContext()).update(mBuffer);
-                        try { 
-                            mMidlet.doDestroyApp(true);
-                        }catch (Exception e) {
-                        }
-                        ((WidgetUpdate)mMidlet.getContext()).stopSelf();
-                    }
-                });
-                mMidlet = null;
-                mRepaint = false;
             }
         }
         

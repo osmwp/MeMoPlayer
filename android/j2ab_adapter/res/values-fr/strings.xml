@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_loader">Chargement de la widget...</string>
+    <string name="widget_alert">Erreur au chargement</string>
+</resources>
+

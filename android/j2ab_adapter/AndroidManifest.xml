@@ -16,6 +16,8 @@
             </intent-filter>
         </activity>
         
+        <!--  COMMENT ALL SECTION BELOW TO DISABLE ANDROID APP WIDGET -->
+
         <!-- Broadcast Receiver that will process AppWidget updates -->
         <receiver android:name="com.orange.memoplayer.Widget" 
                   android:label="@string/widget_name"
@@ -30,6 +32,8 @@
         <!-- Service to handle MeMo as a service for widget rendering -->
         <service android:name="com.orange.memoplayer.WidgetUpdate"
                  android:process=":widget" />
+
+        <!--  COMMENT ALL SECTION ABOVE TO DISABLE ANDROID APP WIDGET -->
 
     </application>
 	<uses-permission android:name="android.permission.READ_CONTACTS" />

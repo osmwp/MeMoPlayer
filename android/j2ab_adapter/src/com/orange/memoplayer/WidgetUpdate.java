@@ -23,39 +23,48 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.os.IBinder;
+import android.os.IInterface;
 import android.util.Log;
 import android.widget.RemoteViews;
 
 public class WidgetUpdate extends Service {
+    public final static int DISPLAY_WIDGET = 0;
+    public final static int DISPLAY_LOADER = 1;
+    public final static int DISPLAY_ALERT = 2;
     
-    RemoteViews mRemoteViews;
-    AppWidgetManager mManager;
-    ComponentName mWidget;
+    private RemoteViews mRemoteViews;
+    private AppWidgetManager mManager;
+    private ComponentName mWidget;
     
     // Resources cannot be loaded by R. but must be loaded by name
     // if not we would have to preprocess Java sources when changing
     // the package name !
-    int mRLayout;
-    int mRImagebuffer, mRWidget;
+    private int mRWidget;
+    private int mRWidgetLayout, mRImagebuffer;
+    private int mRAlertLayout, mRAlertMessage;
+    private int mRLoaderLayout, mRLoaderMessage;
+    private Bitmap mImageBuffer = null;
     
     @Override
     public void onStart(Intent intent, int startId) {
         Log.d("Widget.UpdateService", "onStart() : "+startId);
-        
-        if (mRemoteViews == null) {
-            mRLayout = getResources().getIdentifier("widget", "layout", getPackageName());
-            mRImagebuffer = getResources().getIdentifier("imagebuffer", "id", getPackageName());
+        if (mManager == null) {
+            mManager = AppWidgetManager.getInstance(this);
+        }
+        if (mRWidget == 0) {
             mRWidget = getResources().getIdentifier("widget", "id", getPackageName());
-            mRemoteViews = new RemoteViews(getPackageName(), mRLayout);
         }
         if (mWidget == null) {
             mWidget = new ComponentName(this, Widget.class);
         }
         
+        displayLoader (null);
+
         MIDlet midlet = Common.createMIDlet (this, Common.BOOT_WIDGET);
         try {
             if (midlet != null)  {
@@ -65,15 +74,6 @@ public class WidgetUpdate extends Service {
             ex.printStackTrace();
         }
 
-        // When user clicks on widget, go fullscreen
-        Intent defineIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent
-                .getActivity(this, 0, defineIntent, 0);
-        mRemoteViews.setOnClickPendingIntent(mRWidget, pendingIntent);
-        
-        // Push update for this widget to the home screen
-        mManager = AppWidgetManager.getInstance(this);
-        mManager.updateAppWidget(mWidget, mRemoteViews);
         Log.d("Widget.UpdateService", "widget updated");
     }
     
@@ -94,10 +94,70 @@ public class WidgetUpdate extends Service {
         return null;
     }
     
-    // Called by the 
-    public void update(Bitmap buffer) {
-        mRemoteViews.setImageViewBitmap(mRImagebuffer, buffer);
-        mManager.updateAppWidget(mWidget, mRemoteViews);
+    public void setImageBuffer (Bitmap buffer) {
+        mImageBuffer = buffer;
+    }
+
+    public void displayWidget () {
+        if (mImageBuffer != null) {
+            if (mRWidgetLayout == 0) {
+                mRWidgetLayout = getResources().getIdentifier("widget", "layout", getPackageName());
+                mRImagebuffer = getResources().getIdentifier("imagebuffer", "id", getPackageName());
+            }
+            if (mRemoteViews == null || mRemoteViews.getLayoutId() != mRWidgetLayout) {
+                mRemoteViews = getRemoteView(mRWidgetLayout);
+            }
+            synchronized (mImageBuffer) {
+                mRemoteViews.setImageViewBitmap(mRImagebuffer, mImageBuffer);
+            }
+            mManager.updateAppWidget(mWidget, mRemoteViews);
+        }
         Log.d("Widget.UpdateService", "widget updated (render)");
+    }
+
+    public void displayAlert(String message) {
+        if (mRAlertLayout == 0) {
+            mRAlertLayout = getResources().getIdentifier("widget_alert", "layout", getPackageName());
+            mRAlertMessage = getResources().getIdentifier("alertmessage", "id", getPackageName());
+        }
+        if (message == null || message.length() == 0) {
+            int res = getResources().getIdentifier("widget_alert", "string", getPackageName());
+            message = getResources().getText(res).toString();
+        }
+        if (mRemoteViews == null || mRemoteViews.getLayoutId() != mRAlertLayout) {
+            mRemoteViews = getRemoteView(mRAlertLayout);
+        }
+        mRemoteViews.setTextViewText(mRAlertMessage, message);
+        mManager.updateAppWidget(mWidget, mRemoteViews);
+        Log.d("Widget.displayAlert", "Alert displayed with message: "+message);
+
+    }
+
+    public void displayLoader(String message) {
+        if (mRLoaderLayout == 0) {
+            mRLoaderLayout = getResources().getIdentifier("widget_loader", "layout", getPackageName());
+            mRLoaderMessage = getResources().getIdentifier("loadermessage", "id", getPackageName());
+        }
+        if (message == null || message.length() == 0) {
+            int res = getResources().getIdentifier("widget_loader", "string", getPackageName());
+            message = getResources().getText(res).toString();
+        }
+        if (mRemoteViews == null || mRemoteViews.getLayoutId() != mRLoaderLayout) {
+            mRemoteViews = getRemoteView(mRLoaderLayout);
+        }
+        mRemoteViews.setTextViewText(mRLoaderMessage, message);
+        mManager.updateAppWidget(mWidget, mRemoteViews);
+        Log.d("Widget.displayAlert", "Loader displayed with message: "+message);
+    }
+
+    private RemoteViews getRemoteView (int layout) {
+        RemoteViews rv = new RemoteViews(getPackageName(), layout);
+
+        // When user clicks on widget, go fullscreen
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent
+                .getActivity(this, 0, intent, 0);
+        rv.setOnClickPendingIntent(mRWidget, pendingIntent);
+        return rv;
     }
 }

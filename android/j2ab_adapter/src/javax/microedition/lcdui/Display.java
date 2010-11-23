@@ -18,7 +18,13 @@ package javax.microedition.lcdui;
 
 import javax.microedition.midlet.MIDlet;
 
+import com.orange.memoplayer.MainActivity;
+import com.orange.memoplayer.Widget;
+import com.orange.memoplayer.WidgetUpdate;
+
+import android.appwidget.AppWidgetManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Vibrator;
 import android.util.Log;
 
@@ -141,5 +147,56 @@ public class Display {
     
     public void callSerialy (Runnable r) {
         midlet.post (r);
+    }
+
+    public boolean isAppWidget () {
+        return midlet.getContext() instanceof WidgetUpdate;
+    }
+
+    public boolean displayWidget () {
+        if (midlet.getContext() instanceof WidgetUpdate) {
+            midlet.post(new Runnable() {
+                public void run() {
+                    ((WidgetUpdate)midlet.getContext()).displayWidget();
+                }
+            });
+            return true;
+        } else if (midlet.getContext() instanceof MainActivity) {
+            // From the fullscreen application, send an itent to the widget
+            midlet.post(new Runnable() {
+                public void run() {
+                    Context context = midlet.getContext();
+                    Intent intent = new Intent(context, Widget.class);
+                    intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+                    context.sendBroadcast(intent);
+                    Log.i("Display", "Launch APPWIDGET_UPDATE intent");
+                }
+            });
+        }
+        return false;
+    }
+
+    public boolean displayAlert (final String message) {
+        if (midlet.getContext() instanceof WidgetUpdate) {
+            midlet.post(new Runnable() {
+                public void run() {
+                    ((WidgetUpdate)midlet.getContext()).displayAlert(message);
+                }
+            });
+            return true;
+        }
+        return false;
+    }
+
+    public boolean displayLoader (final String message) {
+        if (midlet.getContext() instanceof WidgetUpdate) {
+            midlet.post(new Runnable() {
+                public void run() {
+                    ((WidgetUpdate)midlet.getContext()).displayLoader(message);
+                }
+            });
+            return true;
+        }
+        return false;
     }
 }
