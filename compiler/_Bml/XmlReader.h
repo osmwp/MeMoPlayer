@@ -128,8 +128,8 @@ public:
 
 class XmlReader {
 public:
-    char * m_buffer; // the data to be parsed
-    int m_pos; // current char being parsed 
+    const char * m_buffer; // the data to be parsed
+    int m_pos; // current char being parsed
     int m_len; // length of buffer
     int m_nbLines; // the current line number
     char * m_sb; // a temporary buffer to parse CDATA
@@ -138,10 +138,10 @@ public:
     iconv_t m_iconv; // used for character conversion to UTF-8
     
 
-    XmlReader (char * buffer, char * charset);
+    XmlReader (const char * buffer, const char * charset = NULL);
 
     ~XmlReader ();
-    
+
     // return the current char to read or '\0' if end of buffer
     char getChar ();
 
@@ -155,13 +155,13 @@ public:
     char skipSpaces ();
 
     char getHtmlChar ();
-    
+
     // return a string or null is next thing is not a string (i.e. first char is not a '"')
     char * getString ();
-    
+
     // return the next identifier for a tag or an attribute name
     char * getNextIdent (bool startsWithAlpha);
-    
+
     char * getNextToken ();
 
     char * getNextStrictToken ();
@@ -181,7 +181,7 @@ public:
     XmlNode * parseElement ();
 
     XmlNode * parseCData ();
-    
+
     XmlNode * parseTag (char c);
 
     XmlNode * parseNode (XmlNode * node);

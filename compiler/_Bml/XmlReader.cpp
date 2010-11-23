@@ -24,11 +24,11 @@
 
 extern bool s_debug;
 
-bool startsWith (char * buffer, const char * target, int offset) {
+bool startsWith (const char * buffer, const char * target, int offset) {
     return strncmp (buffer+offset, target, strlen (target)) == 0;
 }
 
-int indexOf (char * buffer, const char * target, int offset) {
+int indexOf (const char * buffer, const char * target, int offset) {
     int idx = strstr (buffer+offset, target) - (buffer+offset);
     return idx >= 0 ? idx : -1;
 }
@@ -86,8 +86,8 @@ XmlNode::~XmlNode () {
     m_attributes = NULL;
 }
 
-bool XmlNode::isClosing (XmlNode * n) { 
-    return (n != NULL && m_type == CLOSE_TAG && strcasecmp (m_name, n->m_name) == 0); 
+bool XmlNode::isClosing (XmlNode * n) {
+    return (n != NULL && m_type == CLOSE_TAG && strcasecmp (m_name, n->m_name) == 0);
 }
 
 void XmlNode::addChild (XmlNode * n) {
@@ -141,14 +141,14 @@ void XmlNode::visit (XmlVisitor * v) {
             m_children->visit (v);
         }
         v->close (m_name);
-    } 
+    }
     if (m_next != NULL) {
         m_next->visit (v);
     }
 }
 
 
-XmlReader::XmlReader (char * buffer, char * encoding = NULL) {
+XmlReader::XmlReader (const char * buffer, const char * encoding) {
     m_nbLines = 1;
     m_sbSize = 4096;
     m_sb = (char*) malloc (sizeof(char) * m_sbSize);
@@ -224,19 +224,19 @@ char * XmlReader::toUTF8 (char * string, int size) {
 }
 
 // return the current char to read or '\0' if end of buffer
-char XmlReader::getChar () { 
+char XmlReader::getChar () {
     return m_pos < m_len ? m_buffer[m_pos] : '\0';
 }
 
 // return the next char to read or '\0' if end of buffer
 char XmlReader::getNextChar () {
-    m_pos++; 
+    m_pos++;
     return getChar ();
 }
 
 // return true and advance to the next char if the current char is equal to the parameter
 bool XmlReader::eatChar (char c) {
-    if (getChar () == c) { 
+    if (getChar () == c) {
         m_pos++;
         return true;
     }
@@ -275,9 +275,9 @@ char XmlReader::getHtmlChar () {
             c = getNextChar ();
         }
         while ((c >= '0' && c <= '9')
-               || (base == 16 && c >= 'a' && c <= 'f') 
+               || (base == 16 && c >= 'a' && c <= 'f')
                || (base == 16 && c >= 'A' && c <= 'F') ) {
-            if (c >= '0' && c <= '9') { 
+            if (c >= '0' && c <= '9') {
                 i = base * i + (c-'0');
             } else if (c >= 'A' &&  c <= 'F') {
                 i = base * i + (10 + c - 'A');
@@ -325,7 +325,7 @@ char XmlReader::getHtmlChar () {
         return '&';
     }
 }
-    
+
 int getHexDigit (char c) {
     if ( (c >= '0') && (c <= '9') ) {
         return c - '0';
@@ -338,7 +338,7 @@ int getHexDigit (char c) {
     }
     return 0;
 }
-    
+
 // return a string or NULL is next thing is not a string (i.e. first char is not a '"')
 char * XmlReader::getString () {
     int utf = 0;
@@ -389,7 +389,7 @@ char * XmlReader::getString () {
     }
 }
 
-char * strdup (char * s, int start, int end) {
+char * strdup (const char * s, int start, int end) {
     int len = (end-start);
     char * tmp = (char *)malloc (len+1);
     strncpy (tmp, s+start, len);
@@ -437,7 +437,7 @@ bool XmlReader::parseSpecial (char c1, char c2, const char * s) {
     }
     //int p = m_buffer.indexOf (s, m_pos);
     int p = strstr (m_buffer+m_pos, s) - (m_buffer+m_pos);
-    if (p < 0) { 
+    if (p < 0) {
         return false;
     } // comment not terminated
     m_pos += p+strlen (s);
@@ -490,10 +490,15 @@ XmlNode * XmlReader::parseElement () {
                 if (end == -1) {
                     return NULL; // CDATA not terminated
                 }
-                char * data = toUTF8 (m_buffer+m_pos, end);
+                char * data = strdup (m_buffer, m_pos, m_pos+end);
+                if (m_iconv) {
+                    char * orig = data;
+                    data = toUTF8 (orig, end);
+                    free (orig);
+                }
                 m_pos += end+3;  // avoid trailing ]]>
                 return new XmlNode (data, CDATA);
-            } 
+            }
             if (parseSpecial ('-', '-', "-->")) { // ignore comments <!-- -->
                 return parseElement ();
             } else if (parseSpecial ('D', 'O', ">")) { // ignore external document type declaration <!DOCTYPE >
@@ -514,7 +519,7 @@ XmlNode * XmlReader::parseCData () {
         if (c == '&') {
             c = getHtmlChar ();
         } else if (c == '\n') {
-          m_nbLines++; 
+            m_nbLines++;
         }
         setSb (currentPos++, c);
         // check for '>'
@@ -554,7 +559,7 @@ XmlNode * XmlReader::parseTag (char c) {
         e->m_type = SELF_TAG;
         c = getNextChar ();
     }
-    
+
     // check for nodes that shoudl be self closing: BR, HR, IMG
 //     if (m_htmlMode && e->m_type == OPEN_TAG) {
 //         e.m_type = checkHtmlSelfClosing(e.m_name);
