@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry excluding="com/java4ever/apime/io/GZIP.java|memoplayer/AdHelper.java|memoplayer/Billboard.java|memoplayer/Bool.java|memoplayer/Box.java|memoplayer/Context3D.java|memoplayer/DirectionalLight.java|memoplayer/DrawArea.java|memoplayer/Fog.java|memoplayer/IMHelper.java|memoplayer/IMObserver.java|memoplayer/IndexedFaceSet.java|memoplayer/Interpreter.java|memoplayer/JSBase64Coder.java|memoplayer/Layer3D.java|memoplayer/MarkerTexture.java|memoplayer/Material.java|memoplayer/NavigationInfo.java|memoplayer/Normal.java|memoplayer/Pushlet.java|memoplayer/Socket.java|memoplayer/Sphere.java|memoplayer/Transform.java|memoplayer/Viewpoint.java|memoplayer/XJSArray.java|memoplayer/XNode.java|memoplayer/XParseManager.java|memoplayer/Xparse.java" kind="src" path="psrc"/>
 	<classpathentry kind="src" path="gen"/>
-	<classpathentry excluding="com/java4ever/|memoplayer/AdHelper.java|memoplayer/Billboard.java|memoplayer/Bool.java|memoplayer/Box.java|memoplayer/Context3D.java|memoplayer/Coordinate.java|memoplayer/CoordinateInterpolator.java|memoplayer/DirectionalLight.java|memoplayer/DrawArea.java|memoplayer/Fog.java|memoplayer/IndexedFaceSet.java|memoplayer/JSBase64Coder.java|memoplayer/Layer3D.java|memoplayer/Light.java|memoplayer/MarkerTexture.java|memoplayer/Mesh3D.java|memoplayer/MultiTexture.java|memoplayer/NavigationInfo.java|memoplayer/Normal.java|memoplayer/OrientationInterpolator.java|memoplayer/PositionInterpolator.java|memoplayer/Socket.java|memoplayer/Sphere.java|memoplayer/TextureCoordinate.java|memoplayer/Transform.java|memoplayer/Viewpoint.java|memoplayer/XNode.java|memoplayer/XParseManager.java|memoplayer/XParsePush.java|memoplayer/Xparse.java" kind="src" path="psrc"/>
-	<classpathentry kind="src" path="assets"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

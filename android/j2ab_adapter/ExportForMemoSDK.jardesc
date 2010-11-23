@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <jardesc>
     <jar path="MeMoAndro/MeMoAndro.jar"/>
-    <options buildIfNeeded="true" compress="true" descriptionLocation="/MeMoAndro/ExportForMemoSDK.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/MeMoAndro/ExportForMemoSDK.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="true" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
     <manifest generateManifest="true" manifestLocation="" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
@@ -15,7 +15,6 @@
         <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.pim"/>
         <javaElement handleIdentifier="=MeMoAndro/src&lt;com.orange.memoplayer"/>
         <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.rms"/>
-        <javaElement handleIdentifier="=MeMoAndro/gen"/>
         <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.media.control"/>
         <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.io.file"/>
         <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.pim"/>
