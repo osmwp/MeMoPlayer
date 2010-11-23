@@ -16,11 +16,14 @@
 
 package memoplayer;
 import java.util.*;
+
+import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Font;
 import javax.microedition.rms.RecordStore;
 
 //#ifdef api.mm
 import javax.microedition.media.Manager;
+import javax.microedition.midlet.MIDlet;
 //#endif
 
 //#ifdef jsr.amms
@@ -129,6 +132,7 @@ class ExternCall {
         case 18: doHttp (c, m, registers, r, nbParams); break;
         case 19: doStyle (c, m, registers, r, nbParams); break;
         case 20: doGPS (c, m, registers, r, nbParams); break;
+        case 21: doAppWidget (mc, c, m, registers, r, nbParams); break;
         default:
             Logger.println("No API: "+o);
         }
@@ -2038,6 +2042,33 @@ class ExternCall {
         registers[r].setBool (false);
 //#endif
     }
+
+    static void doAppWidget (Machine mc, Context c, int m, Register [] registers, int r, int nbParams) {
+//#ifdef platform.android
+        MIDlet ml = MiniPlayer.self;
+        switch (m) {
+        case 0: // bool isAppWidget ()
+            registers[r].setBool (Display.getDisplay (ml).isAppWidget ());
+            return;
+        case 1: // bool displayWidget ()
+            registers[r].setBool (Display.getDisplay (ml).displayWidget ());
+            return;
+        case 2: // bool displayLoader (bool display, string message)
+            registers[r].setBool (Display.getDisplay (ml).displayLoader (registers[r].getString()));
+            return;
+       case 3: // bool displayError (string message)
+           registers[r].setBool (Display.getDisplay (ml).displayAlert (registers[r].getString()));
+           return;
+
+       default:
+           Logger.println ("doAppWidget (m:"+m+"): Invalid static method call");
+       }
+//#else
+       Logger.println ("AppWidget class not supported in this version");
+       registers[r].setBool (false);
+//#endif
+    }
+
 
     // As J2ME CLDC 1.1 does not have asin, acos, atan, atan2 functions
     // here is a quick implementation

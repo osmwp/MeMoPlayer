@@ -805,3 +805,9 @@ GPS {
     stop
 }
 
+AppWidget {
+  isAppWidget
+  displayWidget
+  displayLoader
+  displayError
+}
