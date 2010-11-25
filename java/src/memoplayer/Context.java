@@ -15,13 +15,16 @@
  */
 
 package memoplayer;
-import javax.microedition.lcdui.*;
+//#ifndef BlackBerry
+import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.Image;
+//#endif
 
 public class Context {
 
     final static int MAX_ACTIVABLES = 1024;
-    
-    Canvas canvas;
+
+    MyCanvas canvas;
     Graphics gc;
     Scene scene;
     Decoder decoder;
@@ -232,6 +235,9 @@ public class Context {
             }
             ol = ol.m_next;
         }
+//#ifdef BlackBerry
+        gc.popContext();
+//#endif
     }
     
     void renderAllFromVideo (Region clip) {
@@ -251,6 +257,9 @@ public class Context {
             hasVideo |= rn.m_isVideo;
             ol = ol.m_next;
         }
+//#ifdef BlackBerry
+        gc.popContext();
+//#endif
     }
 
     void addLoadable (Loadable l) {

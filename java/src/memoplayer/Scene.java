@@ -15,7 +15,9 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Image;
+//#endif
 
 public class Scene implements Loadable {    
     /**

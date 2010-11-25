@@ -16,7 +16,9 @@
 
 package memoplayer;
 
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Graphics;
+//#endif
 
 public class WrapText extends Text {
     private final static int BLINK_INTERVALL = 500;

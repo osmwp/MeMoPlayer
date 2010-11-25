@@ -21,6 +21,8 @@ public class MovieRotator {
     final static int PORTRAIT = 0;
     final static int LANDSCAPE = 90;
     static boolean setOrientation (javax.microedition.media.Player player, int rotation) {
+// not supported on blackberry
+//#ifndef BlackBerry
         Logger.println ("setOrientation: "+rotation);
         int mode = 0;
         if (rotation >= 45 && rotation < 135) { // 90
@@ -39,6 +41,7 @@ public class MovieRotator {
         } catch (Exception e) {
             Logger.println ("MovieRotator.setOrientation: "+e);
         }
+//#endif
         return (false);
     }
 }

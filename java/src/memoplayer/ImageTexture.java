@@ -16,7 +16,9 @@
 
 package memoplayer;
 
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Image;
+//#endif
 
 public class ImageTexture extends Node implements ImageRequester {
     boolean m_isPng = false;

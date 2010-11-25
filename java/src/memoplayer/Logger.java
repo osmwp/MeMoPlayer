@@ -15,7 +15,10 @@
  */
 
 package memoplayer;
-import javax.microedition.lcdui.*;
+//#ifndef BlackBerry
+import javax.microedition.lcdui.Font;
+import javax.microedition.lcdui.Graphics;
+//#endif
 import javax.microedition.rms.RecordStore;
 
 public class Logger {

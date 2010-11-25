@@ -15,9 +15,11 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Image;
+//#endif
 
 public class Text extends Node {
     String [] m_s;

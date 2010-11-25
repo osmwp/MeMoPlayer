@@ -15,7 +15,10 @@
  */
 
 package memoplayer;
+
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Image;
+//#endif
 
 interface ImageRequester {
     void imageReady (Image image);

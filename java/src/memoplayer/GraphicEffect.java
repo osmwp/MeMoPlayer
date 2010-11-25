@@ -15,8 +15,10 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Image;
+//#endif
 
 public class GraphicEffect {
     public final static int ROUND_RECT = 0;

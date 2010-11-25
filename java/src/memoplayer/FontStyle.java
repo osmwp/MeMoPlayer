@@ -15,7 +15,9 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Font;
+//#endif
 
 public class FontStyle extends Node {
     final static int LEFT = 0;

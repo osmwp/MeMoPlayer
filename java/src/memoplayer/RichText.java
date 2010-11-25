@@ -33,9 +33,11 @@
  **/
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Image;
+//#endif
 
 class Patch {
     final static int PATCH_COLOR = 1;

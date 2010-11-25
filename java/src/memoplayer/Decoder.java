@@ -15,7 +15,9 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Image;
+//#endif
 import java.io.*;
 
 public class Decoder {

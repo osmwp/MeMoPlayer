@@ -16,12 +16,15 @@
 
 package memoplayer;
 
-import javax.microedition.lcdui.*;
+//#ifndef BlackBerry
+import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.Image;
+//#endif
 
 class CompositeTexture2D extends Group {
     
     int m_w, m_h, m_w2, m_h2;
-    javax.microedition.lcdui.Image m_img;
+    Image m_img;
     Region m_clip;
     AppearanceContext m_ac;
     Graphics m_gc;

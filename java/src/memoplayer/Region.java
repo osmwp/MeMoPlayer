@@ -15,7 +15,9 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Graphics;
+//#endif
 
 public class Region {
     int x0, y0, x1, y1;

@@ -15,7 +15,9 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
 import javax.microedition.lcdui.Image;
+//#endif
 
 //#ifdef MM.weakreference
 import java.lang.ref.WeakReference;
