@@ -25,7 +25,7 @@ public class Logger {
     public final static String s_version = "1.4.5";
     private final static int MAX_MESSAGES = 100;
     private static String [] s_messages;
-    private static int s_count, s_cw, s_ch, s_offset, s_startRaw;
+    private static int s_count, s_ch, s_offset, s_startRaw; // , s_cw;
     private static Font s_font; 
     private static int s_maxLines;
     private static int s_firstLine = 0;
@@ -33,8 +33,8 @@ public class Logger {
     private static int s_touchBar = -1; // -1: first time, display help
     private static boolean s_fastScroll = false;
 
-    private static long s_startTime = System.currentTimeMillis() ;
 //#ifdef profiling
+    private static long s_startTime = System.currentTimeMillis() ;
     private static long [] s_timeStack;
     private static int s_currentSlot = 0;
 
@@ -54,8 +54,8 @@ public class Logger {
  
     static {
         s_messages = new String [MAX_MESSAGES+1];
-        s_font = Font.getFont (Font.FACE_MONOSPACE, Font.STYLE_PLAIN, Font.SIZE_SMALL); 
-        s_cw = s_font.charWidth ('W');
+        s_font = Font.getFont (Font.FACE_MONOSPACE, Font.STYLE_PLAIN, FontStyle.s_fontSmall); 
+        // s_cw = s_font.charWidth ('W');
         s_ch = s_font.getHeight ();
         println ("MeMo player V"+s_version);
 //#ifdef profiling

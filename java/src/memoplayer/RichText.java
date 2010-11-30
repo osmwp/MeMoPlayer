@@ -1502,8 +1502,8 @@ class BlockFragment extends Fragment {
         
         m_innerWidth = w - (ml+mr+pl+pr+bw*2);
 
-        int lastMargin = mt;
-        //Logger.println ("lastMargin: "+lastMargin);
+        // int lastMargin = mt;
+        // Logger.println ("lastMargin: "+lastMargin);
 
         Fragment f = m_root == null ? null : m_root.getFirst ();
         if (f == null) { return; }

@@ -77,7 +77,8 @@ class SFVec3f extends SFVec2f {
         }
     }
 
-    float getX () { return FixFloat.fix2float (m_x); }
-    float getY () { return FixFloat.fix2float (m_y); }
-    float getZ () { return FixFloat.fix2float (m_z); }
+//not used ...
+    // float getX () { return FixFloat.fix2float (m_x); }
+    // float getY () { return FixFloat.fix2float (m_y); }
+    // float getZ () { return FixFloat.fix2float (m_z); }
 }

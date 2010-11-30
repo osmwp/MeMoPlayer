@@ -235,7 +235,7 @@ class JSFile {
     
     static int listRoot () {
         s_nbFiles = 0;
-        Enumeration rootEnum = FileSystemRegistry.listRoots();
+
         try {
             Enumeration rootlist = FileSystemRegistry.listRoots();
             if (rootlist == null) {

@@ -104,8 +104,8 @@ public class SmartHttpCookies {
             if (val.length() != 0) {
                 split = split(val, '=');
                 if (split[1] != null) {
-                    String key = split[0].toLowerCase();
 //#ifndef MM.pfs
+                    String key = split[0].toLowerCase();
                     if (key.equals("domain")) {
                         domain = split[1];
                     }
