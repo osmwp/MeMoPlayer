@@ -266,7 +266,9 @@ public class File implements Loadable {
                         // Reopen with source stream
                         open (sourceUrl);
                         if (getState() == Loadable.READY) {
+//#ifdef MM.namespace
                             m_cacheNamespace = nameSpace;
+//#endif
                             m_cacheRecord = rmsRecord;
                             m_httpResponseCode = 200;
                         } else {
