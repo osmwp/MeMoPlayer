@@ -17,7 +17,15 @@
 
 package memoplayer;
 
-import javax.microedition.lcdui.*;
+//#ifndef BlackBerry 
+import javax.microedition.lcdui.Alert;
+import javax.microedition.lcdui.Image;
+import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.Command;
+import javax.microedition.lcdui.CommandListener;
+import javax.microedition.lcdui.AlertType;
+import javax.microedition.lcdui.TextBox;
+//#endif
 
 /**
  * Manages the display of LCDUI Alerts and Textboxes.

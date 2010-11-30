@@ -15,8 +15,17 @@
  */
 
 package memoplayer;
-import javax.microedition.lcdui.*;
-import javax.microedition.midlet.*;
+
+//#ifndef BlackBerry 
+import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.Image;
+import javax.microedition.lcdui.Font;
+import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.TextBox;
+import javax.microedition.midlet.MIDlet;
+//#endif
+
 import java.io.DataInputStream;
 
 public class MyCanvas extends Canvas implements Runnable {
@@ -324,7 +333,7 @@ public class MyCanvas extends Canvas implements Runnable {
         }
     }
     
-    public void paint (Graphics g) {
+    public void paint (javax.microedition.lcdui.Graphics g) {
         synchronized (s_paintLock) {
 //#ifdef debug.safePaint
         try {
