@@ -98,6 +98,8 @@ MovieTexture {
     SFTime startTime 0
     #field: stopTime
     SFTime stopTime 0
+    #field: movieSize
+    SFVec2f movieSize 
 }
 
 #  Node: Shape
