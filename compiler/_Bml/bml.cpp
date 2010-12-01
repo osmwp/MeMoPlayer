@@ -106,10 +106,10 @@ public:
     }
 
     void parseTable () {
-        char c1 = (char)fgetc (m_fp);
-        char c2 = (char)fgetc (m_fp);
-        char c3 = (char)fgetc (m_fp);
-        char c4 = (char)fgetc (m_fp);
+        fgetc (m_fp); // B
+        fgetc (m_fp); // M
+        fgetc (m_fp); // L
+        fgetc (m_fp); // 1
 
         m_nbTags = decodeSize ();
         m_tags = new char * [m_nbTags];
@@ -146,20 +146,24 @@ public:
 
 
 class BmlEncoder : public XmlVisitor {
-    FILE * m_fp;
+    char * m_buff;
+    int m_buffSize;
+    int m_buffPos;
 
     int m_nbTags;
     Tag * m_tags;
     Tag * m_lastTag;
-    bool m_init;
+    bool m_dumpTable;
 
 public:
-    BmlEncoder (FILE * fp) {
-        m_fp = fp;
-        m_init = true;
+    BmlEncoder () {
+        m_dumpTable = false;
         m_nbTags = 0;
         m_tags = NULL;
         m_lastTag = NULL;
+        m_buffSize = 8192;
+        m_buffPos = 0;
+        m_buff = (char*) malloc (sizeof(char) * m_buffSize);
     }
 
     ~BmlEncoder () {
@@ -172,11 +176,47 @@ public:
         }
         m_lastTag = NULL;
         m_tags = NULL;
+        free (m_buff);
+    }
+
+    char * getBuffer (int & size) {
+        size = m_buffPos;
+        return m_buff;
+    }
+
+    void ensure (int l) {
+        int newSize = m_buffPos + l;
+        if (newSize > m_buffSize) {
+            m_buffSize *= 2;
+            if (newSize > m_buffSize) {
+                m_buffSize = newSize;
+            }
+            m_buff = (char*) realloc (m_buff, sizeof(char) * m_buffSize);
+        }
+    }
+
+    void encodeChar (char c) {
+        ensure (1);
+        m_buff[m_buffPos++] = c;
+    }
+    
+    void encodeString (char * s) {
+        int l = strlen (s) + 1;
+        if (l > 1) {
+            ensure (l);
+            memcpy (m_buff+m_buffPos, s, l);
+            m_buffPos += l;
+        } else {
+            encodeChar (0);
+        }
     }
 
     void initDone () {
-        m_init = false;
-        fprintf (m_fp, "BML1");
+        m_dumpTable = true;
+        encodeChar ('B');
+        encodeChar ('M');
+        encodeChar ('L');
+        encodeChar ('1');
         dumpTable ();
     }
 
@@ -200,56 +240,57 @@ public:
     void encodeSize (int size) {
         if (size > 255) {
             int n = size / 255;
-            fprintf (m_fp, "%c%c", 255, n);
+            encodeChar (255);
+            encodeChar (n);
             size -= 255*n;
         }
-        fprintf (m_fp, "%c", size);
+        encodeChar (size);
     }
 
     void dumpTable () {
         Tag * tag = m_tags;
         encodeSize (m_nbTags);
         while (tag != NULL) {
-            fprintf (m_fp, "%s%c", tag->m_name, 0);
+            encodeString (tag->m_name);
             tag = tag->m_next;
         }
     }
 
     void setLeave (char * l) {
-        if (!m_init) {
-            fprintf (m_fp, "%c%s%c", 3, l, 0);
+        if (m_dumpTable) {
+            encodeChar (3);
+            encodeString (l);
         }
     }
 
     void open (char * t, bool selfClosing) {
         int id = getTagId (t); // create the entry if necessary
-        if (!m_init) {
-            fprintf (m_fp, "%c", selfClosing ? 2 : 1);
+        if (m_dumpTable) {
+            encodeChar (selfClosing ? 2 : 1);
             encodeSize (id);
         }
     }
 
     void close (char * t) {
-        if (!m_init) {
-            fprintf (m_fp, "%c", 0);
+        if (m_dumpTable) {
+            encodeChar (0);
         }
     }
 
     void endOfAttributes (bool selfClosing) {
-        if (!m_init) {
+        if (m_dumpTable) {
+            encodeChar (0);
             if (selfClosing) {
-                fprintf (m_fp, "%c%c", 0, 0); // double 0 because close will not be called
-            } else {
-                fprintf (m_fp, "%c", 0);
+                encodeChar (0); // double 0 because close will not be called
             }
         }
     }
 
     void addAttribute (char * name, char * value) {
         int id = getTagId (name); // create the entry if necessary
-        if (!m_init) {
+        if (m_dumpTable) {
             encodeSize (id+1);
-            fprintf (m_fp, "%s%c", value, 0);
+            encodeString (value);
         }
     }
 };
@@ -270,10 +311,13 @@ Encoder::Encoder (char * in, char * out, bool verbose, bool decode, char * chars
             fp = fopen (out, "w");
         }
         if (fp != NULL) {
-            BmlEncoder e (fp);
-            m_root->visit (&e);
-            e.initDone ();
-            m_root->visit (&e);
+            BmlEncoder e;
+            m_root->visit (&e); // parse a first time to compute ids table
+            e.initDone (); // dump the id table
+            m_root->visit (&e); // parse a second time to encode the content
+            int size;
+            char * buff = e.getBuffer (size);
+            fwrite (buff, 1, size, fp);
             if (fp != stdout) {
                 fclose (fp);
             }
