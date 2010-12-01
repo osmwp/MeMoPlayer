@@ -448,9 +448,11 @@ bool XmlReader::parseXmlHeader () {
     eatChar ('?');
     char * name = getNextToken ();
     if (name == NULL || strcmp (name, "xml") != 0) {
+        free (name);
         MESSAGE ("Error: XML must start with a valid xml declaration <?xml ?> !'\n");
         return false;
     }
+    free (name);
     XmlAttribute * attr = parseAttribute ();
     while (attr != NULL) {
         if (m_iconv == NULL && strcmp (attr->m_name, "encoding") == 0 && strcmp (attr->m_value, "UTF-8") != 0) {
@@ -553,6 +555,7 @@ XmlNode * XmlReader::parseTag (char c) {
     c = getChar ();
     if (c == '/') { // self tag
         if (closing) {
+            delete e;
             MESSAGE ("Error: closing is also self closing: %s", e->m_name);
             return NULL;
         }
@@ -565,6 +568,7 @@ XmlNode * XmlReader::parseTag (char c) {
 //         e.m_type = checkHtmlSelfClosing(e.m_name);
 //     }
     if (c != '>') { // ending tag
+        delete e;
         MESSAGE ("Error: got '%c' instead of '>'", c);
         return NULL;
     }
@@ -591,6 +595,7 @@ XmlNode * XmlReader::parseNode (XmlNode * node) {
                 node->addChild (parseNode (child));
             } else if (child->m_type == CLOSE_TAG) { // not closing the right node so error
                 MESSAGE ("unexpected closing tag %s for %s\n", child->m_name, node->m_name);
+                delete node;
                 delete child;
                 return NULL;
             }
@@ -604,6 +609,8 @@ XmlNode * XmlReader::parseNode (XmlNode * node) {
     } else if (node->m_type == SELF_TAG || node->m_type == CDATA) {
         ; // nothing to do just return;
     } else if (node->m_type == CLOSE_TAG) { //error
+        MESSAGE ("unexpected closing tag %s\n", node->m_name);
+        delete node;
         return NULL;
     }
     return node;
@@ -612,15 +619,18 @@ XmlNode * XmlReader::parseNode (XmlNode * node) {
 XmlAttribute * XmlReader::parseAttribute () {
     char * attr = getNextToken ();
     if (attr == NULL || *attr == 0) {
+        free (attr);
         return NULL; // something unexpected: not an iden nor '/' or '>'
     }
     if (skipSpaces () != '=') {
+        free (attr);
         MESSAGE ("parseAttributes: '=' expected after %s at line #%d\n", attr, m_nbLines);
         return NULL;
     }
     getNextChar (); // eat '='
     char * value = getString (); // getString will eat spaces if needed
     if (value == NULL) {
+        free (attr);
         MESSAGE ("parseAttributes: '=' expected after %s\n", attr);
         return NULL;
     }
