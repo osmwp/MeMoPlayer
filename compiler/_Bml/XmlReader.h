@@ -136,6 +136,7 @@ public:
     char * m_charBuf; // a temporary buffer to html char (ex: &deg;)
     int m_sbSize, m_charBufSize;
     iconv_t m_iconv; // used for character conversion to UTF-8
+    bool m_failure; // true if parsing failed
     
 
     XmlReader (const char * buffer, const char * charset = NULL);
