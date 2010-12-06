@@ -44,14 +44,14 @@ struct bml_ctx{
 /**
  * Main BML filter processing
  */
-static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *pbbIn)
+static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 {
     //Buffer for IN XML Data
     struct bml_ctx *bmlCtx = (struct bml_ctx *)f->ctx;
 
     //Buffer for OUT XML Data
     char *bmlData = NULL;
-    apr_size_t bmlLen;
+    int bmlLen;
 
     //Buffer for TMP Data
     char *tmpData = NULL;
@@ -64,14 +64,14 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *pbbIn)
     apr_status_t status;
 
     //Protection of process in case of empty packets
-    if (APR_BRIGADE_EMPTY(pbbIn)) {
+    if (APR_BRIGADE_EMPTY(bb)) {
         return APR_SUCCESS;
     }
 
-    apr_bucket *pkbbPtr = APR_BRIGADE_FIRST(pbbIn);
+    apr_bucket *pkbbPtr = APR_BRIGADE_FIRST(bb);
 
     //Read input brigade and store content
-    while (pkbbPtr != APR_BRIGADE_SENTINEL(pbbIn)) {
+    while (pkbbPtr != APR_BRIGADE_SENTINEL(bb)) {
         //EOS of Brigade
         if(!APR_BUCKET_IS_EOS(pkbbPtr)){
 
@@ -85,9 +85,6 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *pbbIn)
                     memcpy(bmlCtx->xmlData,tmpData,tmpLen);
                     bmlCtx->dataLen = tmpLen;
                     f->ctx = bmlCtx;
-
-                    //Set content type for BML
-                    ap_set_content_type(f->r, bmlMimeType);
                 }
                 //Reallocation and concat
                 else{
@@ -100,24 +97,35 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *pbbIn)
             else return status;
         }
         else{
-            bmlData = (char*)apr_bucket_alloc(bmlCtx->dataLen, f->c->bucket_alloc);
+            // Purge bucket brigade for reuse
+            apr_brigade_cleanup(bb);
 
-            //Encode Data
-            Encoder encoder(bmlCtx->xmlData, bmlData, &bmlLen, false, false);
-            free(bmlCtx->xmlData);
+            //Encode xml data as bml
+            Encoder encoder (bmlCtx->xmlData, &bmlData, bmlLen);
             free(bmlCtx);
 
-            //Create and insert bucket with bml data
-            apr_bucket *pbktOut = apr_bucket_heap_create(bmlData, bmlLen, apr_bucket_free,  f->c->bucket_alloc);
-
-            pbbOut=apr_brigade_create(f->r->pool, f->c->bucket_alloc);
-            APR_BRIGADE_INSERT_TAIL(pbbOut,pbktOut);
-
-            //Add EOS
-            APR_BRIGADE_INSERT_TAIL(pbbOut,apr_bucket_eos_create(f->c->bucket_alloc));
-            ap_set_content_length(f->r, strlen(bmlData));
-
-            return ap_pass_brigade(f->next, pbbOut);
+            apr_bucket *e;
+            if (bmlLen <= 0) {
+                // On failure, return a 500 error.
+                //ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, f->r, "BML CONVERSION FAILED !");
+                f->r->status_line = "500 Internal Server Error : BML conversion failed";
+                e = ap_bucket_error_create(HTTP_INTERNAL_SERVER_ERROR, NULL, f->r->pool, f->c->bucket_alloc);
+                APR_BRIGADE_INSERT_TAIL(bb, e);
+                e = apr_bucket_eos_create(f->c->bucket_alloc);
+                APR_BRIGADE_INSERT_TAIL(bb, e);
+                ap_pass_brigade(f->next, bb);
+                return AP_FILTER_ERROR;
+            }
+            // Insert bucket with bml data
+            e = apr_bucket_heap_create(bmlData, bmlLen, free,  f->c->bucket_alloc);
+            APR_BRIGADE_INSERT_TAIL(bb,e);
+            // Add content lenght / type info
+            ap_set_content_length(f->r, bmlLen);
+            ap_set_content_type(f->r, bmlMimeType);
+            // Add EOS and pass brigade to next filter
+            e = apr_bucket_eos_create(f->c->bucket_alloc);
+            APR_BRIGADE_INSERT_TAIL(bb,e);
+            return ap_pass_brigade(f->next, bb);
         }
 
         pkbbPtr = APR_BUCKET_NEXT(pkbbPtr);
