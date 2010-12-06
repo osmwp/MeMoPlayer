@@ -20,6 +20,7 @@ class Encoder {
 public:
     XmlNode * m_root;
 
+    Encoder (char * data, char ** dataOut, int &sizeOut);
     Encoder (char * in, char * out, bool verbose, bool decode, char * charset);
     ~Encoder ();
     XmlNode * parseNode (XmlReader * t);

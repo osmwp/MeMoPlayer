@@ -146,7 +146,7 @@ public:
 
 
 class BmlEncoder : public XmlVisitor {
-    char * m_buff;
+    char * m_buff; // not freed by class as return by getBuffer()
     int m_buffSize;
     int m_buffPos;
 
@@ -176,7 +176,6 @@ public:
         }
         m_lastTag = NULL;
         m_tags = NULL;
-        free (m_buff);
     }
 
     char * getBuffer (int & size) {
@@ -295,6 +294,27 @@ public:
     }
 };
 
+Encoder::Encoder (char * data, char ** dataOut, int &sizeOut) {
+    m_root = NULL;
+    s_debug = false;
+    // Parse Xml
+    XmlReader t (data, NULL);
+    m_root = t.parseNode (NULL);
+    free (data);
+    if (m_root == NULL) {
+        MESSAGE ("Error during Xml parsing");
+        *dataOut = NULL;
+        sizeOut = -1;
+        return;
+    }
+    // Encode Bml
+    BmlEncoder e;
+    m_root->visit (&e); // parse a first time to compute ids table
+    e.initDone (); // dump the id table
+    m_root->visit (&e); // parse a second time to encode the content
+    // Return bml in buffer
+    *dataOut = e.getBuffer (sizeOut);
+}
 
 Encoder::Encoder (char * in, char * out, bool verbose, bool decode, char * charset) {
     m_root = NULL;
@@ -318,6 +338,7 @@ Encoder::Encoder (char * in, char * out, bool verbose, bool decode, char * chars
             int size;
             char * buff = e.getBuffer (size);
             fwrite (buff, 1, size, fp);
+            free (buff);
             if (fp != stdout) {
                 fclose (fp);
             }
