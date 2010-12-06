@@ -116,10 +116,13 @@ public class Inline extends Node {
             c.removeLoadable (m_scene);
             Decoder d = c.decoder;
             c.decoder = m_scene.m_decoder;
-            m_scene.stop (c);
-            m_scene.destroy (c);
-            c.decoder = d;
-            m_scene = null;
+            try {
+                m_scene.stop (c);
+                m_scene.destroy (c);
+            } finally {
+                c.decoder = d;
+                m_scene = null;
+            }
             Runtime.getRuntime ().gc ();
         }
     }
@@ -157,6 +160,8 @@ public class Inline extends Node {
                 } catch (Exception e) {
                     System.err.println ("Inline: cannot load "+name+" :"+e);
                     m_state = Loadable.ERROR;
+                } finally {
+                    c.decoder = d;
                 }
             } else {
                 m_state = Loadable.CLOSED;
@@ -186,11 +191,15 @@ public class Inline extends Node {
             c.time = 0;
             c.decoder = m_scene.m_decoder;
             //System.out.println ("Inline.compose: start scene with C3D"+c.c3D+"  @ "+c.time);
-            m_scene.start (c);
 //#ifdef profiling
             Logger.profileStart ();
 //#endif
-            c.time = m_initTime;
+            try {
+                m_scene.start (c);                
+            } finally {
+                c.time = m_initTime;
+                c.decoder = d;
+            }
 //#ifdef profiling
             Logger.profileEnd ("for scene starting");
 //#endif
@@ -203,8 +212,12 @@ public class Inline extends Node {
             c.time -= m_initTime;
             c.decoder = m_scene.m_decoder;
             String oldUrl = c.newUrl;
-            updated |= m_scene.innerCompose (c, clip, updated);
-            c.time += m_initTime;
+            try {
+                updated |= m_scene.innerCompose (c, clip, updated);
+            } finally {
+                c.time += m_initTime;
+                c.decoder = d;
+            }
             if (c.newUrl != null && c.newUrl != oldUrl) {
                 if (c.newUrlCount == 0) {
                     ((MFString)m_field[0]).setValue (0, c.newUrl);
@@ -217,7 +230,6 @@ public class Inline extends Node {
             }
             break;
         }
-        c.decoder = d;
         return updated;
     }
 
