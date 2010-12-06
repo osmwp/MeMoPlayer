@@ -16,6 +16,7 @@
 
 # include <stdio.h>
 # include <string.h>
+# include <iconv.h>
 
 # define MESSAGE(...) if (s_debug) fprintf (stderr, __VA_ARGS__)
 
@@ -122,25 +123,26 @@ public:
 
     void addAttribute (XmlAttribute * a);
 
-    bool parseAttributes (XmlReader * p);
-
     void visit (XmlVisitor *);
 };
 
 class XmlReader {
 public:
-    char * m_buffer; // the data to be parsed
-    int m_pos; // current char being parsed 
+    const char * m_buffer; // the data to be parsed
+    int m_pos; // current char being parsed
     int m_len; // length of buffer
     int m_nbLines; // the current line number
     char * m_sb; // a temporary buffer to parse CDATA
     char * m_charBuf; // a temporary buffer to html char (ex: &deg;)
     int m_sbSize, m_charBufSize;
+    iconv_t m_iconv; // used for character conversion to UTF-8
+    bool m_failure; // true if parsing failed
+    
 
-    XmlReader (char * buffer);
+    XmlReader (const char * buffer, const char * charset = NULL);
 
     ~XmlReader ();
-    
+
     // return the current char to read or '\0' if end of buffer
     char getChar ();
 
@@ -154,13 +156,13 @@ public:
     char skipSpaces ();
 
     char getHtmlChar ();
-    
+
     // return a string or null is next thing is not a string (i.e. first char is not a '"')
     char * getString ();
-    
+
     // return the next identifier for a tag or an attribute name
     char * getNextIdent (bool startsWithAlpha);
-    
+
     char * getNextToken ();
 
     char * getNextStrictToken ();
@@ -173,21 +175,26 @@ public:
     bool isAlpha (char c) { return ( (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'); }
     bool isSpecial (char c) { return (c == '-' || c == ':'  || c == '.' || c == '#' || c == '%'); }
 
+    bool parseXmlHeader ();
 
     bool parseSpecial (char c1, char c2, const char * s);
 
     XmlNode * parseElement ();
 
     XmlNode * parseCData ();
-    
+
     XmlNode * parseTag (char c);
 
     XmlNode * parseNode (XmlNode * node);
 
+    XmlAttribute * parseAttribute ();
 
 private:
     // Add char to buffers with dynamic resize
     void setSb (int position, char c);
     void setCharBuf (int position, char c);
+
+    // Duplicate a string (and convert to UTF8 if required)
+    char * toUTF8 (char * string, int size);
 };
 

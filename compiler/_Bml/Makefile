@@ -1,6 +1,6 @@
 include ../Makefile.inc
 
-SRCS=$(wildcard *.cpp)
+SRCS=XmlReader.cpp bml.cpp
 OBJS=$(SRCS:.cpp=.o);
 HDRS=$(SRCS:.cpp=.h);
 
