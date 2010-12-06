@@ -161,6 +161,8 @@ int main (int argc, char * argv []) {
         } else if (strcmp (argv[start], "-I") == 0) {
             MultiPathFile::addMultiplePaths (argv[start+1]);
             start++;
+        } else if (strcmp (argv[start], "--compat") == 0) {
+            ByteCode::s_compat = true;
         } else {
             file = argv [start];
         }

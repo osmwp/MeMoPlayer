@@ -53,6 +53,9 @@ class ByteCode {
     int m_maxLabels; 
 public:
 
+    // output old bytecode if true, new format if false
+    static bool s_compat;
+
     enum {
         ASM_ENDOFCODE = 255,
         ASM_ERROR = -1,
@@ -63,7 +66,7 @@ public:
         
         ASM_JUMP,             // label/8: goto label
         ASM_JUMP_ZERO,        // reg label/8: if val(ref) == 0 goto label 
-        ASM_LABEL,            // DEPRECATED, NOT USED ANYMORE
+        ASM_LABEL,            // label/8: marker to a jump point (only used in compat mode)
         ASM_EXT_CALL,         // label/8 label/8 reg
         ASM_INT_CALL,         // label/8 reg
         ASM_RETURN,           // reg

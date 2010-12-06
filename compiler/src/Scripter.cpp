@@ -176,7 +176,6 @@ Function::Function (Node * node) {
     m_code = NULL;
     m_node = node;
     m_blockLevel = 1;
-    m_counter = 0;
     m_inLoop = false;
     m_switchLevel = 0;
 }
@@ -1041,7 +1040,8 @@ Code * Function::parse (Tokenizer * t, bool verbose) {
         exit (1);
     }
     m_code = parseBlock (t);
-    if (m_code) {
+    if (m_code && !ByteCode::s_compat) {
+        // New bytecode format: add an explicit code to mark the end of the function
         m_code->append (new Code (Code::CODE_THEEND, NULL));
     }
     //fprintf (myStderr, "Function '%s' parsed correctly\n", funcName);
@@ -1121,23 +1121,31 @@ Scripter::Scripter (Node * node, Tokenizer * t, FILE * fp, bool verbose) {
         field = field->m_next;
     }
 
-    // Write max registers (<255)
-    // 255 is reserved for detection of older bytecode format on the player side
-    fprintf (fp, "%c", m_maxRegisters);
-    // Write String table size
-    fprintf (fp, "%c", m_stringTable.getSize ());
-    // Write String table
-    data = m_stringTable.generate (len);
-    fwrite (data, 1, len, fp);
-    free (data);
-    // Write Int table size
-    fprintf (fp, "%c", m_intTable.getSize ());
-    // Write Int table
-    data = m_intTable.generate (len);
-    fwrite (data, 1, len, fp);
-    free (data);
-    // Write nb of functions
-    fprintf (fp, "%c", nbFunctions);
+    if (ByteCode::s_compat) {
+        // Add a last zero byte to mark the end of functions
+        m_totalData[m_totalLen++] = 0;
+        // Write 255 marker (older bytecode format) and max registers
+        fprintf (fp, "%c%c", 255, m_maxRegisters);
+    } else {
+        // Write max registers (<255)
+        // 255 is reserved for detection of the older
+        // bytecode format on the player side
+        fprintf (fp, "%c", m_maxRegisters);
+        // Write String table size
+        fprintf (fp, "%c", m_stringTable.getSize ());
+        // Write String table
+        data = m_stringTable.generate (len);
+        fwrite (data, 1, len, fp);
+        free (data);
+        // Write Int table size
+        fprintf (fp, "%c", m_intTable.getSize ());
+        // Write Int table
+        data = m_intTable.generate (len);
+        fwrite (data, 1, len, fp);
+        free (data);
+        // Write nb of functions
+        fprintf (fp, "%c", nbFunctions);
+    }
     // Write all functions
     fwrite (m_totalData, 1, m_totalLen, fp);
 }
@@ -1186,10 +1194,12 @@ bool Scripter::getFunction () {
     
     // Copy function index
     m_totalData[m_totalLen++] = (index+1) & 0xFF;
-    // Copy function jump table
-    data = bc.getJumpTable (len);
-    writeData (data, len);
-    free (data);
+    if (!ByteCode::s_compat) {
+        // Copy function jump table
+        data = bc.getJumpTable (len);
+        writeData (data, len);
+        free (data);
+    }
     // Copy function code
     data = bc.getCode (len);
     writeData (data, len);

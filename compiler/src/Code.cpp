@@ -23,6 +23,8 @@
 # include "Types.h"
 # include "Scripter.h"
 
+bool ByteCode::s_compat = false;
+
 ByteCode::ByteCode (StringTable * stringTable, IntTable * intTable) {
     m_bytecode = m_bytecodeStorage;
     for (int i = 0; i < MAX_REGISTERS; i++) {
@@ -124,6 +126,10 @@ int ByteCode::getLabel () {
 }
 
 void ByteCode::setLabel (int labelIndex) {
+    if (s_compat) {
+        add (ByteCode::ASM_LABEL, labelIndex);
+        return;
+    }
     m_labels [labelIndex] = m_bytecode - m_bytecodeStorage;
 }
 
@@ -132,6 +138,14 @@ void ByteCode::addByte (int i) {
 }
 
 void ByteCode::addInt (int i) {
+    if (s_compat) {
+	    unsigned char * s = (unsigned char *)&i;
+	    exchangeBytes (s);
+	    for (int i = 0; i < 4; i++) {
+	        addByte (*s++);
+        }
+        return;
+    }
     addByte (m_intTable->findOrAdd (i));
 }
 
@@ -140,6 +154,13 @@ void ByteCode::addFloat (float f) {
 }
 
 void ByteCode::addString (char * s) {
+    if (s_compat) {
+        while (*s != 0) {
+            addByte (*s++);
+        }
+        addByte (0);
+        return;
+    }
     addByte (m_stringTable->findOrAdd (s));
 }
 
@@ -401,6 +422,10 @@ void ByteCode::dump (unsigned char * data, int len) {
             printByte (data); data += 1;
             printByte (data); data += 1;
             break;
+        case ASM_LABEL:
+            printf ("ASM_LABEL "); data++;
+            printByte (data); data += 1;
+            break;
         case ASM_EXT_CALL:
             printf ("    ASM_EXT_CALL "); data++; 
             printByte (data); data += 1;
@@ -438,6 +463,7 @@ void ByteCode::generate (char * n) {
     fprintf (fp, "    final static int ASM_NOP = %d;\n", ASM_NOP);
     //fprintf (fp, "    final static int ASM_ALLOC = %d;\n", ASM_ALLOC);
     //fprintf (fp, "    final static int ASM_FREE = %d;\n", ASM_FREE);
+    fprintf (fp, "    final static int ASM_LABEL = %d;\n", ASM_LABEL);
     fprintf (fp, "    final static int ASM_JUMP = %d;\n", ASM_JUMP);
     fprintf (fp, "    final static int ASM_JUMP_ZERO = %d;\n", ASM_JUMP_ZERO);
     fprintf (fp, "    final static int ASM_EXT_CALL = %d;\n", ASM_EXT_CALL);

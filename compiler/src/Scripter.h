@@ -84,7 +84,6 @@ class Function {
     Code * m_code;
     int m_len; // length of the bytecode
     unsigned char *  m_data; // the bytecode itself
-    int m_counter;
     bool m_inLoop;
     int m_switchLevel;
 public:
@@ -101,8 +100,6 @@ public:
         len = m_len;
         return m_data;
     }
-
-    int getCounter () { return m_counter++; }
 
     // Create a new var accoding to its name (may shadow an exiting one)
     Var * addVar (char * name, int level, int index);
