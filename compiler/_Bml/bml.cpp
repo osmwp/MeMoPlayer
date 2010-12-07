@@ -106,10 +106,10 @@ public:
     }
 
     void parseTable () {
-        char c1 = (char)fgetc (m_fp);
-        char c2 = (char)fgetc (m_fp);
-        char c3 = (char)fgetc (m_fp);
-        char c4 = (char)fgetc (m_fp);
+        fgetc (m_fp); // B
+        fgetc (m_fp); // M
+        fgetc (m_fp); // L
+        fgetc (m_fp); // 1
 
         m_nbTags = decodeSize ();
         m_tags = new char * [m_nbTags];
@@ -146,20 +146,24 @@ public:
 
 
 class BmlEncoder : public XmlVisitor {
-    FILE * m_fp;
+    char * m_buff; // not freed by class as return by getBuffer()
+    int m_buffSize;
+    int m_buffPos;
 
     int m_nbTags;
     Tag * m_tags;
     Tag * m_lastTag;
-    bool m_init;
+    bool m_dumpTable;
 
 public:
-    BmlEncoder (FILE * fp) {
-        m_fp = fp;
-        m_init = true;
+    BmlEncoder () {
+        m_dumpTable = false;
         m_nbTags = 0;
         m_tags = NULL;
         m_lastTag = NULL;
+        m_buffSize = 8192;
+        m_buffPos = 0;
+        m_buff = (char*) malloc (sizeof(char) * m_buffSize);
     }
 
     ~BmlEncoder () {
@@ -174,9 +178,44 @@ public:
         m_tags = NULL;
     }
 
+    char * getBuffer (int & size) {
+        size = m_buffPos;
+        return m_buff;
+    }
+
+    void ensure (int l) {
+        int newSize = m_buffPos + l;
+        if (newSize > m_buffSize) {
+            m_buffSize *= 2;
+            if (newSize > m_buffSize) {
+                m_buffSize = newSize;
+            }
+            m_buff = (char*) realloc (m_buff, sizeof(char) * m_buffSize);
+        }
+    }
+
+    void encodeChar (char c) {
+        ensure (1);
+        m_buff[m_buffPos++] = c;
+    }
+    
+    void encodeString (char * s) {
+        int l = strlen (s) + 1;
+        if (l > 1) {
+            ensure (l);
+            memcpy (m_buff+m_buffPos, s, l);
+            m_buffPos += l;
+        } else {
+            encodeChar (0);
+        }
+    }
+
     void initDone () {
-        m_init = false;
-        fprintf (m_fp, "BML1");
+        m_dumpTable = true;
+        encodeChar ('B');
+        encodeChar ('M');
+        encodeChar ('L');
+        encodeChar ('1');
         dumpTable ();
     }
 
@@ -200,66 +239,88 @@ public:
     void encodeSize (int size) {
         if (size > 255) {
             int n = size / 255;
-            fprintf (m_fp, "%c%c", 255, n);
+            encodeChar (255);
+            encodeChar (n);
             size -= 255*n;
         }
-        fprintf (m_fp, "%c", size);
+        encodeChar (size);
     }
 
     void dumpTable () {
         Tag * tag = m_tags;
         encodeSize (m_nbTags);
         while (tag != NULL) {
-            fprintf (m_fp, "%s%c", tag->m_name, 0);
+            encodeString (tag->m_name);
             tag = tag->m_next;
         }
     }
 
     void setLeave (char * l) {
-        if (!m_init) {
-            fprintf (m_fp, "%c%s%c", 3, l, 0);
+        if (m_dumpTable) {
+            encodeChar (3);
+            encodeString (l);
         }
     }
 
     void open (char * t, bool selfClosing) {
         int id = getTagId (t); // create the entry if necessary
-        if (!m_init) {
-            fprintf (m_fp, "%c", selfClosing ? 2 : 1);
+        if (m_dumpTable) {
+            encodeChar (selfClosing ? 2 : 1);
             encodeSize (id);
         }
     }
 
     void close (char * t) {
-        if (!m_init) {
-            fprintf (m_fp, "%c", 0);
+        if (m_dumpTable) {
+            encodeChar (0);
         }
     }
 
     void endOfAttributes (bool selfClosing) {
-        if (!m_init) {
+        if (m_dumpTable) {
+            encodeChar (0);
             if (selfClosing) {
-                fprintf (m_fp, "%c%c", 0, 0); // double 0 because close will not be called
-            } else {
-                fprintf (m_fp, "%c", 0);
+                encodeChar (0); // double 0 because close will not be called
             }
         }
     }
 
     void addAttribute (char * name, char * value) {
         int id = getTagId (name); // create the entry if necessary
-        if (!m_init) {
+        if (m_dumpTable) {
             encodeSize (id+1);
-            fprintf (m_fp, "%s%c", value, 0);
+            encodeString (value);
         }
     }
 };
 
+Encoder::Encoder (char * data, char ** dataOut, int &sizeOut) {
+    m_root = NULL;
+    s_debug = false;
+    // Parse Xml
+    XmlReader t (data, NULL);
+    m_root = t.parseNode (NULL);
+    free (data);
+    if (m_root == NULL) {
+        MESSAGE ("Error during Xml parsing");
+        *dataOut = NULL;
+        sizeOut = -1;
+        return;
+    }
+    // Encode Bml
+    BmlEncoder e;
+    m_root->visit (&e); // parse a first time to compute ids table
+    e.initDone (); // dump the id table
+    m_root->visit (&e); // parse a second time to encode the content
+    // Return bml in buffer
+    *dataOut = e.getBuffer (sizeOut);
+}
 
-Encoder::Encoder (char * in, char * out, bool verbose, bool decode) {
+Encoder::Encoder (char * in, char * out, bool verbose, bool decode, char * charset) {
     m_root = NULL;
     s_debug = verbose;
     if (endsWith (in, "xml") || (strcmp (in, "-") == 0 && decode == false)) {
-        if (!parseXml (in)) {
+        if (!parseXml (in, charset)) {
             fprintf (stderr, "Error during XML parsing\n");
             exit (1);
         }
@@ -270,10 +331,14 @@ Encoder::Encoder (char * in, char * out, bool verbose, bool decode) {
             fp = fopen (out, "w");
         }
         if (fp != NULL) {
-            BmlEncoder e (fp);
-            m_root->visit (&e);
-            e.initDone ();
-            m_root->visit (&e);
+            BmlEncoder e;
+            m_root->visit (&e); // parse a first time to compute ids table
+            e.initDone (); // dump the id table
+            m_root->visit (&e); // parse a second time to encode the content
+            int size;
+            char * buff = e.getBuffer (size);
+            fwrite (buff, 1, size, fp);
+            free (buff);
             if (fp != stdout) {
                 fclose (fp);
             }
@@ -326,7 +391,7 @@ bool Encoder::parseBml (char * in) {
     return m_root != NULL;
 }
 
-bool Encoder::parseXml (char * in) {
+bool Encoder::parseXml (char * in, char * charset) {
     FILE * fp;
     if (strcmp (in, "-") == 0) {
         fp = stdin;
@@ -360,17 +425,29 @@ bool Encoder::parseXml (char * in) {
       }
     }
     data[size] = '\0';
-    XmlReader t (data);
+    XmlReader t (data, charset);
     m_root = t.parseNode (NULL);
     free (data);
     return m_root != NULL;
 }
 
 void usage (char * exeName) {
+    fprintf (stderr, "%s [-v] [--charset CHARSET] [--toXml] inFile outFile\n\n", exeName);
+    fprintf (stderr, "options:\n");
+    fprintf (stderr, "  -v : prints some messages about the processing.\n");
+    fprintf (stderr, "  --charset : force the charset for the xml document (default is UTF-8, or retrieved from the xml declaration).\n");
+    fprintf (stderr, "  --toXml : inform the program that stdin will be BML and output will be XML.\n");
+    fprintf (stderr, "            this is usefull when using - - as file names for stdin/stdout mode.\n\n");
     fprintf (stderr, "usage: \n%s file.xml file.bml\n", exeName);
-    fprintf (stderr, "    convert a textual xml file into a binary file\n");
+    fprintf (stderr, "    convert a xml file into a bml file\n");
     fprintf (stderr, "\n%s file.bml file.xml\n", exeName);
-    fprintf (stderr, "    convert a textual xml file into a binary file\n");
+    fprintf (stderr, "    convert a xml file into a bml file\n");
+    fprintf (stderr, "usage: \n%s --charset ISO-8859-15 file.xml file.bml\n", exeName);
+    fprintf (stderr, "    convert a xml file encoded in ISO-8859-15 into a bml file\n");
+    fprintf (stderr, "\n%s - -\n", exeName);
+    fprintf (stderr, "    convert xml from stdin to bml on stdout.\n");
+    fprintf (stderr, "\n%s --toXml - -\n", exeName);
+    fprintf (stderr, "    convert bml from stdin to xml on stdout.\n");
     exit (1);
 }
 
@@ -378,6 +455,7 @@ int main (int argc, char * argv []) {
     int i;
     s_debug = false;
     bool decode = false;
+    char * charset = NULL;
     for (i = 1; i < argc; i++) {
         if (strcmp (argv[i], "-p") == 0) {
             //propertyFile = argv [++i];
@@ -385,6 +463,8 @@ int main (int argc, char * argv []) {
             s_debug = true;
         } else if (strcmp (argv[i], "--toXml") == 0) {
             decode = true;
+        } else if (strcmp (argv[i], "--charset") == 0) {
+            charset = argv[++i];
         } else {
             break;
         }
@@ -392,5 +472,5 @@ int main (int argc, char * argv []) {
     if ( (argc - i) < 2) {
         usage (argv[0]);
     }
-    Encoder encoder  (argv[i], argv[i+1], s_debug, decode);
+    Encoder encoder  (argv[i], argv[i+1], s_debug, decode, charset);
 }

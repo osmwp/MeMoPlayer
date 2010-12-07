@@ -17,17 +17,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "XmlReader.h"
 //# include "Trace.h"
 
 extern bool s_debug;
 
-bool startsWith (char * buffer, const char * target, int offset) {
+bool startsWith (const char * buffer, const char * target, int offset) {
     return strncmp (buffer+offset, target, strlen (target)) == 0;
 }
 
-int indexOf (char * buffer, const char * target, int offset) {
+int indexOf (const char * buffer, const char * target, int offset) {
     int idx = strstr (buffer+offset, target) - (buffer+offset);
     return idx >= 0 ? idx : -1;
 }
@@ -85,8 +86,8 @@ XmlNode::~XmlNode () {
     m_attributes = NULL;
 }
 
-bool XmlNode::isClosing (XmlNode * n) { 
-    return (n != NULL && m_type == CLOSE_TAG && strcasecmp (m_name, n->m_name) == 0); 
+bool XmlNode::isClosing (XmlNode * n) {
+    return (n != NULL && m_type == CLOSE_TAG && strcasecmp (m_name, n->m_name) == 0);
 }
 
 void XmlNode::addChild (XmlNode * n) {
@@ -120,30 +121,6 @@ void XmlNode::addAttribute (XmlAttribute * a) {
     m_nbAttributes++;
 }
 
-bool XmlNode::parseAttributes (XmlReader * p) {
-    char c = p->skipSpaces ();
-    while (c != '\0' && c != '/' && c != '>') {
-        char * attr = p->getNextToken ();
-        if (attr == NULL || *attr == 0) {
-            MESSAGE ("parseAttributes: name expected at line #%d (read %c)\n", p->m_nbLines, c);
-            return false; // something unexpected: not an iden nor '/' or '>'
-        }
-        if (p->skipSpaces () != '=') {
-            MESSAGE ("parseAttributes: '=' expected after %s at line #%d\n", attr, p->m_nbLines);
-            return false;
-        }
-        p->getNextChar (); // eat '='
-        char * value = p->getString (); // getString will eat spaces if needed
-        if (value == NULL) {
-            MESSAGE ("parseAttributes: '=' expected after %s\n", attr);
-            return false;
-        }
-        addAttribute (new XmlAttribute (attr, value));
-        c = p->skipSpaces ();
-    }
-    return true;
-}
-
 
 void XmlNode::visit (XmlVisitor * v) {
     if (m_type == CDATA) {
@@ -164,27 +141,40 @@ void XmlNode::visit (XmlVisitor * v) {
             m_children->visit (v);
         }
         v->close (m_name);
-    } 
+    }
     if (m_next != NULL) {
         m_next->visit (v);
     }
 }
 
 
-XmlReader::XmlReader (char * buffer) {
+XmlReader::XmlReader (const char * buffer, const char * encoding) {
     m_nbLines = 1;
     m_sbSize = 4096;
     m_sb = (char*) malloc (sizeof(char) * m_sbSize);
     m_charBufSize = 4096;
-    m_charBuf = (char*) malloc (sizeof(char) * m_sbSize);
+    m_charBuf = (char*) malloc (sizeof(char) * m_charBufSize);
     m_buffer = buffer; // will not be freed by this class
     m_len = strlen (buffer);
     m_pos = 0;
+    m_failure = false;
+    m_iconv = NULL;
+    if (encoding) {
+        iconv_t iv = iconv_open ("UTF-8", encoding);
+        if (iv == (iconv_t)-1) { // unsupported target encoding
+            MESSAGE ("Warning: ignoring unsupported encoding: %s\n", encoding);
+        } else {
+          m_iconv = iv;
+        }
+    }
 }
 
 XmlReader::~XmlReader () {
     free (m_sb);
     free (m_charBuf);
+    if (m_iconv) {
+        iconv_close (m_iconv);
+    }
 }
 
 void XmlReader::setSb (int position, char c) {
@@ -203,20 +193,52 @@ void XmlReader::setCharBuf (int position, char c) {
     m_charBuf[position] = c;
 }
 
+char * XmlReader::toUTF8 (char * string, int size) {
+    int multiplier = 2; // initial multiplier between original size and maximum buffer size
+    while (m_iconv != NULL) {
+        int maxSize = size * multiplier;
+        if (m_charBufSize < maxSize) { // ensure maxSize for dest buffer
+            fprintf (stderr, "realloc to: %i\n", maxSize);
+            m_charBufSize = maxSize;
+            m_charBuf = (char*) realloc (m_charBuf, sizeof(char) * m_charBufSize);
+        }
+        size_t inSize = size;
+        char * inBuff = string;
+        size_t outSize = m_charBufSize;
+        char * outBuff = m_charBuf;
+        int ret = iconv (m_iconv, &inBuff, &inSize, &outBuff, &outSize);
+        if (ret == -1) {
+            if (errno == E2BIG && multiplier == 2) {
+                // not enough space in m_charBuf, retry with a bigger multiplier
+                // an UTF-8 string can only be 4 time bigger (worst case) than a one byte encoding string
+                multiplier = 4;
+                continue;
+            }
+            MESSAGE ("toUTF8: could not convert string to UTF8: %s\n", string);
+            m_failure = true;
+            return NULL;
+        }
+        *outBuff = 0; // mark end of string
+        return strdup (m_charBuf);
+    }
+    // m_iconv is not initialized (UTF-8 conversion not required)
+    return strdup (string);
+}
+
 // return the current char to read or '\0' if end of buffer
-char XmlReader::getChar () { 
+char XmlReader::getChar () {
     return m_pos < m_len ? m_buffer[m_pos] : '\0';
 }
 
 // return the next char to read or '\0' if end of buffer
 char XmlReader::getNextChar () {
-    m_pos++; 
+    m_pos++;
     return getChar ();
 }
 
 // return true and advance to the next char if the current char is equal to the parameter
 bool XmlReader::eatChar (char c) {
-    if (getChar () == c) { 
+    if (getChar () == c) {
         m_pos++;
         return true;
     }
@@ -255,9 +277,9 @@ char XmlReader::getHtmlChar () {
             c = getNextChar ();
         }
         while ((c >= '0' && c <= '9')
-               || (base == 16 && c >= 'a' && c <= 'f') 
+               || (base == 16 && c >= 'a' && c <= 'f')
                || (base == 16 && c >= 'A' && c <= 'F') ) {
-            if (c >= '0' && c <= '9') { 
+            if (c >= '0' && c <= '9') {
                 i = base * i + (c-'0');
             } else if (c >= 'A' &&  c <= 'F') {
                 i = base * i + (10 + c - 'A');
@@ -305,7 +327,7 @@ char XmlReader::getHtmlChar () {
         return '&';
     }
 }
-    
+
 int getHexDigit (char c) {
     if ( (c >= '0') && (c <= '9') ) {
         return c - '0';
@@ -318,7 +340,7 @@ int getHexDigit (char c) {
     }
     return 0;
 }
-    
+
 // return a string or NULL is next thing is not a string (i.e. first char is not a '"')
 char * XmlReader::getString () {
     int utf = 0;
@@ -363,13 +385,13 @@ char * XmlReader::getString () {
     }
     if (eatChar (quote)) {
         setSb (curPos, 0);
-        return strdup (m_sb);
+        return toUTF8 (m_sb, curPos);
     } else {
         return NULL;
     }
 }
 
-char * strdup (char * s, int start, int end) {
+char * strdup (const char * s, int start, int end) {
     int len = (end-start);
     char * tmp = (char *)malloc (len+1);
     strncpy (tmp, s+start, len);
@@ -411,17 +433,47 @@ char * XmlReader::getNextNumber () {
 }
 
 bool XmlReader::parseSpecial (char c1, char c2, const char * s) {
-    // shoudl check for "--"
+    // should check for "--"
     if (getNextChar () != c1 || getNextChar () != c2) {
         return false;
     }
     //int p = m_buffer.indexOf (s, m_pos);
     int p = strstr (m_buffer+m_pos, s) - (m_buffer+m_pos);
-    if (p < 0) { 
+    if (p < 0) {
         return false;
     } // comment not terminated
     m_pos += p+strlen (s);
     return true;
+}
+
+bool XmlReader::parseXmlHeader () {
+    eatChar ('?');
+    char * name = getNextToken ();
+    if (name == NULL || strcmp (name, "xml") != 0) {
+        free (name);
+        MESSAGE ("Error: XML must start with a valid xml declaration <?xml ?> !'\n");
+        m_failure = true;
+        return false;
+    }
+    free (name);
+    XmlAttribute * attr = parseAttribute ();
+    while (attr != NULL) {
+        if (m_iconv == NULL && strcmp (attr->m_name, "encoding") == 0 && strcmp (attr->m_value, "UTF-8") != 0) {
+            // Setup caracter conversion as encoding is not UTF-8
+            m_iconv = iconv_open ("UTF-8", attr->m_value);
+            if (m_iconv == (iconv_t)-1) { // unsupported target encoding
+                MESSAGE ("Error: unsupported encoding in xml declaration: %s\n", attr->m_value);
+                return false;
+            }
+        }
+        delete attr;
+        attr = parseAttribute ();
+    }
+    if (eatChar ('?') && eatChar ('>')) {
+      return true;
+    }
+    MESSAGE ("Error: <?xml declaration must end with a valid '?>' value !'\n");
+    return false;
 }
 
 XmlNode * XmlReader::parseElement () {
@@ -430,8 +482,9 @@ XmlNode * XmlReader::parseElement () {
     if (c == '\0') { // end of data
         return NULL;
     } else if (c == '<') { // we have a XML fragment
-        if ( (c = getNextChar ()) == '?') {
-            if (parseSpecial ('x', 'm', "?>")) {
+        c = getNextChar ();
+        if (c == '?') {
+            if (parseXmlHeader ()) {
                 return parseElement ();
             }
             return NULL;
@@ -440,15 +493,27 @@ XmlNode * XmlReader::parseElement () {
                 m_pos+=8; // skip header ![CDATA[
                 int end = indexOf (m_buffer, "]]>", m_pos);
                 if (end == -1) {
+                    MESSAGE ("Error: Non terminated CDATA section.\n");
+                    m_failure = true;
                     return NULL; // CDATA not terminated
                 }
                 char * data = strdup (m_buffer, m_pos, m_pos+end);
+                if (m_iconv) {
+                    char * orig = data;
+                    data = toUTF8 (orig, end);
+                    free (orig);
+                }
                 m_pos += end+3;  // avoid trailing ]]>
                 return new XmlNode (data, CDATA);
-            } 
-            if (parseSpecial ('-', '-', "-->")) {
+            }
+            if (parseSpecial ('-', '-', "-->")) { // ignore comments <!-- -->
+                return parseElement ();
+            } else if (parseSpecial ('D', 'O', ">")) { // ignore external document type declaration <!DOCTYPE >
+                // TODO: support parsing (and ignoring) internal doctype declaration
                 return parseElement ();
             }
+            MESSAGE ("Error: Unsupported tag syntax\n");
+            m_failure = true;
             return NULL;
         }
         return parseTag (c);
@@ -463,14 +528,14 @@ XmlNode * XmlReader::parseCData () {
         if (c == '&') {
             c = getHtmlChar ();
         } else if (c == '\n') {
-          m_nbLines++; 
+            m_nbLines++;
         }
         setSb (currentPos++, c);
         // check for '>'
         c = getNextChar ();
     }
     setSb (currentPos, 0);
-    return new XmlNode (strdup (m_sb), CDATA);
+    return new XmlNode (toUTF8 (m_sb, currentPos), CDATA);
 }
 
 XmlNode * XmlReader::parseTag (char c) {
@@ -483,29 +548,38 @@ XmlNode * XmlReader::parseTag (char c) {
     char * name = getNextToken ();
     if (name == NULL) {
         MESSAGE ("Error: XML tags must start with an alpha caracter !'");
+        m_failure = true;
         return NULL;
     }
     XmlNode * e = new XmlNode (name, closing ? CLOSE_TAG : OPEN_TAG);
     if (!closing) { // may have some attributes
-        e->parseAttributes (this);
+        XmlAttribute * attr = parseAttribute ();
+        while (attr != NULL) {
+            e->addAttribute (attr);
+            attr = parseAttribute ();
+        }
     }
     // final '>'
     c = getChar ();
     if (c == '/') { // self tag
         if (closing) {
+            delete e;
             MESSAGE ("Error: closing is also self closing: %s", e->m_name);
+            m_failure = true;
             return NULL;
         }
         e->m_type = SELF_TAG;
         c = getNextChar ();
     }
-    
+
     // check for nodes that shoudl be self closing: BR, HR, IMG
 //     if (m_htmlMode && e->m_type == OPEN_TAG) {
 //         e.m_type = checkHtmlSelfClosing(e.m_name);
 //     }
     if (c != '>') { // ending tag
+        delete e;
         MESSAGE ("Error: got '%c' instead of '>'", c);
+        m_failure = true;
         return NULL;
     }
     getNextChar (); // eat '>'
@@ -513,9 +587,13 @@ XmlNode * XmlReader::parseTag (char c) {
 }
 
 XmlNode * XmlReader::parseNode (XmlNode * node) {
+    if (m_failure) { // stop further parsing on failure
+        return NULL;
+    }
     if (node == NULL) {
         if ( (node = parseElement ()) == NULL) {
-            MESSAGE ("cannot parse node at all");
+            MESSAGE ("Error: cannot parse node at all\n");
+            m_failure = true;
             return NULL; // parsing problem
         }
     }
@@ -531,21 +609,52 @@ XmlNode * XmlReader::parseNode (XmlNode * node) {
                 node->addChild (parseNode (child));
             } else if (child->m_type == CLOSE_TAG) { // not closing the right node so error
                 MESSAGE ("unexpected closing tag %s for %s\n", child->m_name, node->m_name);
+                m_failure = true;
+                delete node;
                 delete child;
                 return NULL;
             }
             child = parseElement ();
         }
-        if (child == NULL || child->isClosing (node) == false) {
-            if (child != NULL) delete child;
+        if (child == NULL) {
             return NULL;
         }
         delete child;
     } else if (node->m_type == SELF_TAG || node->m_type == CDATA) {
         ; // nothing to do just return;
     } else if (node->m_type == CLOSE_TAG) { //error
+        MESSAGE ("unexpected closing tag %s\n", node->m_name);
+        m_failure = true;
+        delete node;
+        return NULL;
+    }
+    if (m_failure && node != NULL) {
+        delete node;
         return NULL;
     }
     return node;
+}
+
+XmlAttribute * XmlReader::parseAttribute () {
+    char * attr = getNextToken ();
+    if (attr == NULL || *attr == 0) {
+        free (attr);
+        return NULL; // something unexpected: not an iden nor '/' or '>'
+    }
+    if (skipSpaces () != '=') {
+        free (attr);
+        MESSAGE ("parseAttributes: '=' expected after %s at line #%d\n", attr, m_nbLines);
+        m_failure = true;
+        return NULL;
+    }
+    getNextChar (); // eat '='
+    char * value = getString (); // getString will eat spaces if needed
+    if (value == NULL) {
+        free (attr);
+        MESSAGE ("parseAttributes: malformed quoted string after %s=\n", attr);
+        m_failure = true;
+        return NULL;
+    }
+    return new XmlAttribute (attr, value);
 }
 
