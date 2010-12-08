@@ -207,7 +207,6 @@ public class File implements Loadable {
                 }
 //#endif
             } else if (url.startsWith("cache:")) {
-                if (!isMode (MODE_WRITE)) {
                     // Split url : cache:[namespace]//rmsRecord[.m4m#innerRessource||,sourceUrl[,force]]
 //#ifdef MM.namespace
                     // find the extra namespace if any
@@ -277,7 +276,7 @@ public class File implements Loadable {
                     } else {
                         throw new IOException("Could not find data in cache.");
                     }
-                } else {
+                if (isMode (MODE_WRITE) && m_cacheRecord == null) {
                     throw new IOException("Cannot write in cache for now...");
                 }
             } else { // From JAR ressources
