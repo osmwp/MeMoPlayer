@@ -156,26 +156,16 @@ class SmartHttpConnection implements Connection {
             m_conn.setRequestProperty(HTTP_COOKIE_FIELD, cookie);
         }
         String extraUA = s_extraUA;
-        String extraAE = null;
-//#ifdef api.bml
-        extraAE = "application/bml";
-//#endif
         // Set headers found during parse of URL
         for (int i=0; i<m_headersCnt; i+=2) {
             if (extraUA != null && m_headers[i].startsWith ("User-Agent")) {
                 m_headers[i+1] = extraUA + m_headers[i+1];
                 extraUA = null;
-            } else if (extraAE != null && m_headers[i].startsWith("Accept-Encoding")) {
-                m_headers[i+1] = extraAE + ", " + m_headers[i+1];
-                extraAE = null;
             }
             m_conn.setRequestProperty (m_headers[i], m_headers[i+1]);
         }
         if (extraUA != null) { // force a User Agent anyway
             m_conn.setRequestProperty("User-Agent", extraUA);
-        }
-        if (extraAE != null) {
-            m_conn.setRequestProperty("Accept-Encoding", extraAE);
         }
     }
     
