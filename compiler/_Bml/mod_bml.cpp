@@ -58,6 +58,8 @@ struct bml_ctx{
  */
 static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 {
+    request_rec *r = f->r;
+
     //Buffer for IN XML Data
     struct bml_ctx *bmlCtx = (struct bml_ctx *)f->ctx;
 
@@ -69,9 +71,6 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
     char *tmpData = NULL;
     apr_size_t tmpLen;
 
-    //Output Brigade
-    apr_bucket_brigade *pbbOut;
-
     //APR Status
     apr_status_t status;
 
@@ -79,6 +78,64 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
     if (APR_BRIGADE_EMPTY(bb)) {
         return APR_SUCCESS;
     }
+
+    if (!bmlCtx) {
+        /*
+         * Do not convert BML if asked not too.
+         */
+        if (apr_table_get(r->subprocess_env, "no-bml")) {
+            ap_remove_output_filter(f);
+            return ap_pass_brigade(f->next, bb);
+        }
+        /*
+         * Only check headers if force-bml is not set.
+         */
+        if (!apr_table_get(r->subprocess_env, "force-bml")) {
+            /*
+             * Only convert if content is text/xml or application/bml.
+             */
+            if (!strncmp(r->content_type, "text/xml", 8) &&
+                !strncmp(r->content_type, "application/xml", 15)) {
+                ap_remove_output_filter(f);
+                return ap_pass_brigade(f->next, bb);
+            }
+
+            /*
+             * Only convert xml to bml if Accept-Encoding is set.
+             * This part originates from the mod_deflate filter.
+             */
+            char *token;
+            const char *accepts;
+            /* if they don't have the line, then they can't play */
+            accepts = apr_table_get(r->headers_in, "Accept-Encoding");
+            if (accepts == NULL) {
+                ap_remove_output_filter(f);
+                return ap_pass_brigade(f->next, bb);
+            }
+
+            token = ap_get_token(r->pool, &accepts, 0);
+            while (token && token[0] && strcasecmp(token, bmlMimeType)) {
+                /* skip parameters, XXX: ;q=foo evaluation? */
+                while (*accepts == ';') {
+                    ++accepts;
+                    token = ap_get_token(r->pool, &accepts, 1);
+                }
+
+                /* retrieve next token */
+                if (*accepts == ',') {
+                    ++accepts;
+                }
+                token = (*accepts) ? ap_get_token(r->pool, &accepts, 0) : NULL;
+            }
+
+            /* No acceptable token found. */
+            if (token == NULL || token[0] == '\0') {
+                ap_remove_output_filter(f);
+                return ap_pass_brigade(f->next, bb);
+            }
+        }
+    }
+
 
     apr_bucket *pkbbPtr = APR_BRIGADE_FIRST(bb);
 
