@@ -382,6 +382,7 @@ Code * Function::parsePreOperator (Tokenizer * t, bool returnValue) {
 Code * Function::selfAssign (int operation, Code * self, Code * value, bool returnValue) {
     Code * compute = new Code (operation, self->cloneInvertAccess(), value);
     Code * tmp = new Code (returnValue ? Code::CODE_ASSIGN_AND_RETURN : Code::CODE_ASSIGN, self, compute);
+    return tmp;
 }
 
 int Function::parseAssign (Tokenizer * t, bool & self) {
