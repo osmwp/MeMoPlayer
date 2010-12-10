@@ -131,15 +131,14 @@ public:
     // release the register of index i in the pool
     void freeRegister (int i);
 
-    // bunch mode: if true then all available registers will be allocated on top, returns previous mode 
-    bool setRegBunchMode (bool yes);
-
     // get a free register and set it the corresponding level
-    // calls the auxillary function above and record the max reg used
-    int getRegister (int level = 0);
+    // calls the getRegister2 function and records the max reg used
+    // bunch mode: if true then all available registers will be
+    // allocated on top
+    int getRegister (int level = 0, bool bunchMode = false);
 
     // auxillary function
-    int getRegister2 (int level = 0);
+    int getRegister2 (int level = 0, bool bunchMode = false);
 
     // return the maximum number of registers used in a function
     int getMaxRegisters () { return m_maxRegister + 1; }
@@ -302,8 +301,8 @@ private:
     bool isTerm ();
 
     void setSecondToLast (Code * code);
-    int generateBinary (int opcode, ByteCode * bc, Function * f);
-    int generate (ByteCode * bc, Function * f, int reg);
+    void generateBinary (int opcode, ByteCode * bc, Function * f, int reg);
+    void generate (ByteCode * bc, Function * f, int reg);
 };
 
 # endif
