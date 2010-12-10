@@ -863,7 +863,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
     // if (test) { instr; } [else { instr; } ]
     if (checkInside (t, ";)}")) {
         if (checkSemi) { t->check (';'); }
-        return new Code (Code::CODE_NOP);
+        return new Code (Code::CODE_NOP, NULL);
     }
     Code * tmp = NULL;
     char * s = t->getNextToken ();
