@@ -80,22 +80,27 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
     }
 
     if (!bmlCtx) {
+
         /*
-         * Do not convert BML if asked not too.
+         * Do not convert BML if asked not too, or
+         * when request is not successful.
          */
-        if (apr_table_get(r->subprocess_env, "no-bml")) {
+        if (apr_table_get(r->subprocess_env, "no-bml") ||
+            r->status != HTTP_OK) {
             ap_remove_output_filter(f);
             return ap_pass_brigade(f->next, bb);
         }
+
         /*
          * Only check headers if force-bml is not set.
          */
         if (!apr_table_get(r->subprocess_env, "force-bml")) {
+
             /*
              * Only convert if content is text/xml or application/bml.
              */
-            if (!strncmp(r->content_type, "text/xml", 8) &&
-                !strncmp(r->content_type, "application/xml", 15)) {
+            if (r->content_type == NULL || ((strncmp(r->content_type, "text/xml", 8) != 0 ) &&
+                (strncmp(r->content_type, "application/xml", 15) != 0))) {
                 ap_remove_output_filter(f);
                 return ap_pass_brigade(f->next, bb);
             }
@@ -168,6 +173,10 @@ static apr_status_t bml_out_filter(ap_filter_t *f, apr_bucket_brigade *bb)
         else{
             // Purge bucket brigade for reuse
             apr_brigade_cleanup(bb);
+
+            // Make sure the filter is never called later
+            // to prevent trying to re-encode the content.
+            ap_remove_output_filter(f);
 
             //Encode xml data as bml
             Encoder encoder (bmlCtx->xmlData, &bmlData, bmlLen);
