@@ -360,7 +360,7 @@ Code * Function::parseAssign (Tokenizer * t) {
     return (NULL);
 }
 
-Code * Function::parsePreOperator (Tokenizer * t, bool returnValue) {
+Code * Function::parsePreOperator (Tokenizer * t) {
     t->skipSpace ();
     char c = t->GETC ();
     if ((c == '-' || c == '+') && t->check (c)) {
@@ -369,7 +369,7 @@ Code * Function::parsePreOperator (Tokenizer * t, bool returnValue) {
             Code * lvalue = parseLValue (t, s);
             if (lvalue != NULL) {
                 int operation = c == '-' ? Code::CODE_MINUS : Code::CODE_PLUS;
-                return selfAssign (operation, lvalue, new Code ((int)1), returnValue);
+                return selfAssign (operation, lvalue, new Code ((int)1));
             }
         }
         fprintf (myStderr, "%s:%d: JS syntax error: Pre operator (%c%cX) must only be followed by a variable or a field.\n", t->getFile(), t->getLine (), c, c);
@@ -379,10 +379,9 @@ Code * Function::parsePreOperator (Tokenizer * t, bool returnValue) {
     return NULL;
 }
 
-Code * Function::selfAssign (int operation, Code * self, Code * value, bool returnValue) {
+Code * Function::selfAssign (int operation, Code * self, Code * value) {
     Code * compute = new Code (operation, self->cloneInvertAccess(), value);
-    Code * tmp = new Code (returnValue ? Code::CODE_ASSIGN_AND_RETURN : Code::CODE_ASSIGN, self, compute);
-    return tmp;
+    return new Code (Code::CODE_ASSIGN, self, compute);
 }
 
 int Function::parseAssign (Tokenizer * t, bool & self) {
@@ -607,7 +606,7 @@ Code * Function::parseUnaryExpr (Tokenizer * t) {
     // litteral
     // var
     Code * code;
-    if ((code = parsePreOperator (t, true)) != NULL) { // pre inc/decrement operator
+    if ((code = parsePreOperator (t)) != NULL) { // pre inc/decrement operator
       return code;
     }
     if (t->check ('-')) { // unary minus operator
@@ -877,7 +876,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             }
             return (tmp);
         } else if (strcmp (s, "var") == 0) { // var declaration
-            tmp = parseVarDeclaration (t, true);
+            tmp = parseVarDeclaration (t);
             if (checkSemi) {
                 ensure (';', "%s:%d: JS syntax error: missing ';' to end var declaration\n", t);
             }
@@ -932,7 +931,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             int operation = parseAssign (t, self);
             if (operation == Code::CODE_ASSIGN || self == true) {
                 if (self) {
-                    tmp = selfAssign (operation, lvalue, parseExpr (t), false);
+                    tmp = selfAssign (operation, lvalue, parseExpr (t));
                 } else {
                     tmp = new Code (Code::CODE_ASSIGN, lvalue, parseExpr (t));
                 }
@@ -943,7 +942,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             }
             operation = parseOperation (t);
             if (Code::getOpArity (operation) == 1) { // ++ or --
-                tmp = selfAssign (operation, lvalue, new Code ((int)1), false);
+                tmp = selfAssign (operation, lvalue, new Code ((int)1));
                 if (checkSemi) {
                     ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);
                 }
@@ -952,7 +951,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             fprintf (myStderr, "%s:%d: JS syntax error (assignement expected)\n", t->getFile(), t->getLine());
         }
     } else { // not a token, maybe a pre operator followed by a field or var (eg, ++myVar) ?
-        Code * code = parsePreOperator (t, false);
+        Code * code = parsePreOperator (t);
         if (code != NULL) { // pre inc/decrement operator
             if (checkSemi) {
                 ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);

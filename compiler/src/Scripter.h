@@ -162,7 +162,7 @@ private:
     int checkOperation (Tokenizer * t, int & arity, int & precedence);
     int checkOperation (Tokenizer * t, int & arity, int & precedence, bool & rightAssocitive);
 
-    Code * selfAssign (int operation, Code * self, Code * value, bool returnValue); 
+    Code * selfAssign (int operation, Code * self, Code * value);
 
     // parse a litteral value or a var name (including field access)
     Code * parseVarOrVal (Tokenizer * t);
@@ -186,7 +186,7 @@ private:
     Code * parseUnaryExpr (Tokenizer * t);
 
     // parse a pre operator expr like ++x or --c
-    Code * parsePreOperator (Tokenizer * t, bool returnValue);
+    Code * parsePreOperator (Tokenizer * t);
 
     // parse call to an external method like Browser.print("hello world");
     //Code * parseExternCall (int objID, Tokenizer * t);

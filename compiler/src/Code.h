@@ -234,7 +234,6 @@ public:
         CODE_NOT,           // !
         CODE_PRE_INC,       // ++x
         CODE_PRE_DEC,       // --x
-        CODE_ASSIGN_AND_RETURN,// = but return value
     };
     enum {
         STORE_FIELD_NUMERIC = 1,

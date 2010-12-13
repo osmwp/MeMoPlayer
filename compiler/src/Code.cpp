@@ -720,7 +720,6 @@ void Code::print (int indentLevel) {
         if (m_first) { m_first->print (0); }
         break;
     case CODE_ASSIGN:
-    case CODE_ASSIGN_AND_RETURN:
     case CODE_SELFPLUS: 
     case CODE_SELFMINUS: 
     case CODE_SELFDIV: 
@@ -733,7 +732,6 @@ void Code::print (int indentLevel) {
         }
         if (m_second) {
             switch (m_type) {
-            case CODE_ASSIGN_AND_RETURN:
             case CODE_ASSIGN:  printf (" = "); break;
             case CODE_SELFPLUS:  printf (" += "); break;
             case CODE_SELFMINUS:  printf (" -= "); break;
@@ -1175,7 +1173,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         }
         break;
     case CODE_ASSIGN:
-        reg1 = bc->getRegister (f->m_blockLevel);
+        reg1 = reg < 0 ? bc->getRegister (f->m_blockLevel) : reg;
         if (m_second) {
             m_second->generate (bc, f, reg1);
             m_first->generate (bc, f, reg1);
@@ -1184,18 +1182,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
             bc->addInt (0);
             m_first->generate (bc, f, reg1);
         }
-        bc->freeRegister (reg1);
-        break;
-    case CODE_ASSIGN_AND_RETURN: // same as ASSIGN but return the value
-        assert (reg>=0);
-        if (m_second) {
-            m_second->generate (bc, f, reg);
-            m_first->generate (bc, f, reg);
-        } else {
-            bc->add (ByteCode::ASM_LOAD_REG_INT, reg);
-            bc->addInt (0);
-            m_first->generate (bc, f, reg);
-        }
+        if (reg < 0) bc->freeRegister (reg1);
         break;
     case CODE_GET_VAR:
         var = f->findVar (m_first->m_name);
