@@ -825,34 +825,20 @@ Code * Function::parseReturn (Tokenizer * t) {
     return new Code (Code::CODE_RETURN, tmp);
 }
 
-Code * Function::parseVarDeclaration (Tokenizer * t, bool hasVar) {
-    char * s = hasVar ? (char*)"var" : t->getNextToken ();
-    if (s && strcmp (s, "var") == 0) { // var declaration
-        //fprintf (myStderr, "DBG: got token VAR\n");
-        char * varName = t->getNextToken ();
-        if (varName == NULL) {
-            fprintf (myStderr, "%s:%d: JS syntax error: variable name expected\n", t->getFile(), t->getLine());
-            exit (1);
-        }
-        //fprintf (myStderr, "DBG: got var name %s\n", varName);
-        m_vars = new Var (varName, m_blockLevel, -1, m_vars);
-        Code * lvalue = new Code (Code::CODE_NEW_VAR, new Code (varName));
-        if (t->check (';', true)) {
-            //fprintf (myStderr, "DBG: got token ';'\n");
-            return new Code (Code::CODE_ASSIGN, lvalue, NULL);
-        } else if (t->check ('=')) {
-            //fprintf (myStderr, "DBG: got token '='\n");
-            Code * tmp = new Code (Code::CODE_ASSIGN, lvalue, parseExpr (t));
-            if (t->check (';', true) == false) {
-                fprintf (myStderr, "%s:%d: JS syntax error: missing ';'\n", t->getFile(), t->getLine ());
-                exit (1);
-            }
-            return tmp;
-        }
-        fprintf (myStderr, "%s:%d: JS syntax error: ';' or '=' expected\n", t->getFile(), t->getLine());
+Code * Function::parseVarDeclaration (Tokenizer * t) {
+    //fprintf (myStderr, "DBG: got token VAR\n");
+    char * varName = t->getNextToken ();
+    if (varName == NULL) {
+        fprintf (myStderr, "%s:%d: JS syntax error: variable name expected\n", t->getFile(), t->getLine());
         exit (1);
     }
-    return (NULL);
+    //fprintf (myStderr, "DBG: got var name %s\n", varName);
+    m_vars = new Var (varName, m_blockLevel, -1, m_vars);
+    Code * value = NULL;
+    if (t->check ('=')) {
+        value = parseExpr (t);
+    }
+    return new Code (Code::CODE_NEW_VAR, new Code (varName), value);
 }
 
 Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {

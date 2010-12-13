@@ -141,7 +141,7 @@ private:
     // parse an identifier ???
     Code * parseIdent (Tokenizer * t, char * token);
     
-    Code * parseVarDeclaration (Tokenizer * t, bool hasVar);
+    Code * parseVarDeclaration (Tokenizer * t);
 
     Code * parseFor (Tokenizer * t);
     

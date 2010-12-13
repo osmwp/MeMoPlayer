@@ -714,6 +714,11 @@ void Code::print (int indentLevel) {
     case CODE_NEW_VAR:
         printSpaces (indentLevel);
         printf ("var %s", m_first ? m_first->m_name : "null");
+        if (m_second) {
+            printf (" = ");
+            m_second->print ();
+        }
+        printf (";\n"); break;
         break;
     case CODE_SET_VAR:
     case CODE_GET_VAR:
@@ -1167,7 +1172,12 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         var = f->addVar (m_first->m_name, f->m_blockLevel, reg1);
         if (var) {
             var->setIndex (reg1);
-            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg);
+            if (m_second) {
+                m_second->generate (bc, f, reg1);
+            } else {
+                bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
+                bc->addInt (0);
+            }
         } else {
             fprintf (stderr, "error: no var found for %s\n", m_first->m_name);
         }
@@ -1176,10 +1186,6 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         reg1 = reg < 0 ? bc->getRegister (f->m_blockLevel) : reg;
         if (m_second) {
             m_second->generate (bc, f, reg1);
-            m_first->generate (bc, f, reg1);
-        } else {
-            bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
-            bc->addInt (0);
             m_first->generate (bc, f, reg1);
         }
         if (reg < 0) bc->freeRegister (reg1);
