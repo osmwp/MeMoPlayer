@@ -25,6 +25,7 @@ public class ByteCode {
 //#endif
     final static int ASM_JUMP = 1;
     final static int ASM_JUMP_ZERO = 2;
+    final static int ASM_JUMP_NZERO = 37;
     final static int ASM_EXT_CALL = 4;
     final static int ASM_INT_CALL = 5;
     final static int ASM_RETURN = 6;

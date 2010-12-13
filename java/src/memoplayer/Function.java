@@ -193,6 +193,13 @@ class Function {
                     pc = m_codeOffset + m_jumpTable[b];
                 }
                 break;
+            case ByteCode.ASM_JUMP_NZERO:
+                a = ((int)m_codeTable[pc++]&0xFF);
+                b = ((int)m_codeTable[pc++]&0xFF);
+                if (register[regBase+a].getInt () != 0) {
+                    pc = m_codeOffset + m_jumpTable[b];
+                }
+                break;
             case ByteCode.ASM_EXT_CALL:
                 a = ((int)m_codeTable[pc++]&0xFF);
                 b = ((int)m_codeTable[pc++]&0xFF);
