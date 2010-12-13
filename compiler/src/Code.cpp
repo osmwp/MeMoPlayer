@@ -416,6 +416,11 @@ void ByteCode::dump (unsigned char * data, int len) {
             printByte (data); data += 1;
             printByte (data); data += 1;
             break;
+        case ASM_JUMP_NZERO:
+            printf ("    ASM_JMP_NZERO "); data++;
+            printByte (data); data += 1;
+            printByte (data); data += 1;
+            break;
         case ASM_LABEL:
             printf ("ASM_LABEL "); data++;
             printByte (data); data += 1;
@@ -460,6 +465,7 @@ void ByteCode::generate (char * n) {
     fprintf (fp, "    final static int ASM_LABEL = %d;\n", ASM_LABEL);
     fprintf (fp, "    final static int ASM_JUMP = %d;\n", ASM_JUMP);
     fprintf (fp, "    final static int ASM_JUMP_ZERO = %d;\n", ASM_JUMP_ZERO);
+    fprintf (fp, "    final static int ASM_JUMP_NZERO = %d;\n", ASM_JUMP_NZERO);
     fprintf (fp, "    final static int ASM_EXT_CALL = %d;\n", ASM_EXT_CALL);
     fprintf (fp, "    final static int ASM_INT_CALL = %d;\n", ASM_INT_CALL);
     fprintf (fp, "    final static int ASM_RETURN = %d;\n", ASM_RETURN);
@@ -1262,9 +1268,31 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
     case CODE_LESSEQ:
         generateBinary (ByteCode::ASM_TEST_LEE, bc, f, reg); break;
     case CODE_LOG_AND:
-        generateBinary (ByteCode::ASM_TEST_AND, bc, f, reg); break;
+        //generateBinary (ByteCode::ASM_TEST_AND, bc, f, reg); break;
+        assert (reg>=0);
+        cnt1 = bc->getLabel ();
+        m_first->generate (bc, f, reg);
+        bc->add (ByteCode::ASM_JUMP_ZERO, reg, cnt1);
+        m_second->generate (bc, f, reg);
+        bc->setLabel (cnt1);
+        break;
     case CODE_LOG_OR:
-        generateBinary (ByteCode::ASM_TEST_OR, bc, f, reg); break;
+        //generateBinary (ByteCode::ASM_TEST_OR, bc, f, reg); break;
+        assert (reg>=0);
+        m_first->generate (bc, f, reg);
+        cnt1 = bc->getLabel ();
+        if (ByteCode::s_compat) {
+            // Old byte only supports the JUMP_ZERO and no negation...
+            cnt2 = bc->getLabel ();
+            bc->add (ByteCode::ASM_JUMP_ZERO, reg, cnt2);
+            bc->add (ByteCode::ASM_JUMP, cnt1);
+            bc->setLabel (cnt2);
+        } else {
+            bc->add (ByteCode::ASM_JUMP_NZERO, reg, cnt1);
+        }
+        m_second->generate (bc, f, reg);
+        bc->setLabel (cnt1);
+        break;
     case CODE_BIT_AND:
         generateBinary (ByteCode::ASM_BIT_AND, bc, f, reg); break;
     case CODE_BIT_OR:

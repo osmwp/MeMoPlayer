@@ -109,6 +109,8 @@ public:
         ASM_BIT_RS,
         ASM_BIT_RRS,
 
+        ASM_JUMP_NZERO,       // reg label/8: if val(ref) != 0 goto label
+
         //ASM_RET,
         //ASM_PUSH_BASE,
         //ASM_POP_BASE,
