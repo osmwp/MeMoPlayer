@@ -49,7 +49,7 @@ public class File implements Loadable {
     private int m_len = -1; // the total number of byte to read
     private int m_current = 0; // number of bytes already read (value should be between 0 and m_len)
     private byte[] m_data = null;
-    private int m_httpResponseCode = -1;
+    private int m_httpResponseCode = 404;
     private boolean m_isInCache = false;
 
     boolean m_isLocal;
@@ -135,7 +135,6 @@ public class File implements Loadable {
     
     private void open (String url) {
         //Logger.println("File:"+this+": open("+url+") : "+(write?"WRITE":"READ"));
-        m_httpResponseCode = 404;        
         setState(Loadable.OPENING);
         try {
             m_isLocal = true;
@@ -269,7 +268,6 @@ public class File implements Loadable {
                             m_cacheNamespace = nameSpace;
 //#endif
                             m_cacheRecord = rmsRecord;
-                            m_httpResponseCode = 200;
                         } else {
                             throw new IOException("Could not get data from source for cache.");
                         }
@@ -433,6 +431,7 @@ public class File implements Loadable {
     //MCP: Switch to read mode for HTTP connections
     private void switchToReadMode () {
         if (!m_isLocal && m_dos != null) {
+            SmartHttpConnection hc = (SmartHttpConnection)m_c;
             try {
                 m_dos.close ();
                 m_dos = null;
@@ -441,9 +440,9 @@ public class File implements Loadable {
                 Traffic.update (m_current);
 //#endif
                 m_current = 0;
-                m_dis = ((SmartHttpConnection)m_c).openDataInputStream ();
-                m_len = (int)((SmartHttpConnection)m_c).getLength ();
-                m_httpResponseCode = ((SmartHttpConnection)m_c).getResponseCode();
+                m_dis = hc.openDataInputStream ();
+                m_len = (int)hc.getLength ();
+                m_httpResponseCode = hc.getResponseCode();
                 synchronized (this) { m_mode &= ~MODE_WRITE; } // Jump to read mode
 //#ifdef api.traffic
                 // Count downloaded data if m_len is known, if not rely on m_current
@@ -452,6 +451,9 @@ public class File implements Loadable {
                 return;
             } catch (Exception e) {
                 Logger.println ("File.switchToReadMode: Error: "+e);
+                if (m_c != null) {
+                    m_httpResponseCode = hc.getResponseCode();
+                }
             }
         }
         close (Loadable.ERROR);
