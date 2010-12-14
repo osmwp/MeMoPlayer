@@ -115,7 +115,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         } else if (event.equals (PlayerListener.END_OF_MEDIA)) {
             setState (Loadable.EOM);
         } else if (event.equals (PlayerListener.BUFFERING_STARTED)) {
-            setState (Loadable.LOADING);
+            setState (Loadable.BUFFERING);
         } else if (event.equals (PlayerListener.BUFFERING_STOPPED)) {
             setState (Loadable.PLAYING);
         } else if (event.equals (PlayerListener.STOPPED)) {
