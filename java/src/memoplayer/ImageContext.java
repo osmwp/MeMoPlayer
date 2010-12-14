@@ -26,6 +26,11 @@ public class ImageContext {
     public static boolean s_blitWithImage = MiniPlayer.getJadProperty("MeMo-BlitWithImage").equals("true");
 //#endif
 
+//#ifdef debug.console
+    private static boolean bLogImage = MiniPlayer.getJadProperty("MeMo-Debug-Image").equals("true");
+//#endif
+    
+    
     Image m_srcImg, m_transImg;
     int m_srcW, m_srcH, m_dstW, m_dstH, m_srcSize, m_dstSize/*RCA*/;
     private int [] m_srcD, m_dstD/*RCA*/;
@@ -46,6 +51,9 @@ public class ImageContext {
         Image img = c.getImage (name);
         ic = new ImageContext ();
         ic.m_count = 1;
+//#ifdef debug.console
+        ic.m_name = name;
+//#endif
         ic.setImage (img);
         return ic;
     }
@@ -265,6 +273,10 @@ public class ImageContext {
             setImage(Image.scaleImage(m_srcImg, w, h, m_filterMode));
 //#else
             checkSrc (); // build m_srcD
+//#ifdef debug.console
+            if( bLogImage )
+                Logger.print("MAX: ");
+//#endif
             scaleImage(w, h, 0); // build m_destD to new size
             setImage (Image.createRGBImage (m_dstD, m_dstW, m_dstH, true));
 //#endif
@@ -272,6 +284,10 @@ public class ImageContext {
     }
     
     void scaleImage (int w, int h, int trs) { 
+//#ifdef debug.console
+        if( bLogImage )
+        	Logger.println("IC.scaleImage "+ m_srcW+"x"+m_srcH + " -> " + w+"x"+h +" "+ m_name );
+//#endif
         if (w <= 0 || h <= 0) {
             return;
         }
@@ -427,6 +443,10 @@ public class ImageContext {
                 }
                 if (w != m_dstW || h != m_dstH || m_trs != trs || m_dstD == null) {
                     checkSrc (); // build m_srcD if necessary
+//#ifdef debug.console
+                    if( bLogImage )
+                    	Logger.print("REC (!): ");
+//#endif
                     scaleImage (w, h, trs); // build m_dstD
                     m_rot = 0;
                 }
