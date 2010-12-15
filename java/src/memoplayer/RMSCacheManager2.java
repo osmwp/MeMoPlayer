@@ -33,7 +33,7 @@ import javax.microedition.rms.RecordStoreException;
  * RecordStores where properly closed. If this is not the case, all the RecordStores
  * are removed ! 
  * To prevent loosing important data, the application can still use Managers with
- * names starting with a '_' (e.g. '_SECURE'). This will ensure that the RecordStore
+ * names starting with a '@' (e.g. '@SECURE'). This will ensure that the RecordStore
  * is closed when not used, and that they are not erased when the __SAFE marker is not
  * found. 
  */
@@ -55,7 +55,7 @@ class RMSCacheManager2 extends CacheManager {
         int size = list != null ? list.length : 0;
         for (int i=0; i<size; i++) {
             String name = list[i];
-            if (name.charAt(0) != '_') {
+            if (name.charAt(0) != '@') {
                 try { RecordStore.deleteRecordStore (name); } 
                 catch (Exception e) { Logger.println("RMSCache: Could not erase "+name); }
             }
@@ -363,9 +363,9 @@ class RMSCacheManager2 extends CacheManager {
     }
     
     // This implementation never closes the RecordStore until application exit.
-    // Except for RecordStore starting with an _
+    // Except for RecordStore starting with an @
     public synchronized void close () {
-        if (m_storeName.charAt(0) == '_') {
+        if (m_storeName.charAt(0) == '@') {
             finalClose();
         }
     }
@@ -387,6 +387,9 @@ class RMSCacheManager2 extends CacheManager {
     }
 
     public synchronized void erase () {
+        if (m_storeName.charAt(0) == '@') {
+            return; // never erase a RecordStore starting with an @
+        }
         m_modified = false; // prevents saving entries, just close
         finalClose ();
         m_nbEntries = 0;
