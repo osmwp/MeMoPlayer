@@ -51,13 +51,6 @@ class XmlDom {
     int populate (String buffer, int mode) {
         int responseCode;
         if ((mode & URL) == URL) {
-//#ifdef api.bml
-            // Add Accept-Encoding header when making a HTTP(S) request.
-            if (buffer.startsWith ("http") ||
-                buffer.startsWith ("cache:") && buffer.indexOf (",http") != 0) {
-                buffer = buffer.concat ("||Accept-Encoding=application/bml");
-            }
-//#endif
             File f = new File (buffer, File.MODE_READ | File.MODE_SYNC);
             responseCode = f.getHttpResponseCode();
             if (responseCode == 200) {
