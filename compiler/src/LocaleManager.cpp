@@ -60,9 +60,10 @@ void LocaleEntry::update (char * key, char * message) {
 }
 
 void LocaleEntry::encodeAll (FILE * fp) {
-    //LocaleManager::writeUTF8 (fp, m_key);
-    fprintf (fp, "%c%c", m_id / 256, m_id % 256);
-    LocaleManager::writeUTF8 (fp, m_message);
+    if (m_id >= 0) {
+        fprintf (fp, "%c%c", m_id / 256, m_id % 256);
+        LocaleManager::writeUTF8 (fp, m_message);
+    }
     if (m_next) {
         m_next->encodeAll (fp);
     }
@@ -150,6 +151,7 @@ int LocaleSet::compareWithModel (LocaleSet * model) {
     setAllMarks (0);
     model->setAllMarks (0);
     LocaleEntry * e = m_entry;
+    m_nbEntries = 0;
     while (e != NULL) {
         LocaleEntry * found = model->getEntry (e->m_key);
         if (found == NULL) {
@@ -158,8 +160,8 @@ int LocaleSet::compareWithModel (LocaleSet * model) {
         } else {
             e->m_id = found->m_id;
             found->setMark (1);
+            m_nbEntries++;
         }
-        e->setMark (1);
         e = e->m_next;
     }
     e = model->m_entry;
