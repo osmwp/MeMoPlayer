@@ -60,7 +60,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     boolean m_bPaused = false;
     boolean m_bSeekMode = false;
     
-    Canvas m_canvas;
+    MyCanvas m_canvas;
     Decoder m_decoder;
     Region m_region;
     int m_rotation = 0;
@@ -104,9 +104,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         	m_srcHeight= vc.getSourceHeight();
         } else {
         	if(event.equals (PlayerListener.ERROR)) {
-        		Logger.println ("[DBG] playerUpdate: "+event+" "+eventData);
-        	} else { 
-        		Logger.println ("[DBG] playerUpdate: "+event);
+                Logger.println ("[DBG] error playerUpdate: "+event+" "+eventData);
+        	} else {
+                Logger.println ("[DBG] playerUpdate: "+event);
         	}
         }
 
@@ -145,7 +145,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     }
 
     // open the stream and display it on the specified canvas
-    public void open (String name, Canvas c, Decoder decoder) {
+    public void open (String name, MyCanvas c, Decoder decoder) {
     	if(decoder!=null) {
     		m_decoder = decoder;
     	}
@@ -175,8 +175,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         try { Thread.sleep (100); } catch (Exception e) { ; } // be sure the thread will die if running
         if (m_player != null) {
             try {
-                int state = m_player.getState ();
-                switch (state) {
+                switch (m_player.getState ()) {
                 case Player.CLOSED: // nothing 
                     break;
                 case Player.STARTED: // stop, close
@@ -386,6 +385,17 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                 }
             }
             setDisplayArea (m_region.x0, m_region.y0, m_region.x1, m_region.y1);
+        }
+    }
+
+    void setFullScreen (boolean fullScreen) {
+        Logger.println ("+MediaObject.setFullScreen: "+fullScreen);
+        if (m_type == VIDEO && m_videoControl != null) {
+            try {
+                m_videoControl.setDisplayFullScreen(fullScreen);
+            } catch (Exception e) {
+                Logger.println ("setFullScreen: "+e);
+            }
         }
     }
 

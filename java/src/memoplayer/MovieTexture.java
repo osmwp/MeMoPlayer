@@ -23,9 +23,10 @@ public class MovieTexture extends MediaNode  {
     int m_srcHeight=-1;
 
     MovieTexture () {
-        super (4,MediaObject.VIDEO, MediaObject.PLAYBACK);
-        //System.out.println ("MovieTexture created");
+        super (5,MediaObject.VIDEO, MediaObject.PLAYBACK);
+        System.out.println ("MovieTexture created");
         m_field[3] = new SFVec2f(-1,-1,null); // movieSize : video src size
+        m_field[4] = new SFBool(false,this);  // fullScreen video display
     }
 
 
@@ -56,4 +57,17 @@ public class MovieTexture extends MediaNode  {
     	}
     }
 
+    public void fieldChanged (Field f) {
+        // Logger.println("+MovieTexture fieldChanged");
+        if (f == m_field[4]) {
+            if (m_media!=null) {
+                boolean fs = ((SFBool)m_field[4]).getValue();
+                // Logger.println("fullScreen"+fs);
+                m_media.setFullScreen(fs);
+            }
+            return;
+        }
+        // Logger.println("-MovieTexture fieldChanged");
+        super.fieldChanged(f);
+    }
 }
