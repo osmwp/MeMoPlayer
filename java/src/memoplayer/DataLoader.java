@@ -74,6 +74,9 @@ class DataLoader {
     }
 
     void release () {
+        if (m_file != null) {
+            m_file.cancelQueue();
+        }
         m_file = null; // asks to clean dataloader on next check
         m_imageRequester = null;
         m_textRequester = null;

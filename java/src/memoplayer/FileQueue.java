@@ -90,14 +90,7 @@ public class FileQueue {
     
     void loadNext() {
         if (s_currentFile == null && m_queue != null) {
-            // Search next file to open
-            while (m_queue != null && m_queue.getState() != Loadable.QUEUED) {
-                // Explicitly dequeue file to help GC
-                File next = m_queue.m_next;
-                m_queue.m_next = null;
-                m_queue = next;
-            }
-            
+            m_queue = m_queue.popQueue(); // Search next file to open
             if (m_queue != null) {
                 // Pop from queue
                 File f = m_queue;
@@ -105,7 +98,6 @@ public class FileQueue {
                 f.m_next = null;
                 startThread (f);
             }
-            
         }
     }
     
@@ -131,16 +123,11 @@ public class FileQueue {
         if (s_currentFile != null && url.equals(s_currentFile.getName())) {
             return s_currentFile;
         }
-        // Check in queue
-        File f = m_queue;
-        while (f != null) {
-            if (url.equals(f.getName())) {
-                return f;
-            }
-            f = f.m_next;
+        // Find or add in queue
+        if (m_queue != null) {
+            return m_queue.findQueue (url); 
         }
         // Create new queued file
-        m_queue = new File (url, m_queue);
-        return m_queue;
+        return m_queue = new File (url, null);
     }
 }

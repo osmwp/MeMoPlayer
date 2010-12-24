@@ -37,6 +37,8 @@ public class File implements Loadable {
      */
     private final static int DOWNLOAD_CHUNK_SIZE = 512;
  
+    // Used by FileQueue
+    public int m_count;
     public File m_next;
     
     private Connection m_c;
@@ -90,7 +92,43 @@ public class File implements Loadable {
     File (String url, File next) {
         m_url = url;
         m_next = next;
+        m_count = 1;
         setState(Loadable.QUEUED);
+    }
+    
+    // Cancel a queued file request
+    void cancelQueue () {
+        if (getState() == Loadable.QUEUED) {
+            if (m_count > 0) {
+                m_count--;
+            }
+        }
+    }
+    
+    // Find existing File in queue, or add a new one at tail
+    File findQueue (String url) {
+        if (url.equals (m_url)) {
+            m_count++;
+            return this;
+        }
+        if (m_next != null) {
+            return m_next.findQueue (url);
+        }
+        m_next = new File (url, null);
+        return m_next;
+    }
+    
+    // Find next File to use from queue
+    File popQueue () {
+        if (getState() == Loadable.QUEUED && m_count > 0) {
+            return this;
+        } else if (m_next != null) {
+            File next = m_next;
+            // Explicitly dequeue file to help GC
+            m_next = null;
+            return next.popQueue();
+        }
+        return null;
     }
     
     final boolean isMode (final int m) {
