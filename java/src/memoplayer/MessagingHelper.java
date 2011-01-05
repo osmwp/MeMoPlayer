@@ -416,6 +416,7 @@ public class MessagingHelper {
 
                 MFString mf = new MFString(3);
                 String sender = message.getAddress();
+                // filter protocole from sender phone number
                 if(sender.startsWith("sms://")) {
                 	sender = sender.substring(6);
                 	int idx2pt = sender.indexOf(':');
@@ -423,6 +424,13 @@ public class MessagingHelper {
                     	sender = sender.substring(0,idx2pt);
                 	}
                 }
+                
+                // filter port number from sender
+                if(sender.endsWith(":"+m_port)) {
+                	int idx2pt = sender.lastIndexOf(':');
+                	sender = sender.substring(0,idx2pt);
+                }
+                	
                 mf.setValue(0, ""+sender);
                 mf.setValue(1, ""+m_port);
                 mf.setValue(2, ""+((TextMessage)message).getPayloadText());
