@@ -306,7 +306,7 @@ char XmlReader::getHtmlChar () {
         return '>';
     } else if (strcmp (m_charBuf, "apos") == 0) {
         return '\'';
-    } else if (strcmp (m_charBuf, "quote") == 0) {
+    } else if (strcmp (m_charBuf, "quot") == 0) {
         return '"';
     } else if (strcmp (m_charBuf, "deg") == 0) {
         return convert (0xC2, 0xB0);
