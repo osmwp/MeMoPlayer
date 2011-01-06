@@ -323,7 +323,7 @@ char XmlReader::getHtmlChar () {
     } else if (strcmp (m_charBuf, "ccedil") == 0) {
         return convert (0xC3, 0xE7);
     } else {
-        m_pos = oldPos+1;
+        m_pos = oldPos;
         return '&';
     }
 }
