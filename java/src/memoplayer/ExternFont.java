@@ -277,7 +277,7 @@ class SystemFont extends ExternFont {
 
     int getHeight () { return m_font.getHeight (); };
 
-    int getTopPosition () { return s_vertOffset; }
+    int getTopPosition () { return -s_vertOffset; }
     
     int getBaselinePosition () { return m_font.getBaselinePosition () - s_vertOffset; }
 
