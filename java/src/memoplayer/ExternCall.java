@@ -1474,7 +1474,7 @@ class ExternCall {
     }
 
     static void doMessaging (Context c, int m, Register [] registers, int r, int nbParams) {
-        boolean success;
+        boolean success=false;
         switch (m) {
         case 0: // isAvailable()
 //#ifndef jsr.wma
@@ -1495,7 +1495,11 @@ class ExternCall {
 //#endif
             return;
         case 3: // startListeningSMS(port,messageName)
-            success = MessagingHelper.startListenSMS(registers[r].getInt(),registers[r+1].getString());
+            if (nbParams==1) {
+                success = MessagingHelper.startListenSMS(registers[r].getInt(),null);
+            } else if (nbParams==2) {
+                success = MessagingHelper.startListenSMS(registers[r].getInt(),registers[r+1].getString());
+            }
             registers[r].setBool(success);
             return;
         case 4: // stopListeningSMS(port)
@@ -1517,9 +1521,9 @@ class ExternCall {
 //#endif
         case 8: // isPushSMSAvailable()
 //#ifdef MM.pushSMS
-        	registers[r].setBool(true);
+            registers[r].setBool(true);
 //#else
-        	registers[r].setBool(false);
+            registers[r].setBool(false);
 //#endif
             return;
 //#endif
