@@ -927,7 +927,7 @@ class ExternCall {
             return;
         case 6: //lastIndexOf (String s, int char, int index)
             i = registers[r+1].getString().charAt (0);
-            j = registers[r+2].getInt();
+            j = (nbParams == 3) ? registers[r+2].getInt() : s.length();
             registers[r].setInt (s.lastIndexOf((char) i, j));
             return;
         case 7: //toLower (String s)
