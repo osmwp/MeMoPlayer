@@ -38,10 +38,8 @@ public class Widget extends AppWidgetProvider {
             width = awpi.minWidth;
             height = awpi.minHeight;
             Log.i("Widget.UpdateService", "onUpdate() resolution: "+width+"x"+height);
+            // Perform update
+            context.startService(new Intent(context, WidgetUpdate.class));
         }
-        // Keep list of widgets to update
-        //WidgetService.requestUpdate(appWidgetIds);
-        // Perform the update in a service
-        context.startService(new Intent(context, WidgetUpdate.class));
     }
 }

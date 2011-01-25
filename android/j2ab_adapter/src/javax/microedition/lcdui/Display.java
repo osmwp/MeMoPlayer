@@ -16,6 +16,8 @@
 
 package javax.microedition.lcdui;
 
+import java.util.List;
+
 import javax.microedition.midlet.MIDlet;
 
 import com.orange.memoplayer.MainActivity;
@@ -23,6 +25,8 @@ import com.orange.memoplayer.Widget;
 import com.orange.memoplayer.WidgetUpdate;
 
 import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Vibrator;
@@ -165,11 +169,23 @@ public class Display {
             // From the fullscreen application, send an itent to the widget
             midlet.post(new Runnable() {
                 public void run() {
-                    Context context = midlet.getContext();
+                    Log.i("Display", "Launch APPWIDGET_UPDATE intent");
+
+/*                    Context context = midlet.getContext();
                     Intent intent = new Intent(context, Widget.class);
                     intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
                     context.sendBroadcast(intent);
-                    Log.i("Display", "Launch APPWIDGET_UPDATE intent");
+*/                    
+                    AppWidgetManager manager = AppWidgetManager.getInstance(midlet.getContext());
+                    int[] a = manager.getAppWidgetIds(new ComponentName("com.orange.memoplayer", "Widget"));
+                    List<AppWidgetProviderInfo> b = manager.getInstalledProviders();
+                    for (AppWidgetProviderInfo i : b) {
+                        if (i.provider.getPackageName().endsWith("memoplayer")) {
+                            a = manager.getAppWidgetIds(i.provider);
+                        }
+                    }
+                    new Widget().onUpdate(midlet.getContext(), manager, a);
+                    
                 }
             });
         }
