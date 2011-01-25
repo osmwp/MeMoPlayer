@@ -29,6 +29,7 @@ public interface PlayerListener {
     public static final String STOPPED = "stopped";
     public static final String VOLUME_CHANGED = "volumeChanged";
     public static final String STOPPED_AT_TIME = "stoppedAtTime";
+    public static final String SIZE_CHANGED = "sizeChanged";
 
     public void playerUpdate (Player player, String event, Object eventData);
 }
