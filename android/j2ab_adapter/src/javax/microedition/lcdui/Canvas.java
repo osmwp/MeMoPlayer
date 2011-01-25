@@ -345,7 +345,7 @@ public abstract class Canvas extends Displayable {
         }
         
         private void render () {
-            Log.i(TAG, "WidgetBackend: render ");
+            //Log.i(TAG, "WidgetBackend: render ");
             if (mBuffer == null) {
                 mBuffer = Bitmap.createBitmap (mWidth, mHeight, Bitmap.Config.ARGB_8888);
                 mGraphics = new javax.microedition.lcdui.Graphics (mBuffer);
@@ -372,17 +372,17 @@ public abstract class Canvas extends Displayable {
         }
 
         public void repaint () {
-            Log.i(TAG, "WidgetBackend: Repaint");
+            //Log.i(TAG, "WidgetBackend: Repaint");
             mRepaint = true;
         }
 
         public void repaint (int x, int y, int w, int h) {
-            Log.i(TAG, "WidgetBackend: Repaint");
+            //Log.i(TAG, "WidgetBackend: Repaint");
             mRepaint = true;
         }
 
         public void serviceRepaints () {
-            Log.i(TAG, "WidgetBackend: ServiceRepaints");
+            //Log.i(TAG, "WidgetBackend: ServiceRepaints");
             if (mRepaint) {
                 render();
                 mRepaint = false;
