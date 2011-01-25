@@ -16,6 +16,9 @@
 
 package javax.microedition.lcdui;
 
+import javax.microedition.midlet.MIDlet;
+
+import android.content.Context;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 
@@ -107,13 +110,14 @@ public class Font {
     }
 
     public float getScale () {
+    	float scaledDensity = MIDlet.DEFAULT_MIDLET.getContext().getResources().getDisplayMetrics().scaledDensity;
         switch (size) {
         case Font.SIZE_LARGE:
-            return 28;
+            return 24 * scaledDensity;
         case Font.SIZE_MEDIUM:
-            return 22;
+            return 20 * scaledDensity;
         default:
-            return 16;
+            return 16 * scaledDensity;
         }
     }
 
