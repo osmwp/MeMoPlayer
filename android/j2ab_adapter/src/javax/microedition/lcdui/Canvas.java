@@ -66,6 +66,8 @@ public abstract class Canvas extends Displayable {
         void repaint ();
         void repaint (int x, int y, int w, int h);
         void serviceRepaints ();
+        int getHeight();
+        int getWidth();
     }
 
     
@@ -149,6 +151,20 @@ public abstract class Canvas extends Displayable {
         return gameAction;
     }
 
+    public int getWidth () {
+        if (canvasBackend != null) {
+            return canvasBackend.getWidth();
+        }
+        return 0;
+    }
+
+    public int getHeight () {
+        if (canvasBackend != null) {
+            return canvasBackend.getHeight();
+        }
+        return 0;
+    }
+    
     public void repaint (int x, int y, int w, int h) {
     	// Out of bound values cause Android to ignore 
     	// postInvalidate which locks serviceRepaints !
@@ -209,6 +225,7 @@ public abstract class Canvas extends Displayable {
         private SurfaceView mSurfaceView;
         private Object serviceRepaintLock = new Object ();
         private boolean needsRepaint = true;
+        private boolean sizeInitialized = false;
         
         public ViewBackend (MIDlet m) {
             super (m.getContext ());
@@ -217,7 +234,7 @@ public abstract class Canvas extends Displayable {
                 //addView (mSurfaceView);
             }
         }
-
+        
         protected void onWindowVisibilityChanged (int visibility) {
             Log.i (TAG, "onWindowVisibilityChanged: " + visibility);
             switch (visibility) {
@@ -226,7 +243,10 @@ public abstract class Canvas extends Displayable {
                 Canvas.this.hideNotify ();
                 break;
             case VISIBLE:
-                Canvas.this.showNotify ();
+                // Only call shownNotify once the size of the view is known !
+                if (sizeInitialized) {
+                    Canvas.this.showNotify ();
+                }
                 requestFocus ();
             }
         }
@@ -253,7 +273,13 @@ public abstract class Canvas extends Displayable {
         protected void onSizeChanged (int w, int h, int oldw, int oldh) {
             Log.i (TAG, "onSizeChanged: " + w + "x" + h);
             buffer = null;
-            Canvas.this.sizeChanged (w, h);
+            if (sizeInitialized) {
+                Canvas.this.sizeChanged (w, h);
+            } else {
+                // On first view display, call showNotify, now that we know the view size !
+                sizeInitialized = true;
+                Canvas.this.showNotify ();
+            }
         }
         
         public boolean onKeyUp (int keyCode, KeyEvent event) {
@@ -330,13 +356,16 @@ public abstract class Canvas extends Displayable {
     private class WidgetBackend implements CanvasBackend {
         private Bitmap mBuffer;
         private javax.microedition.lcdui.Graphics mGraphics;
-        private int mWidth = Widget.width, mHeight = Widget.height;
+        private int mWidth, mHeight;
         private boolean mRepaint;
         private MIDlet mMidlet;
         
         public WidgetBackend (MIDlet m, Canvas c) {
+            float density = m.getContext().getResources().getDisplayMetrics().density;
+            mWidth = (int) ((Widget.width * density));
+            mHeight = (int) ((Widget.height * density));
             mMidlet = m;
-            Log.i(TAG, "WidgetBackend: Starting...");
+            Log.i(TAG, "WidgetBackend: Starting... ("+mWidth+"x"+mHeight+"/"+density+")");
             mMidlet.post(new Runnable() {
                 public void run() {
                     Canvas.this.showNotify();
@@ -387,6 +416,14 @@ public abstract class Canvas extends Displayable {
                 render();
                 mRepaint = false;
             }
+        }
+
+        public int getHeight() {
+        	return mHeight;
+        }
+        
+        public int getWidth() {
+        	return mWidth;
         }
     }
 }

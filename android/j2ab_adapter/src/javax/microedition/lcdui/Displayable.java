@@ -83,13 +83,15 @@ public abstract class Displayable {
     public int getWidth () {
         if (view != null) {
             return view.getWidth();
-        } else {
-            return Widget.width;
         }
+        return 0;
     }
 
     public int getHeight () {
-        return view == null ? Widget.height : view.getHeight ();
+        if (view != null) {
+            return view.getHeight();
+        }
+        return 0;
     }
 
     public void show (Display d) {
