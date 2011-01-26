@@ -62,16 +62,15 @@ public class WidgetUpdate extends Service {
         if (mWidget == null) {
             mWidget = new ComponentName(this, Widget.class);
         }
-        
-        displayLoader (null);
 
-        MIDlet midlet = Common.createMIDlet (this, Common.BOOT_WIDGET);
         try {
+            MIDlet midlet = Common.createMIDlet (this, Common.BOOT_WIDGET);
             if (midlet != null)  {
                 midlet.doStartApp();
             }
         } catch( Exception ex ) {
             ex.printStackTrace();
+            displayAlert (null);
         }
 
         Log.d("Widget.UpdateService", "widget updated");
@@ -107,12 +106,15 @@ public class WidgetUpdate extends Service {
             if (mRemoteViews == null || mRemoteViews.getLayoutId() != mRWidgetLayout) {
                 mRemoteViews = getRemoteView(mRWidgetLayout);
             }
+            
             synchronized (mImageBuffer) {
                 mRemoteViews.setImageViewBitmap(mRImagebuffer, mImageBuffer);
             }
             mManager.updateAppWidget(mWidget, mRemoteViews);
+            Log.i("Widget.UpdateService", "widget updated");
+        } else {
+            Log.i("Widget.UpdateService", "widget NOT updated");
         }
-        Log.d("Widget.UpdateService", "widget updated (render)");
     }
 
     public void displayAlert(String message) {
