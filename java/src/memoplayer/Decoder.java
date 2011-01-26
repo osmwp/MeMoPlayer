@@ -138,6 +138,10 @@ public class Decoder {
     synchronized public int getCurrent () { return m_file.getCurrent (); }
 
     static DataInputStream getResStream (String name) {
+//#ifdef platform.android
+        // All resources are loaded from the assets folder on Android
+        name = "assets/" + name;
+//#endif
         try {
             InputStream is = Class.forName ("memoplayer.Decoder").getResourceAsStream ("/"+name);
             if(is != null) {
