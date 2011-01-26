@@ -25,6 +25,13 @@ public class Scene implements Loadable {
      */
     static int s_maxDataLinkSize = 500*1024;
     
+    static {
+    	String s = MiniPlayer.getJadProperty ("MeMo-MaxDLSize");
+        if (s != "") {
+            try { s_maxDataLinkSize = Integer.parseInt(s)* 1024; } catch (Exception e) { }
+        } 
+    }
+    
     private static ObjLink s_inputGrabSensors; // All registered InputSensors with grabFocus
     
     Node m_node;
