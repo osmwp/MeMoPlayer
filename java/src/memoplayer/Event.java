@@ -47,6 +47,10 @@ public class Event {
         return (m_type & KEY) == KEY;
     }
 
+    boolean isReversedKeyEvent (boolean pressed) {
+        return m_type == (pressed ? KEY_RELEASED : KEY_PRESSED);
+    }
+
     boolean isMouseEvent () {
         return (m_type & MOUSE) == MOUSE;
     }

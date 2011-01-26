@@ -47,7 +47,10 @@ public class KeySensor extends InputSensor implements Activable {
     }
     
     public boolean listenTo (Event e) {
-        if (e.isKeyEvent()) {
+        // KeySensor only reacts to a release key event
+        // when already pressed (and vice versa)
+        final boolean pressed = m_nextRepeatTime >= 0;
+        if (e.isReversedKeyEvent (pressed)) {
             //SKA: use of device with keyboard like blackberry ...
             if (m_bUseKeyboard) {
                 return e.m_key < 0 || (e.m_key >= '0' && e.m_key <= '9') || e.m_key=='*' || e.m_key=='#';
