@@ -35,6 +35,7 @@ void ensure (char c, const char * msg, Tokenizer * t) {
 class NameLink {
 protected:
     char * m_name;
+    char * m_oldName; // optionnal deprecated function name
     int m_index;
     NameLink * m_next;
     
@@ -42,6 +43,14 @@ public:
 
     NameLink (char * name, int index, NameLink * next) {
         m_name = name;
+        m_oldName = NULL;
+        m_index = index;
+        m_next = next;
+    }
+
+    NameLink (char * name, char * oldName, int index, NameLink * next) {
+        m_name = name;
+        m_oldName = oldName;
         m_index = index;
         m_next = next;
     }
@@ -49,6 +58,9 @@ public:
 
     NameLink * find (char * name) {
         if (strcmp (name, m_name) == 0) {
+            return this;
+        }
+        if (m_oldName && strcmp (name, m_oldName) == 0) {
             return this;
         }
         if (m_next != NULL) {
@@ -92,8 +104,8 @@ public:
         m_funcIndex = 0;
         m_functions = NULL;
     }
-    void addFunction (char * name) {
-        m_functions = new NameLink (name, m_funcIndex++, m_functions);
+    void addFunction (char * name, char * oldName = NULL) {
+        m_functions = new NameLink (name, oldName, m_funcIndex++, m_functions);
     }
 
     int getFuncIndex (char * name) {
@@ -127,7 +139,17 @@ public:
             }
             token = t.getNextToken ();
             while (token) {
-                m_classes->addFunction (token);
+                if (t.check ('|')) {
+                    char * token2 = t.getNextToken ();
+                    if (token2 != NULL) {
+                        m_classes->addFunction (token, token2);
+                    } else {
+                        fprintf (myStderr, "ExternCalls.def:%d: Syntax error: alternate function name is expected after '|'\n", t.getLine ());
+                        exit (1);
+                    }
+                } else {
+                    m_classes->addFunction (token);
+                }
                 token = t.getNextToken ();
             }
             if (t.check ('}') == false) {

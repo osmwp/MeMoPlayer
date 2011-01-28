@@ -55,13 +55,16 @@
 #
 Browser {
     print exit 
-    setCooky getCooky getIntCooky
-    getWidth getHeight              
+    setCookie | setCooky
+    getCookie | getCooky
+    getIntCookie | getIntCooky
+    getWidth getHeight
     getNbMimeTypes getMimeType
     getFps getIdle
     getRecord setRecord
     getSessionTraffic getTotalTraffic resetTraffic
-    deleteCooky cleanCookies
+    deleteCookie | deleteCooky
+    cleanCookies
     getJadProperty
     cleanRMS
     displayTextBox displayAlert
