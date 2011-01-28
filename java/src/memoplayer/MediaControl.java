@@ -20,7 +20,7 @@ package memoplayer;
 public class MediaControl extends Node {
     Scene m_scene;
     Loadable m_loadable;
-    boolean m_urlChanged, m_mediaStartChanged, m_volumeChanged, m_pauseChanged;
+    boolean m_urlChanged, m_mediaStartChanged, m_volumeChanged, m_pauseChanged,m_fullscreenChanged;
     int m_initTime;
 
     static final int IDX_URL               = 0;
@@ -31,7 +31,8 @@ public class MediaControl extends Node {
     static final int IDX_IS_PRE_ROLLED     = 5;
     static final int IDX_VOLUME            = 6;
     static final int IDX_PLAY_PAUSE        = 7;
-    static final int IDX_COUNT             = 8;
+    static final int IDX_FULLSCREEN        = 8;
+    static final int IDX_COUNT             = 9;
 
     MediaControl () {
         super (IDX_COUNT);
@@ -44,6 +45,7 @@ public class MediaControl extends Node {
         m_field[IDX_IS_PRE_ROLLED]    = new SFBool (true, null); // isPreRolled
         m_field[IDX_VOLUME]           = new SFInt32 (50, this);  // volume 0-100
         m_field[IDX_PLAY_PAUSE]       = new SFBool (false, this);// play/pause
+        m_field[IDX_FULLSCREEN]       = new SFBool (false, this);// fullscreen
     }
 
     void start (Context c) {
@@ -84,7 +86,11 @@ public class MediaControl extends Node {
                     m_mediaStartChanged = false;
                     m_isUpdated = false;
                     long mediaTime = ((SFTime) m_field[IDX_MEDIA_START_TIME]).getValue();
+                    if (m_loadable.getState() == Loadable.EOM) {
+                        ((MediaObject) m_loadable).start();
+                    } else {
                     ((MediaObject) m_loadable).setMediaTimePos(1000*mediaTime);
+                    }
                     Logger.println ("m_mediaStartChanged");
                 }
             }
@@ -106,6 +112,15 @@ public class MediaControl extends Node {
                     Logger.println ("m_pauseChanged "+pause);
                 }
             }
+            if( m_fullscreenChanged ) {
+                if (m_loadable != null) {
+                    m_fullscreenChanged = false;
+                    m_isUpdated = false;
+                    boolean fs = ((SFBool)m_field[IDX_FULLSCREEN]).getValue ();
+                    ((MediaObject) m_loadable).setFullScreen (fs);
+                    Logger.println ("m_fullscreenChanged"+fs);
+                }
+            }
         }
         return updated;
     }
@@ -123,6 +138,9 @@ public class MediaControl extends Node {
         }
         else if (f == m_field[IDX_PLAY_PAUSE]) {
             m_pauseChanged = true;
+        }
+        else if (f == m_field[IDX_FULLSCREEN]) {
+            m_fullscreenChanged = true;
         }
     }
 

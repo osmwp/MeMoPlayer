@@ -291,6 +291,9 @@ public class Logger {
             break;
         case '#' :
             Logger.println ("MeMo player "+s_version);
+//#ifdef BlackBerry
+            Logger.println ("BlackBerry device: "+net.rim.device.api.system.DeviceInfo.getDeviceName());
+//#endif
             Logger.println ("Help: ");
             Logger.println ("  0: Enable/disable pause indicator");
             Logger.println ("  1: Enable/disable mem bar");

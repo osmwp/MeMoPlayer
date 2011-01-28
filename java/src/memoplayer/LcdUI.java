@@ -19,13 +19,12 @@ package memoplayer;
 
 //#ifndef BlackBerry 
 import javax.microedition.lcdui.Alert;
-import javax.microedition.lcdui.Image;
-import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
-import javax.microedition.lcdui.AlertType;
+import javax.microedition.lcdui.Displayable;
+import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.TextBox;
-//#endif
 
 /**
  * Manages the display of LCDUI Alerts and Textboxes.
@@ -136,3 +135,204 @@ public class LcdUI implements CommandListener {
         }
     }
 }
+//#else
+// BlackBerry section
+import net.rim.device.api.ui.UiApplication;
+//#ifdef BlackBerry.Touch
+import net.rim.device.api.ui.VirtualKeyboard;
+//#endif
+import net.rim.device.api.ui.container.MainScreen;
+import net.rim.device.api.ui.component.LabelField;
+import net.rim.device.api.ui.component.BasicEditField;
+import net.rim.device.api.ui.component.PasswordEditField;
+import net.rim.device.api.ui.component.Dialog;
+import net.rim.device.api.ui.component.Menu;
+
+import net.rim.device.api.ui.MenuItem;
+
+import javax.microedition.lcdui.TextField;
+import javax.microedition.lcdui.AlertType;
+
+public class LcdUI  {
+    private static StringBuffer m_textInput=null;
+    private static boolean textboxReturn=false;
+    private static Object waitTextBox=null;
+    private static TextBoxScreen textboxScreen;
+
+    public static String getTextInput() {
+        return m_textInput!=null ? m_textInput.toString() : "";
+    }
+
+    // class to launch asyncronously the TexBboxScreen
+    private static class textBoxRun implements Runnable {
+        String title;
+        String text;
+        String okLabel;
+        String cancelLabel;
+        int size;
+        int type;
+        textBoxRun(String _title, String _text, int _size, int _type,
+            String _okLabel, String _cancelLabel) {
+            title=_title;
+            text=_text;
+            okLabel=_okLabel;
+            cancelLabel=_cancelLabel;
+            size=_size;
+            type=_type;
+        }
+        public void run()
+        {
+            displayTextBoxScreen(title, text, size, type, okLabel, cancelLabel);
+        }
+    }
+
+    // display the TextBoxScreen on the screen
+    public static boolean displayTextBox(String title, String text, int size, int type,
+            String okLabel, String cancelLabel) {
+
+        // initialize or reset text input result
+        if (m_textInput == null) {
+            m_textInput = new StringBuffer();
+            waitTextBox=new Object();
+        } else {
+            m_textInput.setLength(0);
+        }
+
+        textboxReturn=false;
+        // make asynchronous call in order to avoid Exception
+        UiApplication.getUiApplication().invokeLater (new textBoxRun(title, text, size, type, okLabel, cancelLabel));
+
+        // pause thread, wait TextBoxScreen to close
+        synchronized (waitTextBox) {
+            try { waitTextBox.wait(); } catch (InterruptedException ie) { }
+        }
+        
+        // free resource
+        textboxScreen=null;
+
+//#ifdef BlackBerry.Touch
+        // check if virtual keyboard is supported
+        VirtualKeyboard vk = ((MainScreen)UiApplication.getUiApplication().getActiveScreen()).getVirtualKeyboard();
+        if(vk!=null) {
+            // hide it
+            vk.setVisibility(VirtualKeyboard.HIDE);
+        }
+//#endif
+        return textboxReturn;
+    }
+
+    // prepare, build and display the TextBoxScreen
+    public static void displayTextBoxScreen(String title, String text, int size, int type,
+            String okLabel, String cancelLabel) {
+        
+        long style=0;
+        
+        // check style
+        switch(type&0xFFFF){
+        case TextField.EMAILADDR:   style=BasicEditField.FILTER_EMAIL;        break;
+        case TextField.NUMERIC:     style=BasicEditField.FILTER_INTEGER;      break;
+        case TextField.PHONENUMBER: style=BasicEditField.FILTER_PHONE;        break;
+        case TextField.URL:         style=BasicEditField.FILTER_URL;          break;
+        case TextField.DECIMAL:     style=BasicEditField.FILTER_REAL_NUMERIC; break;
+        case TextField.ANY:
+        default:                    style=BasicEditField.FILTER_DEFAULT;      break;
+        }
+        
+        BasicEditField textField=null;
+        // check password flag
+        if( (type&0x10000) != 0 ) {
+            textField = new  PasswordEditField("",text,size,style);
+        } else {
+            textField = new  BasicEditField("",text,size,style);
+        }
+
+        textboxScreen = new TextBoxScreen(textField,title,okLabel,cancelLabel);
+
+        // add the screen on the display stack
+        UiApplication.getUiApplication().pushScreen( textboxScreen );
+    }
+
+    // TextBoxScreen screen
+    private static final class TextBoxScreen extends MainScreen {
+
+        BasicEditField textField;
+        MenuItem menuItemOk;
+        MenuItem menuItemCancel;
+        
+        public boolean retOK=false; 
+        
+        TextBoxScreen (BasicEditField _textField, String title, String labelOk, String labelCancel) {
+
+            super();
+            
+            setTitle( new LabelField( title, LabelField.USE_ALL_WIDTH | LabelField.ELLIPSIS ) );
+
+            textField = _textField;
+            
+            // add menu OK
+            menuItemOk = new MenuItem(labelOk , 100000, 10){
+                public void run() 
+                {
+                    m_textInput.append(textField.getText());
+                    textboxReturn = true;
+                    // Redisplay previous screen
+                    UiApplication.getUiApplication().popScreen( textboxScreen );
+
+                    notifyTextBox();
+                }
+            };
+
+            // add menu Cancel
+            menuItemCancel = new MenuItem(labelCancel , 100000, 10){
+                public void run() 
+                {
+                    m_textInput.setLength(0);
+                    textboxReturn = false;
+                    // Redisplay previous screen
+                    UiApplication.getUiApplication().popScreen( textboxScreen );
+                    notifyTextBox();
+                }
+            };
+            
+            // add text field
+            add( textField );
+            
+        }
+        
+        // cancel wait text box
+        protected void notifyTextBox() {
+            synchronized (waitTextBox) {
+                waitTextBox.notify();
+            }
+        }
+
+        // display the menu
+        protected void makeMenu(Menu menu, int instance) {
+            menu.add( menuItemOk );
+            menu.add( menuItemCancel );
+        }
+
+        // close the window
+        public boolean onClose() {
+            UiApplication.getUiApplication().popScreen( textboxScreen );
+            notifyTextBox();
+            return false;
+        }
+
+        // called when 'back' button is pressed and changes are made
+        protected boolean onSavePrompt(){
+            // Redisplay previous screen
+            UiApplication.getUiApplication().popScreen( textboxScreen );
+            textboxReturn = false;
+            notifyTextBox();
+            return false;
+        }
+    }
+
+    // display alert message
+    public static void displayAlert(String title, String message, Image image, AlertType type, int timeout) {
+        Dialog.alert(message);
+    }
+}
+// End of BlackBerry section
+//#endif

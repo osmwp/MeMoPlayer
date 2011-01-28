@@ -2,6 +2,7 @@
 	<dirname property="basedir" file="${ant.file.common}"/>
 	<import file="ant/functions.xml" />
 	<import file="ant/subtargets.xml" />
+	<import file="ant/build-rim.xml" />
 	
 	<path id="libs">
         <fileset dir="ant/lib" includes="*.jar" />
@@ -106,7 +107,7 @@
 	    </zip>
     </target>
     
-	<target name="Package.ToSDK" description="Build all the profiles and put them in the SDK">
+	<target name="Package.ToSDK" description="Build all j2me profiles and put them in the SDK">
 		<property name="profiles" value="${profilesForSDK}"/>
 		<delete includeemptydirs="true" failonerror="false">
             <fileset dir="${pkg.dir}" includes="**/*" />
@@ -117,4 +118,9 @@
 		</copy>
 	</target>
 	
+	<target name="PackageAll.ToSDK" description="Build all j2me and RIM profiles and put them in the SDK">
+        <antcall target="Package.ToSDK" />
+        <antcall target="PackageRIM.ToSDK" />
+	</target>
+
 </project>

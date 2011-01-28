@@ -24,9 +24,9 @@ public class MovieTexture extends MediaNode  {
 
     MovieTexture () {
         super (5,MediaObject.VIDEO, MediaObject.PLAYBACK);
-        System.out.println ("MovieTexture created");
+        //System.out.println ("MovieTexture created");
         m_field[3] = new SFVec2f(-1,-1,null); // movieSize : video src size
-        m_field[4] = new SFBool(false,this);  // fullScreen video display
+        m_field[4] = new SFBool(false,this); // fullScreen : display video full screen or not
     }
 
 

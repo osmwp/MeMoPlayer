@@ -312,7 +312,16 @@ class ExternCall {
             }
             return;
         case 28: // getProperty (String property)
+//#ifndef BlackBerry
             registers[r].setString(System.getProperty(registers[r].getString()));
+//#else
+            String property = registers[r].getString();
+            String value = System.getProperty(registers[r].getString());
+            if (property.compareTo("microedition.platform")==0) {
+              value = value+" "+net.rim.device.api.system.DeviceInfo.getDeviceName();
+            }
+            registers[r].setString(value);
+//#endif
             return;
         case 29: // setTimeout (method, timeout, [args]+)
             final int timeout = registers[r+1].getInt ();

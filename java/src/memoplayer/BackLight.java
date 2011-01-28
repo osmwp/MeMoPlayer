@@ -16,7 +16,11 @@
  */
 
 package memoplayer;
+//#ifndef BlackBerry
+//#ifndef BlackBerry.Signed
 import com.nokia.mid.ui.*;
+//#endif
+//#endif
 
 public class BackLight implements Runnable {
 
@@ -24,6 +28,7 @@ public class BackLight implements Runnable {
     private int cycle, timeout; 
     private long lastTime;
     private static BackLight s_backLight = null;
+//#ifndef BlackBerry
     private static boolean s_available = false;
     static {
         try {
@@ -31,6 +36,13 @@ public class BackLight implements Runnable {
             s_available = true;
         } catch (ClassNotFoundException e) { }
     }
+//#else
+//#ifdef BlackBerry.Signed
+    private static boolean s_available = true;
+//#else
+    private static boolean s_available = false;
+//#endif
+//#endif
 
     public BackLight() {
         timeout = 10000;
@@ -76,11 +88,17 @@ public class BackLight implements Runnable {
         while (m_again) {
             cycle++;
             try {
+//#ifndef BlackBerry
                 if (cycle >=  2) {
                     cycle = 0;
                     DeviceControl.setLights (0, 0);
                 }
                 DeviceControl.setLights (0, 100);
+//#else
+//#ifdef BlackBerry.Signed
+	        	net.rim.device.api.system.Backlight.enable(true,255);
+//#endif
+//#endif
                 while (delta < timeout) {
                     lastTime = System.currentTimeMillis ();
                     Thread.sleep (timeout);

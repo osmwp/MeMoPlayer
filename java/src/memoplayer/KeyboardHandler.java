@@ -16,10 +16,14 @@
 
 package memoplayer;
 
-import javax.microedition.lcdui.Canvas;
+//#ifdef BlackBerry
+import net.rim.device.api.ui.Keypad;
+import net.rim.device.api.system.Characters;
+//#endif
 
 public class KeyboardHandler {
     
+//#ifndef BlackBerry
     final private static int KEYBOARD_DEFAULT = 0;
     final private static int KEYBOARD_SUNWTK = 98;
     final private static int KEYBOARD_MICROEMUL = 99;
@@ -60,15 +64,15 @@ public class KeyboardHandler {
         } catch (Exception e) { ; }
     }
     
-    Canvas m_canvas;
+    MyCanvas m_canvas;
     int m_keyboardType=-1;
     boolean m_useStandardFullKeyboard=false;
     
     
-    KeyboardHandler (Canvas canvas) {
+    KeyboardHandler (MyCanvas canvas) {
         m_canvas = canvas;
 
-        //SKA: keyboard handler initialization
+        // keyboard handler initialization
         String useFullKeyboard = MiniPlayer.getJadProperty("MEMO-USE_FULL_KEYBOARD");
         if (useFullKeyboard != null) {
             // check if use standard full keyboard
@@ -93,14 +97,14 @@ public class KeyboardHandler {
     public int convertKey(int key) {
 
         // check if it is a keypad numeric key
-        if ( (key>=Canvas.KEY_NUM0) && (key<=Canvas.KEY_NUM9) ) {
-            return ('0'+(key-Canvas.KEY_NUM0));
+        if ( (key>=MyCanvas.KEY_NUM0) && (key<=MyCanvas.KEY_NUM9) ) {
+            return ('0'+(key-MyCanvas.KEY_NUM0));
         }
         
         // other keypad keys
         switch (key) {
-        case Canvas.KEY_STAR: return '*';
-        case Canvas.KEY_POUND:return '#';
+        case MyCanvas.KEY_STAR: return '*';
+        case MyCanvas.KEY_POUND:return '#';
         }
 
         // check if use standard full keyboard
@@ -122,7 +126,7 @@ public class KeyboardHandler {
         //Logger.println("Default convertKey: "+key);
 
         switch (key) {
-        case Canvas.FIRE:     return 'E';
+        case MyCanvas.FIRE:     return 'E';
         // default return carriage
         case 10:              return -10;
         }
@@ -130,36 +134,36 @@ public class KeyboardHandler {
         // Game Action (SE)
         int myGameAction = m_canvas.getGameAction(key);
         switch (myGameAction) {
-        case Canvas.UP:     return 'U';
-        case Canvas.DOWN:   return 'D';
-        case Canvas.LEFT:   return 'L';
-        case Canvas.RIGHT:  return 'R';
-        case Canvas.FIRE:   return 'E';
-        case Canvas.GAME_A: return 'A';
-        case Canvas.GAME_B: return 'B';
-        case Canvas.GAME_C: return 'C';
-        case Canvas.GAME_D: return 'Z';
+        case MyCanvas.UP:     return 'U';
+        case MyCanvas.DOWN:   return 'D';
+        case MyCanvas.LEFT:   return 'L';
+        case MyCanvas.RIGHT:  return 'R';
+        case MyCanvas.FIRE:   return 'E';
+        case MyCanvas.GAME_A: return 'A';
+        case MyCanvas.GAME_B: return 'B';
+        case MyCanvas.GAME_C: return 'C';
+        case MyCanvas.GAME_D: return 'Z';
         }
         
         // try keyCode
         try {
-            if (key == m_canvas.getKeyCode(Canvas.UP)) {
+            if (key == m_canvas.getKeyCode(MyCanvas.UP)) {
                 return 'U';
-            } else if (key == m_canvas.getKeyCode(Canvas.DOWN)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.DOWN)) {
                 return 'D';
-            } else if (key == m_canvas.getKeyCode(Canvas.LEFT)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.LEFT)) {
                 return 'L';
-            } else if (key == m_canvas.getKeyCode(Canvas.RIGHT)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.RIGHT)) {
                 return 'R';
-            } else if (key == m_canvas.getKeyCode(Canvas.FIRE)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.FIRE)) {
                 return 'E';
-            } else if (key == m_canvas.getKeyCode(Canvas.GAME_A) || key == -6) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.GAME_A) || key == -6) {
                 return 'A';
-            } else if (key == m_canvas.getKeyCode(Canvas.GAME_B) || key == -7) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.GAME_B) || key == -7) {
                 return 'B';
-            } else if (key == m_canvas.getKeyCode(Canvas.GAME_C) || key == -11) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.GAME_C) || key == -11) {
                 return 'C';
-            } else if (key == m_canvas.getKeyCode(Canvas.GAME_D)
+            } else if (key == m_canvas.getKeyCode(MyCanvas.GAME_D)
                     || key ==  8
                     || key == -8
                     || key == -16 /* LG KF700 */) {
@@ -210,21 +214,21 @@ public class KeyboardHandler {
         // GameAction
         int myGameAction = m_canvas.getGameAction(key);
         switch (myGameAction) {
-        case Canvas.UP:   return 'U';
-        case Canvas.DOWN: return 'D';
-        case Canvas.LEFT: return 'L';
-        case Canvas.RIGHT:return 'R';
-        case Canvas.FIRE: return 'E';
+        case MyCanvas.UP:   return 'U';
+        case MyCanvas.DOWN: return 'D';
+        case MyCanvas.LEFT: return 'L';
+        case MyCanvas.RIGHT:return 'R';
+        case MyCanvas.FIRE: return 'E';
         }
 
         try {
-            if (key == m_canvas.getKeyCode(Canvas.UP)) {
+            if (key == m_canvas.getKeyCode(MyCanvas.UP)) {
                 return 'U';
-            } else if (key == m_canvas.getKeyCode(Canvas.DOWN)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.DOWN)) {
                 return 'D';
-            } else if (key == m_canvas.getKeyCode(Canvas.LEFT)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.LEFT)) {
                 return 'L';
-            } else if (key == m_canvas.getKeyCode(Canvas.RIGHT)) {
+            } else if (key == m_canvas.getKeyCode(MyCanvas.RIGHT)) {
                 return 'R';
             } else if ( key == -6) {
                 return 'A';
@@ -242,5 +246,28 @@ public class KeyboardHandler {
         //Logger.println("Emulator special key: " + key);
         return 'X';
     }
+//#else
+    KeyboardHandler (MyCanvas canvas) {
+    }
 
+    // BlackBerry key management
+    public int convertKey(int key) {
+        // check Keypad keycodes
+        int keyCode = Keypad.key(key); 
+        switch( keyCode ) {
+            case 4098: // value of left soft key / menu button  
+            case Characters.CONTROL_MENU : return 'A';
+            case Characters.ESCAPE       : return 'B';
+            case Characters.BACKSPACE    : return 'Z';
+            case Characters.DELETE       : return 'Z';
+            case Characters.CONTROL_RIGHT: return 'R';
+            case Characters.CONTROL_UP   : return 'U';
+            case Characters.CONTROL_LEFT : return 'L';
+            case Characters.CONTROL_DOWN : return 'D';
+            // case Characters. : return ''; break;
+        }
+        // nothing found, ignore key
+        return 0;
+    }
+//#endif
 }

@@ -56,6 +56,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     int m_srcWidth=-1;
     int m_srcHeight=-1;
     
+    int posX=0;
+    int posY=0;
+
     // for rewind or forward
     boolean m_bPaused = false;
     boolean m_bSeekMode = false;
@@ -106,6 +109,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         	if(event.equals (PlayerListener.ERROR)) {
                 Logger.println ("[DBG] error playerUpdate: "+event+" "+eventData);
         	} else {
+//#ifdef BlackBerry
+              if(event!="com.rim.timeUpdate")
+//#endif
                 Logger.println ("[DBG] playerUpdate: "+event);
         	}
         }
@@ -114,6 +120,10 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             setState (Loadable.PLAYING);
         } else if (event.equals (PlayerListener.END_OF_MEDIA)) {
             setState (Loadable.EOM);
+//#ifdef BlackBerry
+        } else if (event == "com.rim.loading") {
+            setState (Loadable.BUFFERING);
+//#endif
         } else if (event.equals (PlayerListener.BUFFERING_STARTED)) {
             setState (Loadable.BUFFERING);
         } else if (event.equals (PlayerListener.BUFFERING_STOPPED)) {
@@ -196,6 +206,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             }
             m_srcWidth=-1;
             m_srcHeight=-1;
+//#ifdef BlackBerry
+            removeVideo();
+//#endif
         }
     }
 
@@ -374,8 +387,32 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             int flag = OVERLAY | mode; //RC 13/10/07 uncomment rotation
 
             try {
+//#ifndef BlackBerry
                 m_videoControl.initDisplayMode (VideoControl.USE_DIRECT_VIDEO|flag, m_canvas);
                 MyCanvas.s_OverlaySupported = true;
+//#else
+
+                // final net.rim.device.api.ui.Field videoField = (net.rim.device.api.ui.Field) m_videoControl.initDisplayMode (VideoControl.USE_GUI_PRIMITIVE, "net.rim.device.api.ui.Field");
+                // can not add directly screen here ...
+                net.rim.device.api.ui.UiApplication.getUiApplication().invokeLater(new Runnable() {
+                  public void run() {
+                      try {
+                          //Setting the VideoControl to primitive and casting it as a field
+                          // in order to give the manager access to manipulate its position
+                          net.rim.device.api.ui.Field videoField = (net.rim.device.api.ui.Field) m_videoControl.initDisplayMode(
+                                VideoControl.USE_GUI_PRIMITIVE,"net.rim.device.api.ui.Field");
+                          // Setting the size of the video.
+                          m_videoControl.setDisplaySize (m_region.x1, m_region.y1);
+                          m_videoControl.setVisible(true);
+                            addVideo(videoField,m_region.x0, m_region.y0,m_region.x1, m_region.y1);
+                      } catch (Exception e){
+                          Logger.println ("invokeLater "+e);
+                          e.printStackTrace ();
+                      }
+                }
+                });
+                return;
+//#endif
             } catch (Exception e) {
                 Logger.println ("setDisplayMode: video overlay or rotation not supported, falling back to normal mode: "+e);
                 try {
@@ -399,12 +436,23 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
         }
     }
 
-    void setDisplayArea (int x, int y, int w, int h) {
-        //Logger.println ("MediaObject.setDisplayArea: "+x+", "+y+", "+w+", "+h);
+    void setDisplayArea (final int x, final int y, final int w, final int h) {
+        // Logger.println ("+MediaObject.setDisplayArea "+x+", "+y+", "+w+", "+h);
         if (m_type == VIDEO && m_videoControl != null) {
             try {
+                if( (posX!=x) || (posY!=y) ) {
+                    posX=x;
+                    posY=y;
+                    // Logger.println ("m_videoControl: "+x+", "+y);
+//#ifndef BlackBerry
                 m_videoControl.setDisplayLocation (x, y);
                 m_videoControl.setDisplaySize (w, h);
+//#else
+                    m_videoControl.setDisplaySize (w, h);
+                    // if (videoLayout!=null) videoLayout.setPositionVideo(x,y,w,h);
+//#endif
+                }
+                // Logger.println ("-MediaObject.setDisplayArea: "+x+", "+y+", "+w+", "+h);
             } catch (Exception e){
                 Logger.println ("Exception in setDisplayArea ("+x+","+y+","+w+","+h+"): "+e);
                 e.printStackTrace ();
@@ -695,7 +743,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     void openControls () {
 //#ifdef jsr.amms
         m_recordControl = null;
-//#        m_cameraControl = null;
+        m_cameraControl = null;
 //#endif
         m_videoControl = null;
         m_volumeControl = null;
@@ -805,4 +853,80 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             setState (Loadable.ERROR);
         }
     }
+
+//#ifdef BlackBerry
+    int m_vx=0;
+    int m_vy=0;
+    int m_vw=0;
+    int m_vh=0;
+    //to enable video positionning for BlackBerry
+    class VideoLayout extends net.rim.device.api.ui.Manager {
+       
+
+       VideoLayout(int x, int y, int w, int h) {
+           super(net.rim.device.api.ui.Manager.NO_VERTICAL_SCROLL);
+           m_vx=x;
+           m_vy=y;
+           m_vw=w;
+           m_vh=h;
+       }
+
+       // override to enable child field placement
+       protected void sublayout(int width, int height) {
+           int numberOfFields = getFieldCount();
+           Logger.println("sublayout field count: "+numberOfFields);
+           if( numberOfFields > 0 ) {
+               net.rim.device.api.ui.Field field = getField(0); //get the field
+               setPositionChild(field,m_vx+1,m_vy+1); //set the position for the field
+               layoutChild(field, m_vw-2, m_vh-2); //lay out the field
+               for (int i=1;i<numberOfFields;i++) {
+                    field = getField(i); //get the field
+                    setPositionChild(field,0,0); //set the position for the field
+                    layoutChild(field, 0, 0); //lay out the field
+               }
+           }
+           setExtent(width, height);
+       }
+
+       public void setPositionVideo( int x, int y, int w, int h) {
+            if( videoLayout != null ) {
+                // videoLayout.setPositionVideo( x, y, w, h);
+                m_vx=x;
+                m_vy=y;
+                m_vw=w;
+                m_vh=h;
+                net.rim.device.api.ui.UiApplication.getUiApplication().invokeLater(new Runnable() {
+                    public void run() {
+                        net.rim.device.api.ui.component.NullField nf = new net.rim.device.api.ui.component.NullField();
+                        add(nf);
+                        delete(nf);
+               }});
+            }
+        }
+    }
+
+    VideoLayout videoLayout;
+    net.rim.device.api.ui.Field videoField;
+
+    private void removeVideo() {
+        net.rim.device.api.ui.UiApplication.getUiApplication().invokeLater(new Runnable() {
+        public void run() {
+            if( videoLayout != null ) {
+                m_canvas.delete(videoLayout);
+                videoLayout = null;
+            }
+        }});
+    }
+
+    private void addVideo(net.rim.device.api.ui.Field field, int x, int y, int w, int h) {
+        videoLayout = new VideoLayout(x, y, w, h);
+        videoField = field;
+        net.rim.device.api.ui.UiApplication.getUiApplication().invokeLater(new Runnable() {
+            public void run() {
+                m_canvas.add(videoLayout);
+                videoLayout.add(videoField);
+        }});
+    }
+
+//#endif
 }

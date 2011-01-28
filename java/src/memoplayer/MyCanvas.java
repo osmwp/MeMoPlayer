@@ -24,11 +24,31 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.TextBox;
 import javax.microedition.midlet.MIDlet;
+//#else
+import net.rim.device.api.ui.UiApplication;
+//#ifdef BlackBerry.Signed
+import net.rim.device.api.system.Display;
+//#endif
+//#ifdef BlackBerry.Touch
+import net.rim.device.api.ui.TouchEvent;
+//#endif
 //#endif
 
 import java.io.DataInputStream;
 
-public class MyCanvas extends Canvas implements Runnable {
+// according to platform, use the coressponding inheritance
+//#ifndef BlackBerry
+public class MyCanvas extends javax.microedition.lcdui.Canvas implements Runnable {
+//#else
+public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
+//#ifndef BlackBerryTouch
+     implements Runnable
+//#else 
+     implements Runnable,net.rim.device.api.system.AccelerometerListener
+//#endif        
+{
+//#endif
+
     public final static int SLEEP_TRESHOLD = 500; // Duration (in ms) under which sleep will not occur    
     public final static int SLEEP_FOREVER = Integer.MAX_VALUE;
     public final static int SLEEP_CANCELED  = -1;
@@ -47,7 +67,17 @@ public class MyCanvas extends Canvas implements Runnable {
     // First is to notify the UI, second is to let UI scale, third for security
     private final static int RESIZE_CYCLES = 3;
     
+//#ifndef BlackBerry
     private MIDlet midlet;
+//#else
+    private UiApplication uiApp;
+//#ifdef BlackBerry.Touch
+    private int m_accOrientation=-1;
+//#ifdef BlackBerry.Signed
+    private int m_orientation;
+//#endif
+//#endif
+//#endif
 
     private int m_width, m_height;    
     boolean forceUpdate;
@@ -56,7 +86,9 @@ public class MyCanvas extends Canvas implements Runnable {
     String sceneName; // the name of  the current scene playing
     StringBuffer msg = new StringBuffer (); // for the loading message
 
+//#ifdef debug.console
     private int m_debugStep;
+//#endif
     static int s_memBar = 0, s_cpuBar = 0;
     static boolean s_pauseIndicator = false;
     static boolean s_debugClip = false;
@@ -88,12 +120,28 @@ public class MyCanvas extends Canvas implements Runnable {
     int [] m_backData;
 //#endif
     static boolean s_OverlaySupported = false;
+//#ifndef BlackBerry
     protected MyCanvas (MIDlet m) {
         midlet = m;
+//#else
+    protected MyCanvas (UiApplication app) {
+        super(net.rim.device.api.ui.Manager.NO_VERTICAL_SCROLL|net.rim.device.api.ui.Manager.NO_HORIZONTAL_SCROLL);
+
+        uiApp = app;
+//#ifdef BlackBerry.Touched
+//#ifdef BlackBerry.Signed
+        m_orientation = Display.getOrientation();
+//#endif
+//#endif
+//#endif
         context = new Context ();
 
         if (s_platform != null) { //MCP: Some SE emulators return null ?!
+//#ifndef BlackBerry
             Logger.println ("System:"+s_platform);
+//#else
+            Logger.println ("System:"+s_platform+" "+net.rim.device.api.system.DeviceInfo.getDeviceName());
+//#endif
             jp8 = s_platform.startsWith ("SonyEricssonW910");
         }
         
@@ -185,10 +233,9 @@ public class MyCanvas extends Canvas implements Runnable {
         }
     }
 
-    protected void keyPressed (int key) {
-        // Logger.println ("keyPressed: "+key);
-        int a = m_keyboardHandler.convertKey (key);
+
 //#ifdef debug.console
+    protected void checkConsole(int a) {
         if (a == '#' && m_debugStep == 0) {
             m_debugStep = 1;
         } else if (a == '*' && m_debugStep == 1) {
@@ -200,21 +247,45 @@ public class MyCanvas extends Canvas implements Runnable {
             forceUpdate();
             m_debugStep = 0;
         }
-        //Logger.println ("keyPressed: "+key+" => "+getGameAction (key)+" => "+(char)a);
+
         if (m_debugStep == 3) {
             Logger.setKey (a);
+//#ifdef BlackBerry
+            repaint ();
+//#endif
             wakeUp ();
-        } else {
+        }
+    }
+//#endif
+
+    protected void processKey(int a, int key) {
+//#ifdef debug.console
+        if (m_debugStep != 3) {
             if (a == 'X' && key > 0) {
                 a = -key; // Pass keyboard value as negative (see KeySensor) !
             }
             addEvent (Event.KEY_PRESSED, a);
+//#ifdef BlackBerry
+            // HACK: no key up event for BlackBerry
+            addEvent (Event.KEY_RELEASED, a);
+//#endif
+        } else {
+            Logger.setKey (a);
+//#ifdef BlackBerry
+            // force repaint
+            repaint ();
+//#endif
+            wakeUp ();
         }
 //#else
         if (a == 'X' && key > 0) {
             a = -key; // Keyboard value !
         }
         addEvent (Event.KEY_PRESSED, a);
+//#ifdef BlackBerry
+        // HACK: no key up event for BlackBerry
+        addEvent (Event.KEY_RELEASED, a);
+//#endif
 //#endif
 
 //#ifdef jsr.nokia-ui 
@@ -222,6 +293,38 @@ public class MyCanvas extends Canvas implements Runnable {
 //#endif
     }
 
+
+
+//#ifndef BlackBerry
+    protected void keyPressed (int key) {
+//#else
+    protected boolean keyDown (int key, int time) {
+//#endif
+
+        // Logger.println ("keyPressed: "+key);
+        int a = m_keyboardHandler.convertKey (key);
+
+//#ifdef BlackBerry
+        // if BlackBerry convertKey returns 0
+        // then return false to generate keyChar event
+        if(a==0) {
+            return false;
+        }
+//#endif
+
+//#ifdef debug.console
+        checkConsole(a);
+//#endif
+
+        // process key value
+        processKey(a,key);
+
+//#ifdef BlackBerry
+        return true;
+//#endif
+    }
+
+//#ifndef BlackBerry
     protected void keyReleased (int key) {
         int a = m_keyboardHandler.convertKey (key);
         if (a == 'X' && key > 0) {
@@ -229,6 +332,7 @@ public class MyCanvas extends Canvas implements Runnable {
         }
         addEvent (Event.KEY_RELEASED, a);
     }
+//#endif
 
     final static int BUG_OFFSET = 0; // 55 for M600 emulator, 0 for phones
 
@@ -239,6 +343,10 @@ public class MyCanvas extends Canvas implements Runnable {
                 forceUpdate();
                 m_debugStep = 0;
             }
+            wakeUp();
+//#ifdef BlackBerry.Touch
+            repaint();
+//#endif
             wakeUp();
             return;
         } else if (x<m_width/10 && y<m_height/10) { // top/left corner 
@@ -333,7 +441,34 @@ public class MyCanvas extends Canvas implements Runnable {
         }
     }
     
+//#ifndef BlackBerry
     public void paint (javax.microedition.lcdui.Graphics g) {
+//#else
+    static boolean bFirstPaint = true;
+    public void paint (net.rim.device.api.ui.Graphics gc) {
+
+        if(bFirstPaint) {
+                bFirstPaint = false;
+                showNotify();
+        }
+
+//#ifdef BlackBerry.Touched
+//#ifdef BlackBerry.Signed
+        // check if orientation has changed
+        if( m_orientation != Display.getOrientation() ) {
+            // changes detected
+            m_orientation = Display.getOrientation();
+            // readjust Height/Width
+            setSize (getWidth (), getHeight ());
+            return;
+        }
+//#endif
+//#endif
+
+        Graphics g = new Graphics(gc);
+
+//#endif
+
         synchronized (s_paintLock) {
 //#ifdef debug.safePaint
         try {
@@ -343,6 +478,9 @@ public class MyCanvas extends Canvas implements Runnable {
             g.setClip (0, 0, m_width, m_height);
             g.setColor (255, 255, 255);
             g.fillRect (0, 0, m_width, m_height);
+//#ifdef BlackBerry
+            g.popContext();
+//#endif
             return;
         case PAINT_LOADER:
             int pos = (m_height - 20) / 2;
@@ -350,7 +488,7 @@ public class MyCanvas extends Canvas implements Runnable {
             g.setColor (0x909090);
             g.fillRect (0, 0, m_width, m_height);
             g.setColor (0);
-            g.setFont (Font.getFont(Font.FACE_PROPORTIONAL, Font.STYLE_PLAIN, Font.SIZE_SMALL));
+            g.setFont (Font.getFont(Font.FACE_PROPORTIONAL, Font.STYLE_PLAIN, FontStyle.s_fontSmall));
             g.drawString (sceneName, 20, 60, Graphics.LEFT|Graphics.TOP);
             g.drawString (""+scene.getDuration ()+" Bytes", 20, 80, Graphics.LEFT|Graphics.TOP);
             g.setFont (Font.getDefaultFont());
@@ -433,6 +571,10 @@ public class MyCanvas extends Canvas implements Runnable {
 //#endif
             } else {
                 context.gc = g;
+//#ifdef BlackBerry
+                // BlackBerry: override clip zone to entire screen
+                context.clip.setInt(0, 0, m_width, m_height);
+//#endif
                 context.renderAll (context.clip);
 //#ifdef debug.console
                 if (s_debugClip) {
@@ -458,6 +600,9 @@ public class MyCanvas extends Canvas implements Runnable {
 //#endif
         m_paintType = PAINT_NONE;
         }
+//#ifdef BlackBerry
+        g.popAllContext();
+//#endif
     }
    
     void flushGraphics (int x, int y, int w, int h, int type) {
@@ -465,18 +610,27 @@ public class MyCanvas extends Canvas implements Runnable {
             if (m_resizeCycle < RESIZE_CYCLES) {
                 return; // ignore paints during resize
             }
+//#ifdef debug.console
             m_paintType = m_debugStep == 3 ? PAINT_CONSOLE : type;
+//#else
+            m_paintType = type;
+//#endif
             if (m_paintType == PAINT_SCENE) {
                 if (w > 0 && h > 0) {
                     repaint (x, y, w, h);
                 } else {
                     return;
                 }
-            } else {
+            }
+//#ifndef BlackBerry
+            else {
                 repaint ();
             }
+//#endif
         }
+//#ifndef BlackBerry
         serviceRepaints ();
+//#endif
         Thread.yield();
     }
 
@@ -515,8 +669,13 @@ public class MyCanvas extends Canvas implements Runnable {
             context.update (scene, decoder);
             sceneName = play (sceneName);
         }
+//#ifndef BlackBerry
         ((MiniPlayer)midlet).clean();
         midlet.notifyDestroyed();
+//#else
+        ((MiniPlayer)uiApp).clean();
+        System.exit(0);
+//#endif
     }
 
     /**
@@ -702,7 +861,11 @@ public class MyCanvas extends Canvas implements Runnable {
             //MCP: Pause thread when canvas is not displayed or no activity
             if (isHidden) {
                 sleepDuration = SLEEP_FOREVER;
-            } else if (composeAgain || context.m_hasVideo || m_debugStep == 3 || m_event != null) {
+//#ifdef debug.console
+            } else if (m_debugStep == 3 ) {
+                sleepDuration = SLEEP_CANCELED;
+//#endif
+            } else if (composeAgain || context.m_hasVideo || m_event != null) {
                 sleepDuration = SLEEP_CANCELED;
             } else {
                 sleepDuration = scene.getSleepDuration ((int)(t-startTime));
@@ -750,5 +913,156 @@ public class MyCanvas extends Canvas implements Runnable {
         return null;
     }
     
+//#ifdef BlackBerry
+// BlackBerry specific methods    
+
+    protected void onExposed() {
+        showNotify ();
+    }
+
+    protected void onObscured() {
+        hideNotify();
+    }
+
+    protected void onFocusNotify(boolean focus) {
+        if( focus )
+			showNotify();
+        else
+            hideNotify();
+    }
+
+//#ifdef BlackBerry.Touch
+    protected boolean touchEvent(TouchEvent message) {
+     int x = message.getGlobalX(1);
+     int y = message.getGlobalY(1);
+     
+     switch(message.getEvent()) {
+             case TouchEvent.DOWN:
+                     pointerPressed( x, y);
+                       return true;
+             case TouchEvent.UP:
+                     pointerReleased( x, y);
+                     return true;
+             case TouchEvent.MOVE:
+                     pointerDragged( x, y);
+                     return true;
+             default:
+     }
+        
+     return false;
+    }
+
+    void onData(net.rim.device.api.system.AccelerometerData accData) {
+     int newOrientation = accData.getOrientation();
+     if ( m_accOrientation != newOrientation ) {
+             setSize (getWidth (), getHeight ());
+             repaint();
+     }
+    }
+//#endif
+
+    // trackball management
+    protected boolean navigationMovement(int dx, int dy, int status, int time) {
+        int keyCode=-1;
+        // check horizontal movement
+        if(dx!=0) {
+            if(dx>0) {
+                keyCode='R';
+            } else {
+                dx = -dx;
+                keyCode='L';
+            }
+            for(int i=0; i<dx; i++) {
+                processKey(keyCode,0);
+            }
+        }
+
+        // check vertical movement
+        if(dy!=0) {
+            if(dy>0) {
+                keyCode='D';
+            } else {
+                dy = -dy;
+                keyCode='U';
+            }
+            for(int i=0; i<dy; i++) {
+                processKey(keyCode,0);
+            }
+        }
+        return true;
+    }
+                                     
+    // trackball click management
+    protected boolean navigationClick(int status, int time) {
+//#ifndef BlackBerry.Touch
+//#ifdef debug.console
+        if (m_debugStep == 3) {
+          Logger.setKey ('E');
+          repaint();
+          wakeUp ();
+          return true;
+        }
+//#endif
+        addEvent (Event.KEY_PRESSED, 'E'); 
+//#endif
+        return true;
+    }
+
+    protected boolean navigationUnclick(int status, int time) {
+//#ifndef BlackBerry.Touch
+        addEvent (Event.KEY_RELEASED, 'E'); 
+//#endif
+        return true;
+    }
+
+    // special key management
+    protected boolean keyControl(char c, int status, int time) {
+        if(c==net.rim.device.api.system.Characters.CONTROL_VOLUME_DOWN) {
+                Message.sendMessage ("VOLUME", "DOWN");
+        } else if(c==net.rim.device.api.system.Characters.CONTROL_VOLUME_UP) {
+                Message.sendMessage ("VOLUME", "UP");
+        }
+
+        return super.keyControl(c, status, time);
+    }
+
+    // keyRepeat
+    protected boolean keyRepeat (int key, int time) {
+        return keyDown(key,time);
+    }
+
+    // keyChar get char from keyBoard
+    protected boolean keyChar ( char c, int status, int time) {
+        
+//#ifdef debug.console
+        checkConsole(c);
+//#endif
+
+        int key='X';
+        // check if it is a keypad numeric key
+        if ( (c>='0') && (c<='9') ) {
+            key = c;
+        } else if( (c=='*') || (c=='#')) {
+            key = c;
+        }
+
+        // process key value
+        processKey(key,c);
+
+        return false;
+    }
+
+    // repaint wrapper functions
+    private void repaint() {
+        // invalidate();
+        uiApp.repaint();
+    }
+    private void repaint(int x,int y,int width,int height) {
+        invalidate(x,y,width,height);
+    }
+    // stub setFullScreenMode, RIM apps are always fullscreen
+    private void setFullScreenMode(boolean mode){
+    }
+//#endif
 
 }
