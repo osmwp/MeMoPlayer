@@ -172,15 +172,7 @@
     	<echo message="currentRim.profile: ${currentRim.profile}" />
     	<antcall target="obfuscateRim" />
         <!-- Preverify lib -->
-		<condition property="os.platform" value="lin">
-			<os name="linux"/>
-        </condition>
-		<condition property="os.platform" value="mac">
-			<os family="mac"/>
-		</condition>
-		<property name="os.platform" value="win"/>
-    	<property name="executable-preverify" location="${HOME-JDE}/preverify/${os.platform}/preverify.exe"/>
-    	<exec executable="${executable-preverify}">
+    	<exec executable="${wtk.home}/bin/preverify">
             <arg value="-d"/>
             <arg value="pkg/${rim-target.dir}"/>
             <arg value="-classpath"/>
