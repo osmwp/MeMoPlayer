@@ -213,7 +213,7 @@
 		<property name="rimProfiles" value=""/>
 		<delete dir="pkg" />
         <call target="Package-RIM-LIB-toSDK" iterations="iter-on-rim-profiles" />
-        <copy todir="${MEMO_SDK_HOME}/tools/player" overwrite="true">
+        <copy todir="${sdk.dir}/tools/player" overwrite="true">
             <fileset dir="pkg/" includes="**/*.jar" />
         </copy>
 	</target>
