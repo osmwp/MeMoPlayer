@@ -77,27 +77,31 @@ public class Layer2D extends Group {
         boolean updated = isUpdated (forceUpdate);
         computeRegion (c);
         Region currentBounds = c.bounds;
-        if (isVisible(clip, c.bounds)) {
-            //MCP: The children bounds are the intersection between
-            // the context bounds and the Layer2D region.
-            m_innerBounds.applyIntersection(m_region, c.bounds);
-            c.addRenderNode (this);
-            //MCP: m_backup is used as a clean clip for children
-            m_backup.setInt(c.width, c.height, 0, 0);
-            c.bounds = m_innerBounds;
-            updated |= innerCompose (c, m_backup, forceUpdate);
-            c.addRenderNode (this);
-            m_first = true;
-            //MCP: Clip of children should not be out of innerBounds
-            if(updated && m_backup.applyIntersection(m_backup, m_innerBounds)) {
-                m_ac.addClip (clip, m_backup);
+        try {
+            if (isVisible(clip, currentBounds)) {
+                //MCP: The children bounds are the intersection between
+                // the context bounds and the Layer2D region.
+                m_innerBounds.applyIntersection(m_region, currentBounds);
+                c.addRenderNode (this);
+                //MCP: m_backup is used as a clean clip for children
+                m_backup.setInt(c.width, c.height, 0, 0);
+                c.bounds = m_innerBounds;
+                updated |= innerCompose (c, m_backup, forceUpdate);
+                c.addRenderNode (this);
+                m_first = true;
+                //MCP: Clip of children should not be out of innerBounds
+                if(updated && m_backup.applyIntersection(m_backup, m_innerBounds)) {
+                    m_ac.addClip (clip, m_backup);
+                }
+            } else {
+                //MCP: Children nodes must always be composed (even when layer is not visible).
+                c.bounds = null;
+                updated |= innerCompose (c, m_backup, forceUpdate);
             }
-        } else {
-            //MCP: Children nodes must always be composed (even when layer is not visible).
-            c.bounds = null;
-            updated |= innerCompose (c, m_backup, forceUpdate);
+        } finally {
+            // Always restore bounds whatever happens to children (like OoME)
+            c.bounds = currentBounds;
         }
-        c.bounds = currentBounds;
         return updated;
     }
 
