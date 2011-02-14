@@ -72,6 +72,8 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 //#ifdef jsr.amms
     private CameraControl m_cameraControl;
     private RecordControl m_recordControl;
+    // recording active
+    boolean m_isRecording = false;
 //#endif
 
     int m_w, m_h;
@@ -209,6 +211,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 //#ifdef BlackBerry
             removeVideo();
 //#endif
+            // to delete last video traces on screen
+            if (m_type==VIDEO) {
+                MyCanvas.composeAgain=true;
+                MiniPlayer.wakeUpCanvas();
+            }
         }
     }
 
@@ -356,6 +363,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 
     // show or hide the video
     void setVisible (boolean yes) {
+        // Logger.println ("MediaObject.setVisible "+yes);
         if (m_videoControl != null) {
             try {
                 m_videoControl.setVisible (yes);
@@ -506,9 +514,8 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                     m_videoControl.setVisible (false);
                 }
 //#ifdef jsr.amms
-                if (m_mode == RECORDING && m_recordControl != null) {
-                    m_recordControl.stopRecord();
-                    m_recordControl.commit();
+                if (m_isRecording) {
+                    stopRecord();
                     m_recordControl=null;
                 }
 //#endif
@@ -604,13 +611,9 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 
     public byte [] getSnapshot (String format) {
         try {
-//#ifdef jsr.amms
-            if (m_cameraControl != null) {
+            if (m_videoControl != null) {
                 return (m_videoControl.getSnapshot (format));
             }
-//#else
-            return (m_videoControl.getSnapshot (format));
-//#endif
         } catch (Exception e) {
             Logger.println ("Exception during getSnapshot: "+e);
         }
@@ -619,6 +622,7 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 
     // create a player according to the filename
     Player createPlayer () {
+    	Logger.println("Multimedia player for: "+m_name);
         try {
             if (m_name.startsWith ("file:///")) {
 //#ifdef jsr.75
@@ -741,6 +745,11 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     }
 
     void openControls () {
+
+    	// Control ctrls[];
+	    // ctrls = m_player.getControls();
+	    // for (int i = 0; i < ctrls.length; i++) { Logger.println("openControls: "+i+" : "+ctrls[i].getClass().getName()); }
+
 //#ifdef jsr.amms
         m_recordControl = null;
         m_cameraControl = null;
@@ -769,12 +778,12 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                         }
                         Logger.println ("Encodings: "+System.getProperty ("video.snapshot.encodings"));
                     }
-                } if (m_mode == RECORDING) {
-                    m_recordControl = (RecordControl)m_player.getControl("RecordControl");
-                    if (m_recordControl != null) {
-                        m_recordControl.setRecordLocation (System.getProperty("fileconn.dir.videos")+"video.3gp");
-                        m_recordControl.startRecord();
                     }
+                if (m_mode == RECORDING) {
+                    m_recordControl = (RecordControl)m_player.getControl("RecordControl");
+//                  if (m_recordControl != null) {
+//                  m_recordControl.setRecordLocation (System.getProperty("fileconn.dir.videos")+"video.3gp");
+//                  m_recordControl.startRecord();
                 }
 //#endif
             }
@@ -782,6 +791,37 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
             Logger.println ("Exception during player controls creation for "+m_name+" : "+e);
         }
     }
+    
+//#ifdef jsr.amms
+    public boolean startRecord (String location) {
+        Logger.println ("startRecord "+m_mode+" / "+m_recordControl+" / "+m_isRecording);
+        if ( (m_mode == RECORDING) && (m_recordControl != null) && (m_isRecording==false) ) {
+        	try {
+	        	m_recordControl.setRecordLocation (location);
+	        	m_recordControl.startRecord();
+	        	m_isRecording = true;
+	        	return true;
+            } catch (Exception e) {
+                Logger.println ("Exception during startRecord in "+location+" : "+e);
+            }
+        }
+        return false;
+    }
+
+    public boolean stopRecord () {
+        if ( (m_mode == RECORDING) && (m_recordControl != null) && (m_isRecording==true) ) {
+        	try {
+	        	m_recordControl.stopRecord();
+	        	m_recordControl.commit();
+	        	m_isRecording = false;
+	        	return true;
+            } catch (Exception e) {
+                Logger.println ("Exception during stopRecord : "+e);
+            }
+        }
+        return false;
+    }
+//#endif
 
     private void checkState (int state, String msg) {
         if (m_player.getState () != state) {

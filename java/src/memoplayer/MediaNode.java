@@ -27,27 +27,34 @@ public class MediaNode extends Node  {
     int m_startTime, m_restartTime, m_stopTime, m_type, m_recording;
     MediaObject m_media;
 
+    protected final static int IDX_URL        = 0;
+    protected final static int IDX_START_TIME = 1;
+    protected final static int IDX_STOP_TIME  = 2;
+    protected final static int MEDIA_NODE_FIELD_COUNT  = 3;
+
     MediaNode (int nbFields, int type, int recording) {
         super (nbFields);
         m_region = new Region ();
         m_region.set (-1, -1, -1, -1);
         m_type = type;
         m_recording = recording;
-        m_field[0] = new MFString (this); // url
-        m_field[1] = new SFTime (0, this);  // startTime
-        m_field[2] = new SFTime ((-1)<<16, this);  // stopTime
+        m_field[IDX_URL]        = new MFString (this); // url
+        m_field[IDX_START_TIME] = new SFTime (0, this);  // startTime
+        m_field[IDX_STOP_TIME]  = new SFTime ((-1)<<16, this);  // stopTime
     }
 
     MediaNode (int type, int recording) {
-        this (3, type, recording);
+        this (MEDIA_NODE_FIELD_COUNT, type, recording);
     }
 
     MediaNode (int type) {
-        this (3, type, MediaObject.PLAYBACK);
+        this (MEDIA_NODE_FIELD_COUNT, type, MediaObject.PLAYBACK);
     }
     
     void start (Context c) { 
-        //fieldChanged (m_field[0]);
+        fieldChanged (m_field[IDX_URL]);
+        fieldChanged (m_field[IDX_START_TIME]);
+        fieldChanged (m_field[IDX_STOP_TIME]);
         //m_media = new MediaObject ();
         c.scene.registerSleepy (this);
     }
@@ -74,37 +81,18 @@ public class MediaNode extends Node  {
         if (m_isUpdated) {
             m_isUpdated = false;
             if (m_urlChanged) {
-                if (m_media != null) {
-                    m_region.set (m_media.m_region);
-                    c.removeLoadable (m_media);
-                    m_media.close ();
-                    m_media = null;
+            	closeMedia(c);
                     m_urlChanged = false;
                 }
             }
-        }
         int time = c.time;
         //Logger.println ("Media:"+m_media+", time:"+time+", startTime"+m_startTime+", stopTime"+m_stopTime);
         if (m_media == null && time >= m_startTime && 
             (time < m_stopTime || (m_startTime >= m_stopTime || m_restartTime >= m_stopTime)) ) {
             m_startTime = m_restartTime;
-            String s = ((MFString)m_field[0]).getValue (0);
-            if (s != null & s.length() > 0) {
-                //System.err.println ("MediaNode.compose: opening: '"+s+"'");
-                m_media = new MediaObject (m_type, m_recording);
-                if (m_media.m_region.x0 != -1) {
-                    m_media.m_region.set (m_region);
-                } 
-                m_media.open (s, c.canvas, c.decoder);
-                c.addLoadable (m_media);
-            }
+            openMedia(c);
         } else if (m_media != null && time >= m_stopTime && m_stopTime > m_startTime) {
-            c.removeLoadable (m_media);
-            m_media.close ();
-            m_media = null;
-        }
-        if (c.ac != null) {
-            c.ac.m_mediaObject = m_media;
+        	closeMedia(c);
         }
         updated |= specificCompose (c, clip, updated);
   
@@ -113,33 +101,71 @@ public class MediaNode extends Node  {
 
     public void fieldChanged (Field f) {
         m_isUpdated = true;
-        if (f == m_field[0]) {
+        if (f == m_field[IDX_URL]) {
             m_urlChanged = true;
-        } else if (f == m_field [1]) {
+        } else if (f == m_field [IDX_START_TIME]) {
             if (m_media == null) {
                 m_startTime = ((SFTime)f).getValue ();
+                m_restartTime = m_startTime ;
             } else {
                 m_restartTime = ((SFTime)f).getValue ();
             }
-        } else if (f == m_field [2]) {
+        } else if (f == m_field [IDX_STOP_TIME]) {
             m_stopTime = ((SFTime)f).getValue ();
+        }
+    }
+
+    void openMedia(Context c) {
+        String s = ((MFString)m_field[IDX_URL]).getValue (0);
+        if (s != null & s.length() > 0) {
+            m_media = new MediaObject (m_type, m_recording);
+            if (m_media.m_region.x0 != -1) {
+                m_media.m_region.set (m_region);
+            } 
+            m_media.open (s, c.canvas, c.decoder);
+            c.addLoadable (m_media);
+            if (c.ac != null) {
+                c.ac.m_mediaObject = m_media;
+            }
+        }
+    }
+
+    void closeMedia(Context c) {
+        if (m_media != null) {
+            m_region.set (m_media.m_region);
+            c.removeLoadable (m_media);
+            m_media.close ();
+            m_media = null;
+            if (c.ac != null) {
+                c.ac.m_mediaObject = m_media;
+            }
         }
     }
 
 //#ifdef MM.pause
     int getWakeupTime (int time) {
-        if (m_media != null) { // prevent sleep when node has a media
-            return MyCanvas.SLEEP_CANCELED;
-        } else { // no media, checking for next start of node
-            if (time < m_startTime) { // starts in the future, sleep until then
+        if (m_media != null) {
+        	// media is playing ...
+            if ( (time < m_stopTime) && (m_stopTime > 0) ) {
+            	// wake up at stoptime
+                return m_stopTime;
+            }
+            // no stop time, always sleep
+            return MyCanvas.SLEEP_FOREVER;
+        }
+        
+        // no media, checking for next start of node
+        if (time < m_startTime) {
+        	// starts in the future, wake up at start time
                 return m_startTime;
             }
             // already started, but still no media
             if (time < m_stopTime || m_startTime >= m_stopTime || m_restartTime >= m_stopTime) {
                 return MyCanvas.SLEEP_CANCELED; // node might try to start media on next compose
             }
+
+        // nothing to do ...
             return MyCanvas.SLEEP_FOREVER;
-        }
     }
 //#endif
 }

@@ -270,7 +270,6 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
             addEvent (Event.KEY_RELEASED, a);
 //#endif
         } else {
-            Logger.setKey (a);
 //#ifdef BlackBerry
             // force repaint
             repaint ();
@@ -865,7 +864,7 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
             } else if (m_debugStep == 3 ) {
                 sleepDuration = SLEEP_CANCELED;
 //#endif
-            } else if (composeAgain || context.m_hasVideo || m_event != null) {
+            } else if (composeAgain || m_event != null) {
                 sleepDuration = SLEEP_CANCELED;
             } else {
                 sleepDuration = scene.getSleepDuration ((int)(t-startTime));

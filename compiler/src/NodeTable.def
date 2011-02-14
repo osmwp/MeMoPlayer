@@ -525,10 +525,11 @@ UnusedNode { }
 UnusedNode { }
 
 # Node: Recordtexture
-# Display the camera input as an ImageTexture and record its
-# content according to startTime and stopTime. The resulting
-# file is stored in a file called "video.3gp" for video or photo.jpg stored in the usual
-# video dir. This file can be used later on by the node Upload.
+# Display the camera input as an ImageTexture, take a snaphot ( photo )
+# video not supported for the moment
+# fileUrl indicate the destination file
+# startTime when to take the snapshot
+# stoptTime will indicate when the snapshot has been taken
 Recordtexture {
     # field: url
     MFString url ""
@@ -536,12 +537,12 @@ Recordtexture {
     SFTime startTime -1
     # field: stopTime
     SFTime stopTime -1
-    # field: singleShot
-    SFBool singleShot false
-    # field: size
-    SFVec2f size 320 240
     # field: enabled
-    SFBool enabled TRUE
+    SFBool enabled FALSE
+    # field: encoding
+    SFString encoding ""
+    # field: singleShot
+    SFBool singleShot true
     # field: fileUrl
     MFString fileUrl ""
 }
@@ -564,10 +565,10 @@ Recordtexture {
 #  The field progress indicates the transfer state and
 #  responseCode contains the HTTP result code.
 Upload {
-    # field: url of the video file to upload
-    MFString file ""
-    # field: url of the server
+    # field: url of the request
     MFString url ""
+    # field: answer to the request
+    MFString httpAnswer
     # field: activate
     SFBool activate FALSE
     # field: isActive
