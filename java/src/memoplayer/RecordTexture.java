@@ -19,101 +19,164 @@ package memoplayer;
 import javax.microedition.media.Manager;
 
 public class RecordTexture extends MediaNode  {
-    boolean m_stopped = false;
-    boolean m_singleShot = false;
+//#ifdef jsr.amms
+    boolean m_stopped = true;
+//#endif
+    boolean m_singleShot = true;
     boolean m_enabled = false;
-    boolean m_lastState = false;
-    int m_lastStartTime, m_width, m_height;
+
+    protected final static int IDX_ENABLE     = 3;
+    protected final static int IDX_ENCODING   = 4;
+    protected final static int IDX_SINGLESHOT = 5;
+    protected final static int IDX_FILE_URL   = 6;
+    protected final static int RECORD_TEXTURE_FIELD_COUNT = 7;
 
     RecordTexture () {
-        super (7, MediaObject.VIDEO, MediaObject.RECORDING);
+        super (RECORD_TEXTURE_FIELD_COUNT, MediaObject.VIDEO, MediaObject.RECORDING);
         //System.out.println ("RecordTexture created");
-        m_field[3] = new SFBool (false, this); // singleShot
-        m_field[4] = new SFVec2f (320<<16, 240<<16, this); // size
-        m_field[5] = new SFBool (true, this); // enable
-        m_field[6] = new MFString (); // fileUrl
+        m_field[IDX_ENABLE]     = new SFBool (false, this); // enable
+        m_field[IDX_ENCODING]   = new SFString ("");        // encoding
+        m_field[IDX_SINGLESHOT] = new SFBool (true, this);  // singleShot
+        m_field[IDX_FILE_URL]   = new MFString ();          // fileUrl
     }
 
     void start (Context c) {     
-        ((MFString)super.m_field[0]).setValue(0, "capture://audio_video");
+        // ((MFString)super.m_field[0]).setValue(0, "capture://audio_video");
         super.start (c);
-        fieldChanged (m_field[3]);
-        fieldChanged (m_field[4]);
-        fieldChanged (m_field[5]);
-        m_lastStartTime = 0;
+        fieldChanged (m_field[IDX_SINGLESHOT]);
+        fieldChanged (m_field[IDX_ENABLE]);
         //c.addLoadable (m_media);
     }
 
     boolean compose (Context c, Region clip, boolean forceUpdate) {
-        if (m_singleShot) {
-            if (m_media == null) {
-                m_media = new MediaObject (MediaObject.VIDEO, MediaObject.SNAPSHOT);
-                m_media.open ("capture://video", c.canvas, null);
+    	long composeTime = System.currentTimeMillis(); 
+    	
+    	if (m_enabled==false) {
+            if (m_media != null) {
+            	closeMedia(c);
+        		return true;
             }
-            if (m_restartTime != m_lastStartTime && m_media != null  && c.time >= m_restartTime) {
+    		return false;
+    	}
+
+	    if (m_urlChanged) {
+        	closeMedia(c);
+            m_urlChanged = false;
+    		return true;
+	    }
+
+        if (m_singleShot) {
+
+        	// open media if needed
+            if (m_media == null) {
+        		m_recording = MediaObject.SNAPSHOT;
+           		openMedia(c);
+                return true;
+            }
+
+            if (c.ac != null) {
+            	// Logger.println("RT update ac");
+                c.ac.m_mediaObject = m_media;
+            }
+            if (m_media.m_region.x0 != -1) {
+            	// Logger.println("RT update region");
+                m_media.m_region.set (m_region);
+            }
+
+            int time = c.time;
+
+            if ( ((time<m_startTime) || (m_startTime<0)) && ((time<m_restartTime) || (m_restartTime<0)) ) {
+            	// nothing to do ...
+            	return false;
+            }
+
                 m_media.setVisible (false);
                 byte [] data = null;
                 // try snapShot with desired size
-                data = m_media.getSnapshot ("encoding=jpeg&width="+m_width+"&height="+m_height);
-                // check if data is ok
-                if( data == null ) {
-                    // try default snapShot
-                    data = m_media.getSnapshot (null);
-                }
+            String encoding = ((SFString)m_field[IDX_ENCODING]).getValue();
+            if( (encoding == null) || (encoding.length()==0) )
+            	encoding = null;
+            data = m_media.getSnapshot (encoding);
                 if( data != null && data.length>0 ) {
-                    String filename = ((MFString)m_field[6]).getValue(0);
-                    Logger.println("Saving in: "+filename);
+                String filename = ((MFString)m_field[IDX_FILE_URL]).getValue(0);
+                // Logger.println("Saving snapshot in: "+filename);
+                if (filename.startsWith("cache://")) {
+                	CacheManager.getManager().setRecord (filename.substring(8),data);
+                } else {
                     File file = new File (filename, File.MODE_OVERWRITE); 
+                    if (file!=null) {
                     if (file.writeAllBytes(data) == false) {
-                        Logger.println ("RT.compose: cannot write data");
+	                        Logger.println ("RT.compose: cannot write data to: "+filename);
                     }
                     file.close (Loadable.CLOSED);
                 }
-                m_lastStartTime = m_restartTime;
+                }
+            }
                 c.clip.setInt (0, 0, c.width, c.height);
                 m_media.setVisible (true);
-            }
-            if (c.ac != null) {
-                c.ac.m_mediaObject = m_media;
-            }
-            m_isUpdated = false;
+            ((SFTime)m_field[IDX_START_TIME]).setValue ((-1)<<16);
+
+            int duration = (int)(System.currentTimeMillis() - composeTime); 
+
+            ((SFTime)m_field[IDX_STOP_TIME]).setValue (c.time+duration);
         } else {
-            if (!m_stopped && super.m_media == null ) { //m_stopped just change from true to false
-                start (c);
+//#ifdef jsr.amms
+
+        	// open media if needed
+            if (m_media == null) {
+            	m_recording = MediaObject.RECORDING;
+                openMedia(c);
+                return false;
             }
-            if ( Manager.getSupportedProtocols("video/mpeg") != null && !m_stopped) {
-                return super.compose (c, clip, forceUpdate);
+
+            if (m_media.m_region.x0 != -1) {
+                m_media.m_region.set (m_region);
             }
-            if (m_stopped && super.m_media!=null && super.m_media.m_state == Loadable.PLAYING) {
-                // System.out.println("recordTexture appel stop sur mn");
-                stop (c);
+
+            int time = c.time;
+
+            if ( ((time<m_startTime) || (m_startTime<0)) && ((time<m_restartTime) || (m_restartTime<0)) ) {
+            	// nothing to do ...
+            	return false;
             }
+
+            // start record if not started
+            if ( m_media.m_isRecording == false ) {
+                String filename = ((MFString)m_field[IDX_FILE_URL]).getValue(0);
+                // Logger.println("Saving record in: "+filename);
+            	if ( m_media.startRecord(filename) == false ) {
+            		// error starting record
+                	m_stopped = true;
+            	}
+            } else {
+            	// stop record if stop time reached
+                if ( (time>=m_stopTime) && (m_stopTime>=0) ) {
+                	m_media.stopRecord();
+                	m_stopped = true;
+                	// stop startTime
+                    ((SFTime)m_field[IDX_START_TIME]).setValue ((-1)<<16);
+            }
+            }
+//#endif
         }
         return false;
     }
 
     public void fieldChanged (Field f) {
-        if (f == m_field[3]) {
+        if (f == m_field[IDX_SINGLESHOT]) {
             m_singleShot = ((SFBool)f).getValue ();
-        } else if (f == m_field [4]) {
-            m_width = FixFloat.fix2int (((SFVec2f)f).m_x);
-            m_height = FixFloat.fix2int (((SFVec2f)f).m_y);
-        } else if (f == m_field [5]) {
+            return;
+        } else if (f == m_field [IDX_ENABLE]) {
             m_enabled = ((SFBool)f).getValue ();
-        } else {
-            int oldStartTime = m_startTime;
-            super.fieldChanged(f);
-            if (super.m_media != null && 
-                super.m_media.m_state == Loadable.PLAYING &&
-                ((SFTime)super.m_field[1]).getValue() == -1000) { //-1000 in Java <=> -1 in VRML file 
-                m_stopped = true;
-            } else {
-                m_stopped = false;
-            }
-            if( oldStartTime != m_startTime ) {
-                
-            }
+            return;
         }
-    }
-}
-
+            super.fieldChanged(f);
+            }
+                
+//#ifdef MM.pause
+    int getWakeupTime (int time) {
+    	// no need to be waken up
+        return MyCanvas.SLEEP_FOREVER;
+            }
+//#endif
+        }

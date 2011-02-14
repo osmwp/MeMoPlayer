@@ -702,7 +702,11 @@ public class MyCanvas extends Canvas implements Runnable {
             //MCP: Pause thread when canvas is not displayed or no activity
             if (isHidden) {
                 sleepDuration = SLEEP_FOREVER;
-            } else if (composeAgain || context.m_hasVideo || m_debugStep == 3 || m_event != null) {
+//#ifdef debug.console
+            } else if (m_debugStep == 3 ) {
+                sleepDuration = SLEEP_CANCELED;
+//#endif
+            } else if (composeAgain || m_event != null) {
                 sleepDuration = SLEEP_CANCELED;
             } else {
                 sleepDuration = scene.getSleepDuration ((int)(t-startTime));
