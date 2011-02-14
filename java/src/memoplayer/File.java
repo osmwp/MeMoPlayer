@@ -58,7 +58,7 @@ public class File implements Loadable {
     
     private StringBuffer sb; // for UTF-8 support
     private String m_cacheRecord; // if not null, cache data to this record on load
-    private String m_cacheNamespace; // if not empty, name of the Namespace to use
+    public String m_cacheNamespace; // if not empty, name of the Namespace to use
     
     // Read-only constructor
     File (String url) {
@@ -89,10 +89,10 @@ public class File implements Loadable {
     }
   
     // Queued file constructor (see FileQueue.getFile)
-    File (String url, File next) {
+    File (String url, String namespace) {
         m_url = url;
-        m_next = next;
         m_count = 1;
+        m_cacheNamespace = namespace;
         setState(Loadable.QUEUED);
     }
     
@@ -105,17 +105,20 @@ public class File implements Loadable {
         }
     }
     
+    boolean match (String url, String namespace) {
+       return url.equals (m_url) && namespace.equals(m_cacheNamespace);
+    }
+    
     // Find existing File in queue, or add a new one at tail
-    File findQueue (String url) {
-        if (url.equals (m_url)) {
+    File findQueue (String url, String namespace) {
+        if (match (url, namespace)) {
             m_count++;
             return this;
         }
         if (m_next != null) {
-            return m_next.findQueue (url);
+            return m_next.findQueue (url, namespace);
         }
-        m_next = new File (url, null);
-        return m_next;
+        return m_next = new File (url, namespace);
     }
     
     // Find next File to use from queue
