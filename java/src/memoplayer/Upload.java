@@ -29,12 +29,19 @@ import java.util.Random;
 import javax.microedition.io.Connector;
 import javax.microedition.io.HttpConnection;
 
-public class Upload extends Node {
+public class Upload extends Node implements Runnable {
     File stream ;
     String url;
     String header;
 
     boolean m_activateChanged=false;
+    boolean m_progressChanged=false;
+    boolean m_responseCodeChanged=false;
+    
+    int m_progress;
+    int m_responseCode;
+    String m_httpResponse;
+    
     boolean m_doUpload=false;
 
     private final int IDX_URL_SERVER     = 0;
@@ -62,25 +69,52 @@ public class Upload extends Node {
         m_field[IDX_ARRAY_FILES]  = new MFString(); // array of custom param file urls
     }
 
+    public void run () {
+        if ( m_doUpload == false ) {
+	    	m_doUpload = true;
+	        try {
+	        	postHttpMultiPart();
+	        } catch (Throwable t) {
+	            Logger.print("Error Upload node: "+t.toString());;
+	        }
+	        m_doUpload = false;
+        }
+    }
+    
+    void stop (Context c) {
+        if ( m_doUpload  ) {
+	    	m_doUpload = false;
+        }
+    }
+    
     public boolean compose (Context c, Region clip, boolean forceUpdate) {
         boolean updated = forceUpdate;
 
         if ( m_activateChanged ) {
             m_activateChanged = false;
             if( ((SFBool)m_field[IDX_ACTIVATE]).getValue() == true ) {
-                new Thread () {
-                    public void run () {
-                    	m_doUpload = true;
-                try {
-                    postHttpMultiPart();
-                        } catch (Exception e) {
-                            e.printStackTrace();
+            	// start the upload
+            	if (m_doUpload==false) {
+            		// only start if not running
+            		new Thread (this).start ();
                         }
+            } else {
+            	if (m_doUpload) {
+                	// ask to stop the upload
                         m_doUpload = false;
                 }
-                }.start ();
             }
         }
+
+        if ( isProgressChanged() ) {
+            ((SFFloat)m_field[IDX_PROGRESS]).setValue(m_progress);
+        }
+
+        if ( isResponseCodeChanged() ) {
+	        ((MFString)m_field[IDX_HTTP_ANSWER]).setValue(0,m_httpResponse);
+	        ((SFInt32)m_field[IDX_RESPONSE_CODE]).setValue(m_responseCode);
+        }
+
         //updated |= specificCompose (c, clip, updated);
         return updated;
     }
@@ -102,10 +136,48 @@ public class Upload extends Node {
         }
         }
 
+    synchronized boolean isProgressChanged() {
+    	if (m_progressChanged) {
+    		m_progressChanged = false;
+    		return true;
+    	}
+    	return false;
+    }
+    
+    synchronized void setProgress(int value) {
+    	m_progress = value;
+    	m_progressChanged = true;
+    	MiniPlayer.wakeUpCanvas();
+    }
+
+    synchronized boolean isResponseCodeChanged() {
+    	if (m_responseCodeChanged) {
+    		m_responseCodeChanged = false;
+    		return true;
+    	}
+    	return false;
+    }
+    synchronized void setHttpResponseAndCode(String httpResponse, int code) {
+        m_httpResponse = httpResponse;
+        m_responseCode = code;
+        m_responseCodeChanged=true;
+    	MiniPlayer.wakeUpCanvas();
+    }
+    
     static final String BOUNDARY = "----------V2ymHFg03ehbqgZCaKO6jy";
 
+    String separatorBoundary="--"+BOUNDARY+"\r\n";
+    
+    private int send (OutputStream os, String data) throws IOException {
+    	int dataSize = data.length();
+    	os.write(data.getBytes());
+    	return dataSize;
+    }
+    
     private void postHttpMultiPart( ) throws IOException {
-        ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(0));
+
+    	setProgress(FixFloat.float2fix(0));
+        long dataSent=0;
 
         int i=0;
         float dataSize=0;
@@ -134,12 +206,16 @@ public class Upload extends Node {
                 	dataSize += (key.length()+value.length()+type.length());
                 }
             }
+            
+            if ( m_doUpload == false ) {
+            	return;
+            }
         }
 
         if (dataSize<1) {
         	// error nothing to send
-            ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(1));
-            ((SFInt32)m_field[IDX_RESPONSE_CODE]).setValue(-1);
+        	setProgress(FixFloat.float2fix(0));
+            setHttpResponseAndCode("",-1);
         	return;
         }
 
@@ -164,11 +240,10 @@ public class Upload extends Node {
 	            OutputStream os = hc.openOutputStream();
 
 	            // write beginning boundary
-	            os.write(("--"+BOUNDARY+"\r\n").getBytes());
+	        	dataSent += send(os,separatorBoundary);
 
 	            float progress = (float)0.2;
-
-	            ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(progress));
+	        	setProgress(FixFloat.float2fix(progress));
 
 	            // write form data
 	            for (i=0; i<size; i++) {
@@ -179,9 +254,9 @@ public class Upload extends Node {
 	                String filename = ((MFString)m_field[IDX_ARRAY_FILES]).getValue(i);
 
 	                if ( (type==null) || (type.length()==0 ) ) {
-	                	os.write(("Content-Disposition: form-data; name=\""+key+"\"\r\n").getBytes());
-	                	os.write(("\r\n"+value+"\r\n").getBytes());
-	                	os.write(("--"+BOUNDARY+"\r\n").getBytes());
+	                	dataSent += send(os,("Content-Disposition: form-data; name=\""+key+"\"\r\n"));
+	                	dataSent += send(os,("\r\n"+value+"\r\n"));
+	                	dataSent += send(os,separatorBoundary);
 	                	dataWritten += (key.length()+value.length());
 	                } else {
 	                    if ( (filename!=null) && (filename.length()>0)) {
@@ -192,49 +267,53 @@ public class Upload extends Node {
 	                            dataFile.close(File.CLOSED);
             }
 	                        if ( (fileData!=null) && (fileData.length>0) ) {
-	                        	os.write(("Content-Disposition: form-data; name=\""+key+"\"; filename=\""+value+"\"\r\n").getBytes());
-	                        	os.write(("Content-Type: "+type+"\r\n\r\n").getBytes());
+	                        	dataSent += send(os,("Content-Disposition: form-data; name=\""+key+"\"; filename=\""+value+"\"\r\n"));
+	                        	dataSent += send(os,("Content-Type: "+type+"\r\n\r\n"));
 		                        int block = fileData.length / 10;
 		                        int left=0;
 		                        for ( int j=0; j<=10; j++ ) {
 		                        	left = fileData.length - (j*block);
 		                        	if (left>block ) {
 		                        		os.write(fileData,j*block,block);
+	                        			dataSent += block;
 		                        		dataWritten+=block;
 		                        	} else {
 		                        		if (left>0) {
 			                        		os.write(fileData,j*block,left);
+		                        			dataSent += left;
 			                        		dataWritten+=left;
         }
     }
 		        	                progress = (float)(0.2 + (0.6*(dataWritten/dataSize)));
-		        		            ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(progress));
+		        		        	setProgress(FixFloat.float2fix(progress));
     }
-	                        	os.write(("--"+BOUNDARY+"\r\n").getBytes());
-	                        	os.write(("--"+BOUNDARY+"\r\n").getBytes());
+		                        dataSent += send(os,separatorBoundary);
 	                        }
 	                    } else {
-	                    	os.write(("Content-Disposition: form-data; name=\""+key+"\"\r\n").getBytes());
-	                    	os.write(("\r\n"+value+"\r\n").getBytes());
-	                        os.write(("Content-Type: "+type+"\r\n").getBytes());
-	                        os.write(("--"+BOUNDARY+"\r\n").getBytes());
+	                    	dataSent += send(os,("Content-Disposition: form-data; name=\""+key+"\"\r\n"));
+	                    	dataSent += send(os,("\r\n"+value+"\r\n"));
+	                    	dataSent += send(os,("Content-Type: "+type+"\r\n"));
+	                    	dataSent += send(os,separatorBoundary);
 		                	dataWritten += (key.length()+value.length()+type.length());
         }
     }
 
 	                progress = (float)(0.2 + (0.6*(dataWritten/dataSize)));
-		            ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(progress));
+		        	setProgress(FixFloat.float2fix(progress));
+		            if ( m_doUpload == false ) {
+		            	throw new Exception("Cancel upload");
+		            }
 	            }
 
 	            // write ending boundary
-	            os.write(("\r\n--" + BOUNDARY + "--\r\n").getBytes());
+	            send(os,("\r\n--"+BOUNDARY+"--\r\n"));
 
 	            os.close();
 
 	            progress = (float)0.9; 
-	            ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(progress));
+	        	setProgress(FixFloat.float2fix(progress));
 
-	            Logger.println("Upload done waiting answer ...");
+	            Logger.println("Upload done waiting answer ... sent "+dataSent+" bytes");
 
 	            // read the response
             int ch;
@@ -247,20 +326,16 @@ public class Upload extends Node {
                 bos.write(ch);
             }
 	            
-	            bos.close();
-	            Logger.println("Answer received");
+            bos.close();
+            Logger.println("Answer received");
 	            
-	            ((MFString)m_field[IDX_URL_SERVER]).setValue(1,bos.toString());
-                ((SFInt32)m_field[IDX_RESPONSE_CODE]).setValue(hc.getResponseCode());
+                setHttpResponseAndCode(bos.toString(),hc.getResponseCode());
             } else {
-	            Logger.println("Error connecting to: "+url);
-                ((SFInt32)m_field[IDX_RESPONSE_CODE]).setValue(-1);
+                setHttpResponseAndCode("",-2);
         }
-            
-
-        } catch(Exception e) {
-            e.printStackTrace();
-            ((SFInt32)m_field[IDX_RESPONSE_CODE]).setValue(-1);
+        } catch(Throwable th) {
+            Logger.print("Error Upload node run: "+th.toString());;
+            setHttpResponseAndCode("",-3);
         } finally {
             try {
                 if(bos != null)
@@ -275,9 +350,6 @@ public class Upload extends Node {
                 e2.printStackTrace();
             }
         }
-
-        ((SFFloat)m_field[IDX_PROGRESS]).setValue(FixFloat.float2fix(1));
-
+    	setProgress(FixFloat.float2fix(1));
     }
-    
 }
