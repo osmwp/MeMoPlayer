@@ -65,7 +65,7 @@ void Process::addMark (char * t) {
      strncpy (t+i, "//!", 3); 
 }
 
-int index (char * buffer, int target) {
+int getIndex (char * buffer, int target) {
     int l = strlen (buffer);
     if (l > 0 && buffer[l-1] == '\n') {
         buffer[--l] = 0;
@@ -141,7 +141,7 @@ Property * readProps (char * filename, bool verbose) {
             if (buffer[0] == '#') {
                 continue;
             }
-            int n = index (buffer, '=');
+            int n = getIndex (buffer, '=');
             if ( n >= 0) {
                 strncpy (name, buffer, n);
                 name [n] = 0;
