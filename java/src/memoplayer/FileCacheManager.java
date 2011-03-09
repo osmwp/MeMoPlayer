@@ -25,9 +25,7 @@ import java.lang.ref.WeakReference;
 class FileCacheManager extends CacheManager {
     private final static String CONTENT_PREFIX = "content";
     private final static String CONTENT_EXT = ".dat";
-    private final static String CONTENT_EXT_BKP = ".bkp";
     private final static String ENTRIES_NAME = "entries.db";
-    private final static String ENTRIES_BCKP = "entries.bkp";
     private final static int INITIAL_CAPACITY = 10;
 
     String m_storeName;
@@ -48,13 +46,7 @@ class FileCacheManager extends CacheManager {
         DataInputStream dis = null;
         m_lastIndex = 1;
         try {
-            fc = (FileConnection) Connector.open (m_storeName+ENTRIES_BCKP);
-            if (!fc.exists()) {
-                fc.close();
-                fc = (FileConnection) Connector.open (m_storeName+ENTRIES_NAME);
-            } else {
-                Logger.println (m_dbgName+"readEntries: backup still present ! Using it");
-            }
+            fc = (FileConnection) Connector.open (m_storeName+ENTRIES_NAME);
             if (fc.exists ()) { // a table already here
                 dis = fc.openDataInputStream();
                 m_lastIndex = dis.readInt ();
@@ -86,7 +78,7 @@ class FileCacheManager extends CacheManager {
     }
 
     private boolean saveEntries () {
-        FileConnection fc = null, fcBckp = null;
+        FileConnection fc = null;
         DataOutputStream dos = null;
         boolean result = false;
         String name = m_storeName+ENTRIES_NAME;
@@ -95,13 +87,14 @@ class FileCacheManager extends CacheManager {
             if (!fc.exists()) {
                 try { fc.create (); } catch (Exception e) { Logger.println (m_dbgName+"saveEntries: cannot create file "+name+" because of "+e); }
             } else { 
-                // backup previous version until end of write
+                // delete previous version
                 try {
-                    safeRename (fc, m_storeName, ENTRIES_BCKP);
-                    fcBckp = fc;
+                    if (fc.exists ()) {
+                        fc.delete ();
+                    }
                     fc = (FileConnection) Connector.open (name, Connector.READ_WRITE);
                     fc.create ();
-                } catch (Exception e) { Logger.println (m_dbgName+"saveEntries: cannot backup "+name+" because of "+e); }
+                } catch (Exception e) { Logger.println (m_dbgName+"saveEntries: delete "+name+" because of "+e); }
             }
             dos =  fc.openDataOutputStream();
             dos.writeInt (m_lastIndex);
@@ -110,9 +103,6 @@ class FileCacheManager extends CacheManager {
                 dos.writeInt (m_indexes[i]);
             }
             dos.flush();
-            if (fcBckp != null) {
-                fcBckp.delete(); // delete backup
-            }
             result = true;
             m_modified = false;
         } catch (Exception e) {
@@ -121,7 +111,6 @@ class FileCacheManager extends CacheManager {
             try { 
                 if (dos != null) { dos.close (); }
                 if (fc != null) { fc.close (); }
-                if (fcBckp != null) { fcBckp.close(); }
             } catch (Exception e) { Logger.println (m_dbgName+"saveEntries: cannot close file "+name+" for reading because of "+e); }
         }
         return result;
@@ -218,13 +207,7 @@ class FileCacheManager extends CacheManager {
         String path = m_storeName+CONTENT_PREFIX+id;
         byte [] data = null;
         try {
-            fc = (FileConnection) Connector.open (path+CONTENT_EXT_BKP);
-            if (!fc.exists()) {
-                fc.close();
-                fc = (FileConnection) Connector.open (path+CONTENT_EXT);
-            } else {
-                Logger.println (m_dbgName+"loadData: backup still present ! Using it.");
-            }
+      	    fc = (FileConnection) Connector.open (path+CONTENT_EXT);
             size = (int)fc.fileSize ();
             if (size > 0) {
                 dis = fc.openDataInputStream();
@@ -254,7 +237,7 @@ class FileCacheManager extends CacheManager {
 
     private boolean saveData (int id, byte [] data) {
         //Logger.println (m_dbgName+"saveData: "+path+" for "+data.length+" bytes");
-        FileConnection fc = null, fcBckp = null;
+        FileConnection fc = null;
         DataOutputStream dos = null;
         boolean result = false;
         String path = m_storeName+CONTENT_PREFIX+id+CONTENT_EXT;
@@ -263,9 +246,10 @@ class FileCacheManager extends CacheManager {
             if (!fc.exists()) {
                 fc.create ();
             } else {
-                // backup previous version
-                safeRename (fc, m_storeName, CONTENT_PREFIX+id+CONTENT_EXT_BKP);
-                fcBckp = fc;
+                // delete previous version
+                if (fc.exists ()) {
+                    fc.delete ();
+                }
                 fc = (FileConnection) Connector.open (path, Connector.READ_WRITE);
                 fc.create ();
             }
@@ -274,9 +258,6 @@ class FileCacheManager extends CacheManager {
             dos.writeInt (computeHashNumber (data));
             dos.write (data, 0, data.length);
             dos.flush(); 
-            if (fcBckp != null) {
-                fcBckp.delete(); // delete backup
-            }
             result = true;
         } catch (Exception e) {
             Logger.println (m_dbgName+"saveData: cannot write data to "+path+" because of "+e);
@@ -284,7 +265,6 @@ class FileCacheManager extends CacheManager {
             try { 
                 if (dos != null) { dos.close (); }
                 if (fc != null) { fc.close (); }
-                if (fcBckp != null) { fcBckp.close(); }
             } catch (Exception e) { Logger.println (m_dbgName+"saveData: cannot close file "+path+" because of "+e); }
         }
         return result;
@@ -295,12 +275,6 @@ class FileCacheManager extends CacheManager {
         FileConnection fc = null;
         boolean result = false;
         try {
-            // Delete backup if any
-            fc = (FileConnection) Connector.open (path+CONTENT_EXT_BKP);
-            if (fc.exists()) {
-                fc.delete();
-            }
-            fc.close();
             // Delete file
             fc = (FileConnection) Connector.open (path+CONTENT_EXT);
             fc.delete ();
@@ -428,7 +402,6 @@ class FileCacheManager extends CacheManager {
 
     private boolean checkDir (String path) {
         FileConnection fc = null;
-        // boolean exists = false;
         //Logger.println ("%% checkDir: trying '"+path+"'");
         try {
             fc = (FileConnection) Connector.open (path);
