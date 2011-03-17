@@ -286,11 +286,6 @@ class RMSCacheManager extends CacheManager {
         } finally { close (); }
         return false;
     }
-    
-    String getRecord (String s) {
-        byte [] b = getByteRecord (s);
-        return b == null ? "" : new String (b);
-    }
 
     synchronized boolean setRecord (String s, byte[] data) {
         boolean result = false;
@@ -307,11 +302,6 @@ class RMSCacheManager extends CacheManager {
             Logger.println ("setRecord: Except. unexpected: "+e);
         } finally { close (); }
         return result;
-    }
-    
-    boolean setRecord (String s, String data) {
-        // getBytes() on empty string throws ArrayOutOfBoundsException on Samsung F480
-        return setRecord (s, data.length() != 0 ? data.getBytes() : new byte[0]);
     }
 
     synchronized boolean deleteRecord (String s) {
