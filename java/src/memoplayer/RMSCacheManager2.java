@@ -29,16 +29,14 @@ import javax.microedition.rms.RecordStoreException;
  * These Managers are only opened once and kept opened until application exits.
  * This ensure that only one close/pack is done per RecordStore as this operation
  * is also a very very slow operation on some phones.
- * This implementation uses the special __SAFE RecordStore to know if the all
- * RecordStores where properly closed. If this is not the case, all the RecordStores
- * are removed ! 
- * To prevent loosing important data, the application can still use Managers with
- * names starting with a '@' (e.g. '@SECURE'). This will ensure that the RecordStore
- * is closed when not used, and that they are not erased when the __SAFE marker is not
- * found. 
  */
-class RMSCacheManager2 extends CacheManager {
+class RMSCacheManager2 extends CacheManager implements Runnable {
+
+    // Initial capacity of the key in memory table
     private final static int INITIAL_CAPACITY = 10;
+
+    // Max delay before flushing data (close/open RMS) after a write/delete operation
+    private final long MAX_FLUSH_DELAY = 3000;
 
     // deleteAllRMS, deleteRMS, getInstance are synchronized
     // to prevent concurrent access to s_instances 
@@ -54,11 +52,8 @@ class RMSCacheManager2 extends CacheManager {
         String[] list = RecordStore.listRecordStores();
         int size = list != null ? list.length : 0;
         for (int i=0; i<size; i++) {
-            String name = list[i];
-            if (name.charAt(0) != '@') {
-                try { RecordStore.deleteRecordStore (name); } 
-                catch (Exception e) { Logger.println("RMSCache: Could not erase "+name); }
-            }
+            try { RecordStore.deleteRecordStore (list[i]); }
+            catch (Exception e) { Logger.println("RMSCache: Could not erase "+list[i]); }
         }
     }
 
@@ -70,36 +65,24 @@ class RMSCacheManager2 extends CacheManager {
         RMSCacheManager2 prev = null;
         while (cm != null) {
             if (storename.equals(cm.m_storeName)) {
-                cm.m_tableLoaded = false;
-                cm.m_modified = false; // speeds up close()
-                cm.finalClose();
+                cm.erase();
                 if (prev == null) {
                     s_instances = cm.m_next;
                 } else {
                     prev.m_next = cm.m_next;
                 }
-                break;
+                return;
             }
             prev = cm;
             cm = cm.m_next;
         }
-        try { RecordStore.deleteRecordStore (storename); } 
+        try { RecordStore.deleteRecordStore (storename); }
         catch (Exception e) {
             Logger.println ("RMSCache: deleteRMS error: "+e);
         }
     }
     
     public static synchronized RMSCacheManager2 getInstance (String name) {
-        if (s_instances == null) {
-            // On application start, delete __SAFE RecordStore,
-            // if not present, delete all RMS !
-            try {
-                RecordStore.deleteRecordStore ("__SAFE");
-            } catch (RecordStoreException e) {
-                Logger.println("RMSCache: Error: No safeguard, clear RMS !");
-                deleteAllRMS ();
-            }
-        }
         RMSCacheManager2 cm = s_instances;
         while (cm != null) {
             if (name.equals(cm.m_storeName)) {
@@ -120,12 +103,6 @@ class RMSCacheManager2 extends CacheManager {
             prev.m_next = null;
         }
         s_instances = null;
-        // On application exit, create the __SAFE RecordStore
-        try {
-            RecordStore.openRecordStore("__SAFE", true).closeRecordStore();
-        } catch (Exception e) {
-            Logger.println ("RMSCache: Error: Could not create safeguard !");
-        }
     }
     
     private String m_storeName;
@@ -139,6 +116,10 @@ class RMSCacheManager2 extends CacheManager {
     
     private RMSCacheManager2 m_next;
 
+    private ObjLink m_asyncQueue;
+    private boolean m_quit;
+    private java.lang.Thread m_thread;
+
     private RMSCacheManager2 (String name, RMSCacheManager2 next) {
         super (name);
         if (name.length() == 0) {
@@ -148,6 +129,8 @@ class RMSCacheManager2 extends CacheManager {
         m_tableLoaded = false;
         m_modified = false;
         m_next = next;
+        m_thread = new java.lang.Thread (this);
+        m_thread.start();
     }
     
     private boolean readEntries () {
@@ -294,7 +277,7 @@ class RMSCacheManager2 extends CacheManager {
         return findEntry (name);
     }
 
-    private int removeEntry (int id) {
+    private boolean removeEntry (int id) {
         if (id >= 0 && id < m_nbEntries) {
             int len = m_nbEntries - id - 1;
             if (len > 0) {
@@ -303,8 +286,25 @@ class RMSCacheManager2 extends CacheManager {
             }
             m_nbEntries--;
             m_modified = true;
+            return true;
         }
-        return id;
+        return false;
+    }
+
+    private boolean markRemovedEntry (int id) {
+        if (id >= 0 && id < m_nbEntries) {
+            m_indexes[id] = -m_indexes[id];
+            return true;
+        }
+        return false;
+    }
+
+    private boolean markReusedEntry (int id) {
+        if (id >= 0 && id < m_nbEntries && m_indexes[id] < -1) {
+            m_indexes[id] = -m_indexes[id];
+            return true;
+        }
+        return false;
     }
     
     private byte [] loadData (int id) {
@@ -364,17 +364,21 @@ class RMSCacheManager2 extends CacheManager {
         m_nbEntries = 0;
         return readEntries ();
     }
-    
+
     // This implementation never closes the RecordStore until application exit.
-    // Except for RecordStore starting with an @
-    public synchronized void close () {
-        if (m_storeName.charAt(0) == '@') {
-            finalClose();
-        }
-    }
+    public void close () { }
 
     // Called only by closeAll() on application exit. 
     private synchronized void finalClose() {
+        m_asyncQueue = null;
+        if (!m_quit && m_thread != null) {
+            m_quit = true;
+            synchronized (m_thread) {
+                m_thread.notify();
+            }
+        }
+    }
+    private void finalCloseAsync() {
         Logger.println("RMSCache: final close: "+m_storeName);
         if (m_modified) {
             saveEntries ();
@@ -390,11 +394,9 @@ class RMSCacheManager2 extends CacheManager {
     }
 
     public synchronized void erase () {
-        if (m_storeName.charAt(0) == '@') {
-            return; // never erase a RecordStore starting with an @
-        }
+        m_asyncQueue = null; // purge write queue
         m_modified = false; // prevents saving entries, just close
-        finalClose ();
+        finalCloseAsync ();
         m_nbEntries = 0;
         m_tableLoaded = false;
         try {
@@ -408,78 +410,72 @@ class RMSCacheManager2 extends CacheManager {
         int result = 0;
         if (open ()) {
             result = m_nbEntries;
-            //close (); // NOT DONE, TOO SLOW !
         }
         return result;
     }
 
     public synchronized boolean hasRecord (String s) {
         if (m_tableLoaded || open ()) {
-            boolean found = findEntry (s) >= 0;
-            //close ();
-            return found;
+            int entry = findEntry (s);
+            return entry >= 0;
         }
         return false;
     }
 
     public synchronized byte[] getByteRecord (String s) {
-        byte [] result = null;
-        int id = -1;
-        if (open ()) {
-            if ( (id = findEntry (s)) >= 0) {
-                result = loadData (m_indexes[id]);
-                if (result == null) { // corrupted data
-                    Logger.println ("RMSCache: getByteRecord error for "+s+": removing null entry for "+m_storeName+'/'+m_indexes[id]);
-                    removeEntry (id);
-                    removeData (m_indexes[id]);
-                } // remove the whole store if removing bad entry failed
+        // First, check for an async operation for the given key
+        ObjLink o = m_asyncQueue;
+        while (o != null) {
+            if (o.m_object.equals(s)) {
+                return (byte[])o.m_param;
             }
-            //close (); // NOT DONE, TOO SLOW !
-        } else {
-            Logger.println ("RMSCache: getByteRecord error: Could not open entries table for "+m_storeName);
+            o = o.m_next;
         }
-        return result;
+        if (open ()) {
+            int id = findEntry (s);
+            if (id >= 0) {
+                int index = m_indexes[id];
+                if (index >= 0) {
+                    byte[] result = loadData (m_indexes[id]);
+                    if (result == null) { // corrupted data
+                        //Logger.println ("RMSCache: getByteRecord error for "+s+": removing null entry for "+m_storeName+'/'+m_indexes[id]);
+                        removeEntry (id);
+                        removeData (m_indexes[id]);
+                    } // remove the whole store if removing bad entry failed
+                    return result;
+                }
+            }
+        }
+        return null;
     }
 
     public synchronized boolean setRecord (String s, byte[] data) {
-        boolean result = false;
         if (open ()) {
             int id = findEntry (s);
             if (id == -1) {
-                int index;
-                try {
-                    index = m_recordStore.getNextRecordID();
-                } catch (RecordStoreException e) {
-                    Logger.println ("RMSCache: setRecord error: Could not get next recordID: "+e+" for "+m_storeName);
-                    close();
-                    return false;
-                }
-                id = addEntry (s, index, true);
-                saveData (m_indexes[id], data, true);
+                id = addEntry (s, -1, true);
+                //Logger.println("RMS2: "+m_storeName+": Added entry:"+s+":"+id);
             } else {
-                saveData (m_indexes[id], data, false);
+                //Logger.println("RMS2: "+m_storeName+": Reuse entry:"+s+":"+id);
+                markReusedEntry (id);
             }
-            //close (); // table modified!! need to save it, NOT DONE, TOO SLOW !
-        } else {
-            Logger.println ("RMSCache: setRecord error: Could not open entries table for "+m_storeName);
+            addAsyncOp (s, data);
+            return true;
         }
-        return result;
+        return false;
     }
 
     public synchronized boolean deleteRecord (String s) {
-        boolean result = false;
         if (open()) {
             int id = findEntry (s);
             if (id >= 0) {
-                removeData (m_indexes[id]);
-                removeEntry (id);
-                result = true;
+                // Write null to delete record asynchronously
+                markRemovedEntry (id);
+                addAsyncOp (s, null);
+                return true;
             }
-            //close (); // NOT DONE, TOO SLOW !
-        } else {
-            Logger.println ("RMSCache: deleteRecord error: Could not open entries table for "+m_storeName);
         }
-        return result;
+        return false;
     }
 
     public synchronized int getSizeAvailable () {
@@ -491,7 +487,104 @@ class RMSCacheManager2 extends CacheManager {
         } catch (Exception e) {
             Logger.println ("RMSCache: getSizeAvailable error: "+e+" for "+m_storeName);
             erase ();
-        } //finally { close (); } // NOT DONE, TOO SLOW !
+        }
         return result;
+    }
+
+    private synchronized void flush () {
+        if (m_recordStore != null) {
+            finalCloseAsync();
+            open();
+        }
+    }
+
+    private void addAsyncOp (String key, byte[] value) {
+        synchronized (this) {
+        if (m_asyncQueue == null) {
+            m_asyncQueue = ObjLink.create (key, value, null);
+        } else {
+            ObjLink o = m_asyncQueue;
+            while (true) {
+                if (o.m_object.equals(key)) {
+                    o.m_param = value;
+                    break;
+                } else if (o.m_next == null) {
+                    o.m_next = ObjLink.create (key, value, null);
+                    break;
+                }
+                o = o.m_next;
+            }
+        }
+        }
+        synchronized (m_thread) {
+            m_thread.notify();
+        }
+    }
+
+    private synchronized ObjLink pickAsyncOp () {
+        ObjLink o = m_asyncQueue;
+        if (o != null) {
+            m_asyncQueue = o.m_next;
+        }
+        return o;
+    }
+
+    // Main loop for the background thread write
+    public void run() {
+        try {
+            boolean needFlush = false;
+            long lastFlushTime = 0;
+            while (!m_quit) {
+                if (m_asyncQueue == null) {
+                    synchronized (m_thread) {
+                        try { m_thread.wait (Integer.MAX_VALUE); } catch (InterruptedException e) {}
+                    }
+                }
+                while (doAsyncOp()) needFlush = true;
+                // Always flush RMS after multiple write/delete operations
+                if (needFlush && System.currentTimeMillis() - lastFlushTime > MAX_FLUSH_DELAY) {
+                    flush();
+                    needFlush = false;
+                    lastFlushTime = System.currentTimeMillis();
+                }
+            }
+        } catch (Throwable t) {
+            Logger.println ("RMSCache: "+m_storeName+": Thread died: "+t);
+        } finally {
+            finalCloseAsync();
+            m_thread = null;
+        }
+    }
+
+    private synchronized boolean doAsyncOp () {
+        ObjLink o = pickAsyncOp();
+        if (o == null) return false;
+        String s = (String)o.m_object;
+        byte[] data = (byte[])o.m_param;
+        ObjLink.release (o);
+        if (open ()) {
+            int id = findEntry (s);
+            if (id != -1) {
+                int index = m_indexes[id];
+                if (index == -1) {
+                    try {
+                        index = m_recordStore.getNextRecordID();
+                    } catch (RecordStoreException e) {
+                        Logger.println ("RMSCache: error: Could not get next recordID: "+e+" for "+m_storeName);
+                        return false;
+                    }
+                    m_indexes[id] = index;
+                    return saveData (index, data, true);
+                } else if (data != null) {
+                    return saveData (index, data, false);
+                } else if (index < -1) {
+                    removeData (-index);
+                }
+                return removeEntry (id);
+            } else {
+                Logger.println("RMS2: "+m_storeName+": Error: Could not find "+s+" in index table");
+            }
+        }
+        return false;
     }
 }
