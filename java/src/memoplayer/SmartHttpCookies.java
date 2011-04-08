@@ -31,7 +31,7 @@ public class SmartHttpCookies {
         
         ObjLink cookie = s_cookies;
         ObjLink prev = null;
-        float timeout = System.currentTimeMillis()/1000 - COOKIES_TIMEOUT;
+        int timeout = (int) (System.currentTimeMillis()/1000) - COOKIES_TIMEOUT;
         
         while (cookie != null) {
             // purge timed out cookies
@@ -46,7 +46,7 @@ public class SmartHttpCookies {
                 String domain = (String)cookie.m_object;
                 if (host.endsWith(domain)) {
                     //Logger.println("SmartHttpCookies: loading cookie for "+host+" : "+((String)cookie.m_param));
-                    cookie.m_z = System.currentTimeMillis()/1000; // update cookie timeout each time it is used.
+                    cookie.m_z = (int) (System.currentTimeMillis()/1000); // update cookie timeout each time it is used.
                     // Append cookie content
                     if (sb.length() != 0) sb.append(';');
                     sb.append((String)cookie.m_param);
@@ -65,7 +65,7 @@ public class SmartHttpCookies {
     
     public synchronized static void save(String cookieContent, String host) {
         String cookieKey = cookieContent.substring(0, cookieContent.indexOf('='));
-        float now = System.currentTimeMillis()/1000;
+        int now = (int) (System.currentTimeMillis()/1000);
         
         // Search a cookie matching a domain & cookie key to overwrite
         ObjLink cookie = s_cookies;

@@ -18,7 +18,7 @@ package memoplayer;
 
 public class ObjLink {
     Object m_param;
-    float m_z = -3;
+    int m_z = -3;
     Object m_object;
     ObjLink m_next;
 
@@ -26,19 +26,19 @@ public class ObjLink {
 
 
     public static ObjLink create (Object o, ObjLink n) {
-        return create (o, null, -2f, n);
+        return create (o, null, -2, n);
     }
 
-    public static ObjLink create (Object o, float z, ObjLink n) {
+    public static ObjLink create (Object o, int z, ObjLink n) {
         return create (o, null, z, n);
     }
 
 
     public static ObjLink create (Object o, Object p, ObjLink n) {
-        return create (o, p, -1f, n);
+        return create (o, p, -1, n);
     }
 
-    public synchronized static ObjLink create (Object o, Object p, float z, ObjLink n){//,int isVideo,int p_Layer,String name) {
+    public synchronized static ObjLink create (Object o, Object p, int z, ObjLink n){//,int isVideo,int p_Layer,String name) {
         if (s_root == null) {
             //System.err.println ("Objlink: create => new :o="+o+", p="+p);
             return new ObjLink (o, p, z, n);//,isVideo,p_Layer,name);
@@ -93,7 +93,7 @@ public class ObjLink {
         return null;
     }
 
-    private ObjLink (Object o, Object p, float z, ObjLink n) {
+    private ObjLink (Object o, Object p, int z, ObjLink n) {
         m_object = o;
         m_param = p;
         m_z = z;
