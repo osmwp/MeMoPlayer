@@ -89,13 +89,14 @@ public class DataLink {
         if (m_data != null) {
             totalSize += m_data.length;
         }
-//#ifdef MM.weakreference
-        Object m_object = getObject();
-//#endif
-        if (m_object != null && m_object instanceof Image) {
+//#ifndef MM.weakreference
+        // Only take in account the size of the image when *NOT* using
+        // WeakReference and that image was accessed once (m_data==null)
+        else if (m_object != null && m_object instanceof Image) {
             Image i = (Image)m_object;
             totalSize += i.getHeight() * i.getHeight() * 4; // worst case ARGB
         }
+//#endif
         if (m_next != null) {
             m_next = m_next.purge(totalSize, limitSize);
         }
