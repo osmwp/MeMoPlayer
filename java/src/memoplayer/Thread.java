@@ -40,8 +40,15 @@ public class Thread extends java.lang.Thread {
         throw new RuntimeException ("Thread.currentNamespace: Not called from a memoplayer.Thread !");
     }
     
+    /**
+     * Force this thread namespace (only for threads common to multiple namespaces)
+     */
+    public void forceNamespace (String namespace) {
+        m_namespace = namespace;
+    }
+    
     // Each instance of a thread in the MeMo gets the current Namspace name on creation
-    private final String m_namespace = Namespace.getName();
+    private String m_namespace = Namespace.getName();
 //#endif
 
     public Thread() {

@@ -22,7 +22,7 @@ import javax.microedition.lcdui.Graphics;
 import javax.microedition.rms.RecordStore;
 
 public class Logger {
-    public final static String s_version = "1.4.5";
+    public final static String s_version = "1.4.7";
     private final static int MAX_MESSAGES = 100;
     private static String [] s_messages;
     private static int s_count, s_ch, s_offset, s_startRaw; // , s_cw;

@@ -16,11 +16,10 @@ DEPS=$(SRCS:.cpp=.d)
 
 .PHONY: clean tar library
 
-all: $(TARGET) $(DEPS) $(MEMOPLAYER_DIR)/memoplayer/NodeTable.java
+all: $(TARGET) $(DEPS)
 
 ../fontExtractor: fontExtractor.o
 	gcc -o fontExtractor fontExtractor.o $(FE_LDFLAGS)
-
 
 NodeTable.inc: NodeTable.def ../mkTable
 	../mkTable NodeTable.def NodeTable.inc
@@ -30,21 +29,6 @@ ExternCalls.inc: ExternCalls.def ../mkTable
 
 $(TARGET) : NodeTable.inc ExternCalls.inc $(OBJS) 
 	$(CCC) -o $(TARGET) $(OBJS)
-
-$(MEMOPLAYER_DIR)/memoplayer/NodeTable.java : NodeTable.def
-	$(TARGET) -d $(MEMOPLAYER_DIR)/memoplayer/NodeTable.java
-
-copy-to-sdk : $(SDK_DIR)/compiler $(SDK_DIR)/NodeTable.def $(SDK_DIR)/ExternCalls.def
-
-$(SDK_DIR)/compiler: $(TARGET)
-	if test -d $(SDK_DIR); then cp -f $(TARGET) $(SDK_DIR)/compiler; fi
-
-$(SDK_DIR)/NodeTable.def: NodeTable.def
-	if test -d $(SDK_DIR); then cp -f NodeTable.def $(SDK_DIR)/NodeTable.def; fi
-
-$(SDK_DIR)/ExternCalls.def: ExternCalls.def
-	if test -d $(SDK_DIR); then cp -f ExternCalls.def $(SDK_DIR)/ExternCalls.def; fi
-
 
 clean:
 	-rm *.o *.d *~ $(TARGET)

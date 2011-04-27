@@ -31,6 +31,10 @@ public class FileQueue {
                 public void run() {
                     try {
                         while (!s_quit) {
+//#ifdef MM.namespace
+                            // Force the namespace associated to this thread for each File access
+                            forceNamespace (s_currentFile.m_cacheNamespace);
+//#endif
                             s_currentFile.openAndLoad();
                             s_currentFile = null;
                             MiniPlayer.wakeUpCanvas();
@@ -85,9 +89,7 @@ public class FileQueue {
         }
         m_queue = null;
     }
-    
-    
-    
+
     void loadNext() {
         if (s_currentFile == null && m_queue != null) {
             m_queue = m_queue.popQueue(); // Search next file to open
@@ -100,34 +102,23 @@ public class FileQueue {
             }
         }
     }
-    
-    File getFile(String url) {
-        
-        // Shortcut for cached files: load directly !
-        /*if (url.startsWith("cache://")) {
-            String myUrl = url;
-            // Ignore the optional source url after the comma
-            int i = myUrl.indexOf(',');
-            if (i != -1) myUrl = myUrl.substring(0, i);
-            // Open and load directly
-            System.out.println("URL:"+myUrl);
-            File f = new File(myUrl, null);
-            f.openAndLoad();
-            // Retun file if sucessfully loaded
-            if (f.getState() == Loadable.LOADED) {
-                return f;
-            }
-        }*/
-        
+
+    File getFile (String url) {
+        String namespace = "";
+//#ifdef MM.namespace
+        namespace = Thread.currentNamespace();
+//#endif
+
         // Check current file
-        if (s_currentFile != null && url.equals(s_currentFile.getName())) {
+        if (s_currentFile != null && s_currentFile.match(url, namespace)) {
             return s_currentFile;
         }
+
         // Find or add in queue
         if (m_queue != null) {
-            return m_queue.findQueue (url); 
+            return m_queue.findQueue(url, namespace);
         }
         // Create new queued file
-        return m_queue = new File (url, null);
+        return m_queue = new File (url, namespace);
     }
 }
