@@ -192,6 +192,7 @@ public:
 
     virtual int encodeSpecial (FILE * fp, bool verbose);
     
+    int encodeImages (const char * fieldName, FILE * fp, int total);
 };
 
 class Proto : public Node {

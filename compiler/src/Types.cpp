@@ -626,7 +626,6 @@ void Node::print (int n, bool fieldType, bool initSpaces) {
 
 extern char * execPath;
 
-
 int Node::encodeSpecial (FILE * fp, bool verbose) {
     int total = 0;
     if (m_next) {
@@ -634,22 +633,8 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
     }
     // case of image
     if (strcmp (m_name, "ImageTexture") == 0) {
-        MFString * f = (MFString*) findField ("url"); 
-        if (f) {
-            int i = 0;
-            while (f->getValue(i) != NULL) {
-                if (strlen (f->getValue(i)) > 0) {
-                    char * name = f->getValue(i); 
-                    //fprintf (myStderr, "Node::encodeSpecial: saving image %s\n", name);
-                    if (name && strncmp (name, "@[", 2) != 0) {
-                        if(isNonLocal(name)==false)
-                            total += includeFile (fp, name, name, MAGIC_IMAGE);
-                    }
-                }
-                i++;
-            }
-        }
-        
+        total = encodeImages ("url", fp, total);
+        total = encodeImages ("alternateUrl", fp, total);
     } else if (  (strcmp (m_name, "AudioClip") == 0)
                ||(strcmp (m_name, "MovieTexture") == 0)) {
     	// case of sound or video
@@ -858,6 +843,22 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
     s_lastTextNode = NULL; // shoudl be necessary only when the current Node is a Text, but the test is as expansive as the affectation
     return total;
 }
+
+int Node::encodeImages (const char * fieldName, FILE * fp, int total) {
+    MFString * f = (MFString*) findField (fieldName);
+    if (f) {
+        int i = 0;
+        char * name;
+        while ((name = f->getValue(i++)) != NULL) {
+            if (strlen (name) > 0 && strncmp (name, "@[", 2) != 0 && !isNonLocal (name)) {
+                //fprintf (myStderr, "Node::encodeSpecial: saving image %s\n", name);
+                total += includeFile (fp, name, name, MAGIC_IMAGE);
+            }
+        }
+    }
+    return total;
+}
+
 void Node::tableEntry (FILE * fp) {
     if (m_next) {
         m_next->tableEntry (fp);
