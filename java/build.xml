@@ -117,7 +117,13 @@
 			<fileset dir="${pkg.dir}" includes="*.jar"/>
 		</copy>
 	</target>
-	
+
+    <target name="PackageAll" description="Build all j2me and RIM profiles">
+    	<delete dir="${pkg.dir}" />
+        <antcall target="Package" />
+        <antcall target="PackageRIM" />
+    </target>	
+
 	<target name="PackageAll.ToSDK" description="Build all j2me and RIM profiles and put them in the SDK">
         <antcall target="Package.ToSDK" />
         <antcall target="PackageRIM.ToSDK" />
