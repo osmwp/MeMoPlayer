@@ -9,7 +9,7 @@
 	<!-- Default name for the MIDlet is the profile's name -->
 	<property name="midlet.name" value="${current.profile}"/>
 	
-	<property name="pkg.dir" location="pkg"/>
+	<property name="pkg.dir" location="pkg/midlet"/>
 	
 	<!-- By default, no libs are included -->
 	<property name="include.libs" value=""/>

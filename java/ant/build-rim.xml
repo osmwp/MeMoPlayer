@@ -169,7 +169,7 @@
         <!-- Preverify lib -->
     	<exec executable="${wtk.home}/bin/preverify">
             <arg value="-d"/>
-            <arg value="pkg"/>
+            <arg value="pkg/rim"/>
             <arg value="-classpath"/>
             <arg value="${jde.home}/lib/net_rim_api.jar"/>
             <arg value="${build.dir}/${MemoRimLibName}"/>
@@ -207,16 +207,16 @@
 
    <target name="PackageRIM" description="Build all the RIM profiles and put them in the SDK">
         <property name="rimProfiles" value="${profilesForRelease-RIM}"/>
-        <delete dir="${pkg.dir}" />
+        <delete dir="${pkg.dir}/rim" />
         <call target="Package-RIM-LIB-toSDK" iterations="iter-on-rim-profiles" />
 	</target>
 
 	<target name="PackageRIM.ToSDK" description="Build all the RIM profiles and put them in the SDK">
 		<property name="rimProfiles" value="${profilesForSDK-RIM}"/>
-		<delete dir="${pkg.dir}" />
+		<delete dir="${pkg.dir}/rim" />
         <call target="Package-RIM-LIB-toSDK" iterations="iter-on-rim-profiles" />
         <copy todir="${sdkrim.dir}" overwrite="true">
-            <fileset dir="${pkg.dir}" includes="**/*.jar" />
+            <fileset dir="${pkg.dir}/rim" includes="**/*.jar" />
         </copy>
 	</target>
 
