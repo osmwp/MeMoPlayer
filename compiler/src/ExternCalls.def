@@ -121,9 +121,10 @@ Browser {
 #  boolean dinf(String d1,String d2)   - Returns the true if value of d1 is smaller than the value of d2, else false
 #  boolean dinfeq(String d1,String d2) - Returns the true if value of d1 is smaller or equal than the value of d2, else false
 #  String dabs(String d1) - Returns the positive version of the parameter
+#  String dlog(String d) - Returns the logarithm value of d
 # 
 Math {
-     cos sin floor ceil sqrt rand abs acos asin atan PI E dadd dsub dmul ddiv dsin dasin dcos dacos dtan datan datan2 dfloor dsup dsupeq dinf dinfeq dabs
+     cos sin floor ceil sqrt rand abs acos asin atan PI E dadd dsub dmul ddiv dsin dasin dcos dacos dtan datan datan2 dfloor dsup dsupeq dinf dinfeq dabs dlog
 }
 
 
