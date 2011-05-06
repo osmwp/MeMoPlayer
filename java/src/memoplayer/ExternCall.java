@@ -446,122 +446,80 @@ class ExternCall {
         case 11: // E
             registers[r].setFloat (178145);
             return;
-        case 12: // dadd
-            {
-                double d1 = Double.parseDouble(registers[r].getString ());
-                double d2 = Double.parseDouble(registers[r+1].getString ());
-                d1 += d2;
-                registers[r].setString (String.valueOf(d1));
+        default:
+            try {
+                double d1 = Double.parseDouble(registers[r].getString());
+                double d2 = 0.0;
+                if (nbParams == 2) {
+                    d2 = Double.parseDouble(registers[r + 1].getString());
+                }
+                switch (m) {
+                case 12: // dadd
+                    d1 += d2;
+                    registers[r].setString(String.valueOf(d1));
+                    return;
+                case 13: // dsub
+                    d1 -= d2;
+                    registers[r].setString(String.valueOf(d1));
+                    return;
+                case 14: // dmul
+                    d1 *= d2;
+                    registers[r].setString(String.valueOf(d1));
+                    return;
+                case 15: // ddiv
+                    if (Math.abs(d2) < Double.MIN_VALUE) {
+                        registers[r].setString("NaN");
+                    } else {
+                        d1 /= d2;
+                        registers[r].setString(String.valueOf(d1));
+                    }
+                    return;
+                case 16: // dsin
+                    registers[r].setString(String.valueOf(Math.sin(d1)));
+                    return;
+                case 17: // dasin
+                    registers[r].setString(String.valueOf(asin(d1)));
+                    return;
+                case 18: // dcos
+                    registers[r].setString(String.valueOf(Math.cos(d1)));
+                    return;
+                case 19: // dacos
+                    registers[r].setString(String.valueOf(acos(d1)));
+                    return;
+                case 20: // dtan
+                    registers[r].setString(String.valueOf(Math.tan(d1)));
+                    return;
+                case 21: // datan
+                    registers[r].setString(String.valueOf(atan(d1)));
+                    return;
+                case 22: // datan2
+                    registers[r].setString(String.valueOf(atan2(d1, d2)));
+                    return;
+                case 23: // dfloor
+                    registers[r].setString(String.valueOf(Math.floor(d1)));
+                    return;
+                case 24: // dsup
+                    registers[r].setBool(d1 > d2);
+                    return;
+                case 25: // dsupeq
+                    registers[r].setBool(d1 >= d2);
+                    return;
+                case 26: // dinf
+                    registers[r].setBool(d1 < d2);
+                    return;
+                case 27: // dinfeq
+                    registers[r].setBool(d1 <= d2);
+                    return;
+                case 28: // dabs
+                    registers[r].setString(String.valueOf(Math.abs(d1)));
+                    return;
+                default:
+                    Logger.println("doMath (m:"+m+") Static call: Invalid method");
+                }
+            } catch (Exception e) {
+                Logger.println("doMath error: " + e);
             }
-            return;
-        case 13: // dsub
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            d1 -= d2;
-            registers[r].setString (String.valueOf(d1));
         }
-            return;
-        case 14: // dmul
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            d1 *= d2;
-            registers[r].setString (String.valueOf(d1));
-        }
-            return;
-        case 15: // ddiv
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            d1 /= d2;
-            registers[r].setString (String.valueOf(d1));
-        }
-            return;
-        case 16: // dsin
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(Math.sin(d1)));
-        }
-            return;
-        case 17: // dasin
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(asin(d1)));
-        }
-            return;
-        case 18: // dcos
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(Math.cos(d1)));
-        }
-            return;
-        case 19: // dacos
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(acos(d1)));
-        }
-            return;
-        case 20: // dtan
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(Math.tan(d1)));
-        }
-            return;
-        case 21: // datan
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(atan(d1)));
-        }
-            return;
-        case 22: // datan2
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            registers[r].setString (String.valueOf(atan2(d1,d2)));
-        }
-            return;
-        case 23: // dfloor
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString (String.valueOf(Math.floor(d1)));
-        }
-            return;
-        case 24: // dsup
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            registers[r].setBool (d1>d2);
-        }
-            return;
-        case 25: // dsupeq
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            registers[r].setBool (d1>=d2);
-        }
-            return;
-        case 26: // dinf
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            registers[r].setBool (d1<d2);
-        }
-            return;
-        case 27: // dinfeq
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            double d2 = Double.parseDouble(registers[r+1].getString ());
-            registers[r].setBool (d1<=d2);
-        }
-            return;
-        case 28: // dabs
-        {
-            double d1 = Double.parseDouble(registers[r].getString ());
-            registers[r].setString(""+Math.abs(d1));
-        }
-            return;
-       }
     }
 
 
