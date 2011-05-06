@@ -329,17 +329,13 @@ public abstract class Canvas extends Displayable {
         }
 
         public void repaint () {
-            synchronized (serviceRepaintLock) {
-                needsRepaint = true;
-                postInvalidate ();
-            }
+            needsRepaint = true;
+            postInvalidate ();
         }
 
         public void repaint (int x, int y, int w, int h) {
-            synchronized (serviceRepaintLock) {
-                needsRepaint = true;
-                postInvalidate (x, y, w, h);
-            }
+            needsRepaint = true;
+            postInvalidate (x, y, w, h);
         }
 
         public void serviceRepaints () {
