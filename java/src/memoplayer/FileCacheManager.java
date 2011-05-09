@@ -148,11 +148,9 @@ class FileCacheManager extends CacheManager {
 
 
     private int findEntry (String name) {
-         if (name.equals (DELETED)) { //MCP: Prevent accessing a deleted record, see del() method
-             return -1;
-         } else if (name == null || name.length() == 0) {
-             name = EMPTY;
-         }
+        if (name == null || name.length() == 0) {
+            name = EMPTY;
+        }
         int left = 0;
         int right = m_nbEntries-1;
         int pivot, way;
@@ -172,6 +170,9 @@ class FileCacheManager extends CacheManager {
     }
 
     private int addEntry (String name, int index) {
+        if (name == null || name.length() == 0) {
+            name = EMPTY;
+        }
         //Logger.println ("addEntry "+name+", "+index);
         if (m_nbEntries >= m_totalSize) { // expand the array
             String [] tmpNames = new String [m_totalSize+INITIAL_CAPACITY];

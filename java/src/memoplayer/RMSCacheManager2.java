@@ -253,9 +253,9 @@ class RMSCacheManager2 extends CacheManager {
     }
 
     private int findEntry (String name) {
-         if (name == null || name.length() == 0) {
-             name = EMPTY;
-         }
+        if (name == null || name.length() == 0) {
+            name = EMPTY;
+        }
         int left = 0;
         int right = m_nbEntries-1;
         int pivot, way;
@@ -274,6 +274,9 @@ class RMSCacheManager2 extends CacheManager {
     }
 
     private int addEntry (String name, int index, boolean sort) {
+        if (name == null || name.length() == 0) {
+            name = EMPTY;
+        }
         if (m_nbEntries >= m_totalSize) { // expand the array
             String [] tmpNames = new String [m_totalSize+INITIAL_CAPACITY];
             System.arraycopy (m_names, 0, tmpNames, 0, m_totalSize);
