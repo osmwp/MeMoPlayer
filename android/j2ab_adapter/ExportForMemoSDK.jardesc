@@ -11,21 +11,7 @@
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.media"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.pim"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;com.orange.memoplayer"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.rms"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.media.control"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.io.file"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.pim"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.midlet"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.media"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.lcdui.game"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.media.control"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.io"/>
+        <javaElement handleIdentifier="=MeMoAndro/src"/>
         <javaElement handleIdentifier="=MeMoAndro/psrc"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;javax.microedition.lcdui"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.io"/>
-        <javaElement handleIdentifier="=MeMoAndro/src&lt;j2ab.android.io.file"/>
     </selectedElements>
 </jardesc>
