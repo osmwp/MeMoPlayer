@@ -1,24 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget"
+    android:id="@+id/alert"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:focusable="true"
-    android:clickable="true"
-    android:background="@drawable/widget_bg"
-    android:padding="10dp"
     android:gravity="center"
->
-
-    <ImageView
-        android:padding="0px"
-        android:id="@+id/imagebuffer"
+    android:background="@drawable/widget_bg">
+   <ImageView
+        android:id="@+id/alertimage"
+        android:layout_height="wrap_content"
         android:layout_width="wrap_content"
+        android:src="@drawable/alert"/>
+   <TextView
+        android:id="@+id/alertmessage"
+        android:layout_width="wrap_content" 
         android:layout_height="wrap_content"
         android:gravity="center"
-    />
-
-
+        android:text="@string/widget_alert"/>
 </LinearLayout>

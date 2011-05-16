@@ -36,7 +36,7 @@ public class Common {
     public static MIDlet createMIDlet(ContextWrapper context, int bootMode) {
         Properties properties = new Properties();
         try {
-            InputStream ins = context.getClass().getResourceAsStream("/" + JAD_PROPERTIES);
+            InputStream ins = context.getClass().getResourceAsStream("/assets/" + JAD_PROPERTIES);
             properties.load(ins);
         } catch (Exception ex) {
             throw new RuntimeException("error loading " + JAD_PROPERTIES, ex);

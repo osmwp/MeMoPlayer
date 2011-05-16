@@ -37,9 +37,7 @@ import android.view.Window;
 
 
 public class MainActivity extends Activity {
-    private static final String JAD_PROPERTIES = "jad.properties"; 
-    private static final String MIDLET_PROPERTY = "midlet";
-    
+   
 	private static final boolean trace = false;
 	private MIDlet midlet;
 	private View defaultView;

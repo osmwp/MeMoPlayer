@@ -18,10 +18,12 @@ package com.orange.memoplayer;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
 import android.content.Intent;
 
 import android.util.Log;
+import android.view.View;
 
 
 public class Widget extends AppWidgetProvider {
@@ -30,14 +32,14 @@ public class Widget extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        Log.d("Widget.UpdateService", "onUpdate()");
+        Log.i("Widget.UpdateService", "onUpdate()");
         if (appWidgetIds.length > 0) {
-            width = appWidgetManager.getAppWidgetInfo(appWidgetIds[0]).minWidth;
-            height = appWidgetManager.getAppWidgetInfo(appWidgetIds[0]).minHeight;
+            AppWidgetProviderInfo awpi = appWidgetManager.getAppWidgetInfo(appWidgetIds[0]);
+            width = awpi.minWidth;
+            height = awpi.minHeight;
+            Log.i("Widget.UpdateService", "onUpdate() resolution: "+width+"x"+height);
+            // Perform update
+            context.startService(new Intent(context, WidgetUpdate.class));
         }
-        // Keep list of widgets to update
-        //WidgetService.requestUpdate(appWidgetIds);
-        // Perform the update in a service
-        context.startService(new Intent(context, WidgetUpdate.class));
     }
 }
