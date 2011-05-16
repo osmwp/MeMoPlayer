@@ -1,0 +1,75 @@
+#VRML V2.0 utf8
+
+Script {
+  field SFInt32 testCnt 0
+  field SFInt32 testError 0
+  field SFColor color1 0.1 0.3 0.9
+  field SFColor color2 1 1 1
+  field SFColor color3 1 0 0.5
+  field MFColor colors [0.1 0.3 0.9, 0 0 1, 0 1 0, 0 1 1, 1 0 0, 1 0 1, 1 1 0, 1 1 1]
+  field SFString stringColor1 "ffffff"
+  field SFString stringColor2 "aabeef"
+
+  url "javascript:
+    function initialize () {
+      Browser.print ('-- Start');
+      tests();
+      testResults();
+      Browser.print ('-- End');
+    }
+
+    function tests() {
+      // test SFColor and MFColor on each color component (since v1.0.0)
+      testEqual (color1.r, colors[0].r, 'SFColor.r to MFColor.r comparison');
+      testEqual (color1.g, colors[0].g, 'SFColor.g to MFColor.g comparison');
+      testEqual (color1.b, colors[0].b, 'SFColor.b to MFColor.b comparison');
+      // same tests but at the end of the MFColor array (since v1.0.0)
+      testEqual (color2, colors[7], 'SFColor to MFColor comparison');
+      testEqual (color2.r, colors[7].r, 'SFColor.r to MFColor.r comparison');
+      testEqual (color2.g, colors[7].g, 'SFColor.g to MFColor.g comparison');
+      testEqual (color2.b, colors[7].b, 'SFColor.b to MFColor.b comparison');
+      // test SFColor and MFColor comparison (since v1.4.8)
+      testEqual (color1, colors[0], 'SFColor to MFColor comparison');
+      testNotEqual (color1, colors[1], 'SFColor to MFColor comparison (neg)');
+      // test hexadecimal string with .hex SF/MFColor conversion (since v1.4.8)
+      testEqual (stringColor1, color2.hex, 'SFString to SFColor.hex comparison');
+      testEqual (stringColor1, colors[7].hex, 'SFString to MFColor.hex comparison');
+      // test MF/SFColor hexadecimal assignment from string (since v1.4.8)
+      color3.hex = stringColor2;
+      testEqual (stringColor2, color3.hex, 'SFString to SFColor.hex assignment');
+      colors[1].hex = stringColor2;
+      testEqual (stringColor2, colors[1].hex, 'SFString to MFString.hex assignment');
+      // test MFColor to SFColor assignment (since v1.4.8)
+      color1 = colors[1];
+      testEqual (color1, colors[1], 'MFColor to SFColor assignment');
+      // test SFColor to MFColor assignment (since v1.4.8)
+      colors[2] = color1;
+      testEqual (color1, colors[2], 'SFColor to MFColor assignment');
+      // test direct int assignment (since v1.4.8)
+      color1 = 0xefefef;
+      testEqual (color1.hex, 'efefef', 'int to SFColor assignment');
+      colors[2] = 0xfefefe;
+      testEqual (colors[2].hex, 'fefefe', 'int to MFColor assignment');
+    }
+
+    function testNotEqual (a, b, error) {
+      if (a == b) {
+        Browser.print (error+': '+a+' == '+b);
+        testError++;
+      }
+      testCnt++;
+    }
+
+    function testEqual (a, b, error) {
+      if (a != b) {
+        Browser.print ('Error: '+error+': '+a+' != '+b);
+        testError++;
+      }
+      testCnt++;
+    }
+
+    function testResults() {
+      Browser.print ('Errors: '+testError+' / '+testCnt);
+    }
+  "
+}
