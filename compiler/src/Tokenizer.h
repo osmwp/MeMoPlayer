@@ -204,7 +204,7 @@ public:
         skipSpace ();
         char c = GETC ();
         if (c == '0' && CHECK ('x')) { // check for hexa header
-          return getNextHex();
+          return getNextHex(isOK);
         }
         char * r = buffer;
         if (c == '-'  || c == '+') { // must be followed IMMEDIATELY by a number
@@ -232,7 +232,7 @@ public:
         return (atof (buffer));
     }
 
-    int getNextHex () {
+    int getNextHex (bool * isOK = NULL) {
         int r=0, t=0, n=0;
         char c = GETC ();
         while (n++ < 8) {
@@ -243,12 +243,16 @@ public:
             } else if ((c >= 'a') && (c <= 'f')) {
                 t = (c - 'a' + 10);
             } else {
+              n--;
               UNGETC (c);
               break;
             }
             r *= 16; 
             r += t;
             c = GETC ();
+        }
+        if (isOK) {
+            *isOK = n > 0 && n <= 8;
         }
         return r;
     }
