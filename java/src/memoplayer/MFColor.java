@@ -44,7 +44,18 @@ class MFColor extends MFFloatBase {
             //System.out.println ("]");
         }
     }
-    int getRgb (int i) {  return ((m_value[i*3])<<16)+((m_value[i*3+1])<<8)+(m_value[i*3+2]);  }
+
+    int getRgb (int i) {
+        i *= 3;
+        return (m_value[i]<<16) + (m_value[i+1]<<8) + m_value[i+2];
+    }
+
+    void setRgb (int i, int rgb) {
+        i *= 3;
+        m_value[i] = (rgb & 0xFF0000) >> 16;
+        m_value[i+1] = (rgb & 0xFF00) >> 8;
+        m_value[i+2] = rgb & 0xFF;
+    }
 
     public void set (int index, Register r, int offset) {
         if (index == Field.LENGTH_IDX) {
@@ -53,7 +64,13 @@ class MFColor extends MFFloatBase {
             if (offset >= m_size) {
                 ensureCapacity(offset+1);
             }
-            m_value [offset*m_chunk+(index-1)] = r.getColorComponent();
+            if (index == Field.HEX_IDX) {
+                try { setRgb(offset, Integer.parseInt(r.getString(), 16)); } catch (NumberFormatException e) {}
+            } else if (index == 0) {
+                setRgb(offset, r.getInt());
+            } else {
+                m_value [offset*m_chunk+(index-1)] = r.getColorComponent();
+            }
             notifyChange ();
         }
     }
@@ -64,7 +81,13 @@ class MFColor extends MFFloatBase {
         } else if (index == Field.OBJECT_IDX) {
             r.setField (this);
         } else if (offset >= 0 && offset < m_size) {
-            r.setColorComponent(m_value [offset*m_chunk+(index-1)]);
+            if (index == Field.HEX_IDX) {
+                r.setString(Integer.toHexString(getRgb(offset)));
+            } else if (index == 0) {
+                r.setInt(getRgb(offset));
+            } else {
+                r.setColorComponent(m_value [offset*m_chunk+(index-1)]);
+            }
         } else { // out of bounds, return default value
             r.setFloat(0);
         }

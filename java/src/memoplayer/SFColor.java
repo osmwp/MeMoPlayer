@@ -38,7 +38,9 @@ class SFColor extends Field {
         //System.out.println ("SFColor.decode: "+m_r+", "+m_g+", "+m_b);
     } 
 
-    int getRgb () { return (m_r<<16) + (m_g<<8) + m_b;  }
+    int getRgb () {
+        return (m_r<<16) + (m_g<<8) + m_b;
+    }
 
     void setRgb (int rgb) {
         setValue ((rgb & 0xFF0000) >> 16, (rgb & 0xFF00) >> 8, rgb & 0xFF);
@@ -62,7 +64,9 @@ class SFColor extends Field {
 
     public void set (int index, Register r, int offset) {
         if (index == 0) {
-            copyValue (r.getField ());
+            setRgb (r.getInt());
+        } else if (index == Field.HEX_IDX) {
+            try { setRgb (Integer.parseInt (r.getString (), 16)); } catch (Exception e) {}
         } else {
             int color = r.getColorComponent();
             if (index == 1) {
@@ -78,7 +82,9 @@ class SFColor extends Field {
 
     public void get (int index, Register r, int offset) {
         if (index == 0) {
-            r.setField (this);
+            r.setInt (getRgb ());
+        } else if (index == Field.HEX_IDX) {
+            r.setString (Integer.toHexString (getRgb ()));
         } else {
             int color;
             if (index == 1) {

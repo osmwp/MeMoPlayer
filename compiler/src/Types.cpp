@@ -1933,6 +1933,8 @@ int SFColor::findIndex (char * name, bool isArray) {
         return 2;
     } else if (strcmp (name, "b") == 0) {
         return 3;
+    } else if (strcmp (name, "hex") == 0) {
+        return HEX_IDX;
     }
     return (-1);
 }
@@ -2452,6 +2454,8 @@ int MFColor::findIndex (char * name, bool isArray) {
         return 2;
     } else if (strcmp (name, "b") == 0) {
         return 3;
+    } else if (strcmp (name, "hex") == 0) {
+        return HEX_IDX;
     }
     return (-1);
 }

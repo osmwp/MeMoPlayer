@@ -71,6 +71,8 @@ abstract public class Field implements ScriptAccess{
 
     protected final static int LENGTH_IDX = 255;
     protected final static int OBJECT_IDX = 254;
+    protected final static int HEX_IDX = 253; // .hex for SF/MFColor
+
     // code for all types
     protected final static int SFBOOL_CODE = 1;
     protected final static int SFCOLOR_CODE = 2;

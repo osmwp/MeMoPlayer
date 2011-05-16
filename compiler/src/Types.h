@@ -15,7 +15,6 @@
  */
 
 # define ARRAY_MAX_SIZE 1024*10
-# define LENGTH_IDX 255
 
 class Scene; 
 class Node;
@@ -59,6 +58,13 @@ public:
         TYPE_ID_SFDEFINED = 22,
         TYPE_ID_MFANY = 23,
     };
+
+    enum {
+        LENGTH_IDX = 255,
+        OBJECT_IDX = 254,
+        HEX_IDX = 253,
+    };
+
     Field () ;
     
     Field (char * type, char * name, Field * next) ;
