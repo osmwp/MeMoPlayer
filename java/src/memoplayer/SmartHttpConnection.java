@@ -226,28 +226,43 @@ class SmartHttpConnection implements Connection {
     
 //#ifdef MM.pfs
     
+    private static String s_xcookie = null;
+    private boolean m_isPfsRequest = false;
+
     /**
      * Adds a x-tags header with content of the xtags cookie
      * if the target server is the same as the baseUrl.
+     * Add an x-cookie with the content of a previous x-set-cookie
      */
     public void addTagsHeader() throws IOException {
     	String baseUrl = CookyManager.get ("baseUrl");
     	if (baseUrl.length() != 0 && m_url.startsWith(baseUrl)) {
-    		String tags = CookyManager.get ("xtags");
-	    	if (tags.length() != 0) {
-	            m_conn.setRequestProperty ("X-Tags", tags);
-	        }
+            m_isPfsRequest = true;
+            if (s_xcookie != null) {
+                m_conn.setRequestProperty ("X-Cookie", s_xcookie);
+            }
+            String tags = CookyManager.get ("xtags");
+            if (tags.length() != 0) {
+                m_conn.setRequestProperty ("X-Tags", tags);
+            }
     	}
     }
     
     /**
+     * Check for the specific x-set-cookie header and keep content
      * Check for the specific x-update HTTP header.
      * Open browser on given url.
      */
     public void parseUpdateHeader() throws IOException {
-        String data = m_conn.getHeaderField("x-update");
-        if (data != null && data.length() != 0) {
-            MiniPlayer.openUrl(data);
+        if (m_isPfsRequest) {
+            String data = m_conn.getHeaderField("X-Set-Cookie");
+            if (data != null && data.length() != 0) {
+                s_xcookie = data;
+            }
+            data = m_conn.getHeaderField("X-Update");
+            if (data != null && data.length() != 0) {
+                MiniPlayer.openUrl(data);
+            }
         }
     }
 
