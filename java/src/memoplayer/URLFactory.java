@@ -210,7 +210,7 @@ public class URLFactory {
 	}
 	
 	public String getRtspWap2Url(ServiceRecord wap2ServiceRecord){
-        return "rtsp://" + host + absPath + ";deviceside=true" + ";ConnectionUID=" + wap2ServiceRecord.getUid();
+        return "rtsp://" + host + ":" + port + absPath + ";deviceside=true" + ";ConnectionUID=" + wap2ServiceRecord.getUid();
     }
 	
 	public String getHttpDefaultTcpCellularUrl(ServiceRecord tcpServiceRecord) {
