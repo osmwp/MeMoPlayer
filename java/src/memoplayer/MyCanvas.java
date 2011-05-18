@@ -89,7 +89,7 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
 //#ifdef debug.console
     private int m_debugStep;
 //#endif
-    static int s_memBar = 0, s_cpuBar = 0;
+    static int s_memBar = 0;
     static boolean s_pauseIndicator = false;
     static boolean s_debugClip = false;
     // ignore size change notification, ie Samsung Croy GT-S3100
@@ -514,10 +514,8 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
             g.setStrokeStyle(Graphics.SOLID);
             g.setColor(0x000000);
             g.fillRect(0, 0, m_width, 2);
-            g.setColor(0xFF0000);
-            g.drawLine(0, 0, s_cpuBar, 0);
             g.setColor(0x00FF00);
-            g.drawLine(0, 1, s_memBar, 1);
+            g.fillRect(0, 0, s_memBar, 2);
             break;
         case PAINT_PAUSE:
             g.setClip(2, 2, m_width/20, m_height/20);
@@ -767,7 +765,7 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
             }
             
 //#ifdef debug.console
-            // Prevent refresh of the mem/cpu bar part of screen
+            // Prevent refresh of the mem bar part of screen
             if (s_memBar>0 && context.clip.y0<2) { 
                 context.clip.y0 = 2;
             }
@@ -834,7 +832,6 @@ public class MyCanvas extends net.rim.device.api.ui.container.MainScreen
                 if (s_memBar > 0) {
                     System.gc();
                     s_memBar = m_width - (int)(m_width * Runtime.getRuntime().freeMemory() / Runtime.getRuntime().totalMemory());
-                    s_cpuBar = m_width - (m_width * idle) / (int)(t-time);
                     flushGraphics(0, 0, m_width, 2, PAINT_MEMBAR);
                 }
 //#endif
