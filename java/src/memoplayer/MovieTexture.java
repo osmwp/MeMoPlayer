@@ -20,7 +20,7 @@ package memoplayer;
 public class MovieTexture extends MediaNode  {
 
 //#ifdef BlackBerry
-    TransportDetective m_trDetective = new TransportDetective();
+    TransportDetective m_trDetective;
 //#endif
 
     int m_srcWidth=-1;
@@ -77,6 +77,17 @@ public class MovieTexture extends MediaNode  {
 
 //#ifdef BlackBerry
     public net.rim.device.api.servicebook.ServiceRecord getWrapServiceRecord() {
+        if (m_trDetective == null) {
+            m_trDetective = new TransportDetective();
+            int services = m_trDetective.getAvailableTransportServices();
+            if ((services & TransportDetective.TRANSPORT_WAP2) != 0) {
+                Logger.println("WAP2 TRANSPORT AVAIL");
+            }
+            int coverage = m_trDetective.getAvailableTransportCoverage();
+            if ((coverage & TransportDetective.TRANSPORT_WAP2) != 0) {
+                Logger.println("WAP2 COVERAGE AVAIL");
+            }
+        }
         return m_trDetective.getWap2ServiceRecord();
     }
 //#endif
