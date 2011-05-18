@@ -55,14 +55,28 @@ public class CookyManager {
         return this;
     }
 
+    boolean setRec (String key, String value) {
+        if (m_key.equals (key)) {
+            m_value = value;
+            return true;
+        }
+        return (m_next != null) ? m_next.setRec (key, value) : false;
+    }
+
     static synchronized void set (String key, String value) {
 //#ifdef MM.namespace
         if (Namespace.getName() == "") {
             // All keys set in admin mode are store are protected
+            if (s_protected != null && s_protected.setRec(key, value)) {
+                return;
+            }
             s_protected = new CookyManager (key, value, s_protected);
             return;
         }
 //#endif
+        if (s_root != null && s_root.setRec(key, value)) {
+            return;
+        }
         s_root = new CookyManager (key, value, s_root);
     }
 
