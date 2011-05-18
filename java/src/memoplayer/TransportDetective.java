@@ -1,3 +1,5 @@
+//#condition BlackBerry
+
 package memoplayer;
 
 

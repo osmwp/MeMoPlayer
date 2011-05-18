@@ -1,3 +1,5 @@
+//#condition BlackBerry
+
 package memoplayer;
 
 import net.rim.device.api.servicebook.ServiceRecord;

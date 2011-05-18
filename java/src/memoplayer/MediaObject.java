@@ -644,12 +644,14 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 //#endif
             } else if (m_name.startsWith ("rtsp://") || m_name.startsWith ("http://")){
                 String url = m_name;
+//#ifdef BlackBerry
                 if  (m_mediaNode instanceof MovieTexture) {
                     net.rim.device.api.servicebook.ServiceRecord sr = ((MovieTexture)m_mediaNode).getWrapServiceRecord();
                     URLFactory uf = new URLFactory(m_name);
                     url = uf.getRtspWap2Url(sr);
                     Logger.println("RTSP URL: "+url);
                 }
+//#endif
                 Player p = null;
                 try {
                   p = Manager.createPlayer (url);
