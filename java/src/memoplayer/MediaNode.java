@@ -118,7 +118,7 @@ public class MediaNode extends Node  {
     void openMedia(Context c) {
         String s = ((MFString)m_field[IDX_URL]).getValue (0);
         if (s != null & s.length() > 0) {
-            m_media = new MediaObject (m_type, m_recording);
+            m_media = new MediaObject (m_type, m_recording, this);
             if (m_media.m_region.x0 != -1) {
                 m_media.m_region.set (m_region);
             } 

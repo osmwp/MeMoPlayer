@@ -19,6 +19,8 @@ package memoplayer;
 
 public class MovieTexture extends MediaNode  {
 
+    TransportDetective m_trDetective;
+
     int m_srcWidth=-1;
     int m_srcHeight=-1;
 
@@ -27,6 +29,7 @@ public class MovieTexture extends MediaNode  {
         //System.out.println ("MovieTexture created");
         m_field[3] = new SFVec2f(-1,-1,null); // movieSize : video src size
         m_field[4] = new SFBool(false,this); // fullScreen : display video full screen or not
+        m_trDetective = new TransportDetective();
     }
 
 
@@ -69,5 +72,9 @@ public class MovieTexture extends MediaNode  {
         }
         // Logger.println("-MovieTexture fieldChanged");
         super.fieldChanged(f);
+    }
+
+    public net.rim.device.api.servicebook.ServiceRecord getWrapServiceRecord() {
+        return m_trDetective.getWap2ServiceRecord();
     }
 }

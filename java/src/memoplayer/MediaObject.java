@@ -93,12 +93,14 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
     boolean m_running; // kept as true as long as the thread below must stay alive
     Thread m_thread; // a thread for will be checking for messages like realize, start stop ... to keep things synchronous
     int m_message = 0;
+    MediaNode m_mediaNode;
 
 
-    MediaObject (int type, int mode) {
+    MediaObject (int type, int mode, MediaNode mn) {
         m_region = new Region(); //FTE (0, 0, 176, 144);
         m_type = type;
         m_mode = mode;
+        m_mediaNode = mn;
         //printCapabilities ();
     }
 
@@ -641,10 +643,16 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
                 }
 //#endif
             } else if (m_name.startsWith ("rtsp://") || m_name.startsWith ("http://")){
-
+                String url = m_name;
+                if  (m_mediaNode instanceof MovieTexture) {
+                    net.rim.device.api.servicebook.ServiceRecord sr = ((MovieTexture)m_mediaNode).getWrapServiceRecord();
+                    URLFactory uf = new URLFactory(m_name);
+                    url = uf.getRtspWap2Url(sr);
+                    Logger.println("RTSP URL: "+url);
+                }
                 Player p = null;
                 try {
-                  p = Manager.createPlayer (m_name);
+                  p = Manager.createPlayer (url);
                 } catch ( Exception me ) {
                   String str = me.toString();
                   Logger.println( str );
