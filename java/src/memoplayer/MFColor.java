@@ -67,7 +67,16 @@ class MFColor extends MFFloatBase {
             if (index == Field.HEX_IDX) {
                 try { setRgb(offset, Integer.parseInt(r.getString(), 16)); } catch (NumberFormatException e) {}
             } else if (index == 0) {
-                setRgb(offset, r.getInt());
+                Field f = r.getField();
+                if (f instanceof SFColor) {
+                    SFColor c = ((SFColor)f);
+                    offset *= 3;
+                    m_value[offset] = c.m_r;
+                    m_value[offset+1] = c.m_g;
+                    m_value[offset+2] = c.m_b;
+                } else {
+                    setRgb(offset, r.getInt());
+                }
             } else {
                 m_value [offset*m_chunk+(index-1)] = r.getColorComponent();
             }

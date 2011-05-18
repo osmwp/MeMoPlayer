@@ -24,13 +24,13 @@ Script {
       testEqual (color1.g, colors[0].g, 'SFColor.g to MFColor.g comparison');
       testEqual (color1.b, colors[0].b, 'SFColor.b to MFColor.b comparison');
       // same tests but at the end of the MFColor array (since v1.0.0)
-      testEqual (color2, colors[7], 'SFColor to MFColor comparison');
       testEqual (color2.r, colors[7].r, 'SFColor.r to MFColor.r comparison');
       testEqual (color2.g, colors[7].g, 'SFColor.g to MFColor.g comparison');
       testEqual (color2.b, colors[7].b, 'SFColor.b to MFColor.b comparison');
-      // test SFColor and MFColor comparison (since v1.4.8)
-      testEqual (color1, colors[0], 'SFColor to MFColor comparison');
-      testNotEqual (color1, colors[1], 'SFColor to MFColor comparison (neg)');
+      // test SFColor and MFColor comparison (not supported for backward compatibility reasons)
+      //testEqual (color1, colors[0], 'SFColor to MFColor comparison');
+      //testEqual (color2, colors[7], 'SFColor to MFColor comparison');
+      //testNotEqual (color1, colors[1], 'SFColor to MFColor comparison (neg)');
       // test hexadecimal string with .hex SF/MFColor conversion (since v1.4.8)
       testEqual (stringColor1, color2.hex, 'SFString to SFColor.hex comparison');
       testEqual (stringColor1, colors[7].hex, 'SFString to MFColor.hex comparison');
@@ -41,10 +41,10 @@ Script {
       testEqual (stringColor2, colors[1].hex, 'SFString to MFString.hex assignment');
       // test MFColor to SFColor assignment (since v1.4.8)
       color1 = colors[1];
-      testEqual (color1, colors[1], 'MFColor to SFColor assignment');
+      testEqual (color1.hex, colors[1].hex, 'MFColor to SFColor assignment');
       // test SFColor to MFColor assignment (since v1.4.8)
       colors[2] = color1;
-      testEqual (color1, colors[2], 'SFColor to MFColor assignment');
+      testEqual (color1.hex, colors[2].hex, 'SFColor to MFColor assignment');
       // test direct int assignment (since v1.4.8)
       color1 = 0xefefef;
       testEqual (color1.hex, 'efefef', 'int to SFColor assignment');
