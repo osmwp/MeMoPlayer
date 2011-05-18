@@ -647,9 +647,13 @@ public class MediaObject implements PlayerListener, Runnable, Loadable {
 //#ifdef BlackBerry
                 if  (m_mediaNode instanceof MovieTexture) {
                     net.rim.device.api.servicebook.ServiceRecord sr = ((MovieTexture)m_mediaNode).getWrapServiceRecord();
-                    URLFactory uf = new URLFactory(m_name);
-                    url = uf.getRtspWap2Url(sr);
-                    Logger.println("RTSP URL: "+url);
+                    if (sr != null) {
+                        URLFactory uf = new URLFactory(m_name);
+                        url = uf.getRtspWap2Url(sr);
+                        Logger.println("RTSP URL: "+url);
+                    } else {
+                        Logger.println("WAP2 TRANSPORT NOT AVAIL");
+                    }
                 }
 //#endif
                 Player p = null;
