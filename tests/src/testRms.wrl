@@ -1,0 +1,95 @@
+#VRML V2.0 utf8
+Script { 
+  field SFInt32 testCnt 0
+  field SFInt32 testError 0
+  field SFInt32 max 20
+  
+  field SFString data "[1234567890]"
+
+  url "javascript:
+    function initialize () {
+      Browser.print ('-- Start tests');
+      testRms ();
+      Browser.print ('-- Cleanup');
+      Browser.deleteAllRecords();
+      testClean ();
+      Browser.print ('-- Restart test after cleanup');
+      testRms ();
+      Browser.print ('-- Clean RMS');
+      Browser.cleanRMS();
+      testClean ();
+      Browser.print ('-- Test diffrent store');
+      testRms ();
+      Browser.setStore ('test');
+      testClean ();
+      testRms ();
+      Browser.setStore ('');
+      Browser.print ('-- Test store deletion');
+      Browser.deleteStore ('test');
+      Browser.setStore ('test');
+      testClean();
+      Browser.print ('-- End');
+      displayResults();
+    }
+
+    function testClean() {
+      // Check records
+      for (var i = 0; i < max; i++) {
+        assertEqual (Browser.getRecord ('test'+i), '', 'testClean: getRecord after cleanRMS');
+      }
+    }
+
+    function testRms () {
+      // Add records
+      for (var i = 0; i < max; i++) {
+        Browser.setRecord ('test'+i,i+data);
+      }
+      // Check records
+      for (var i = 0; i < max; i++) {
+        assertEqual (Browser.getRecord ('test'+i), i+data, 'testRms: getRecord with insertion');
+      }
+      // Set records
+      for (var i = 0; i < max; i++) {
+        Browser.setRecord ('test'+i,'set:'+i+data);
+      }
+      // Check records
+      for (var i = 0; i < max; i++) {
+        assertEqual (Browser.getRecord ('test'+i), 'set:'+i+data, 'testRms: getRecord with set');
+      }
+      // Delete some records
+      for (var i = 0; i < max; i++) {
+        if ((i % 2) == 0) {
+          Browser.deleteRecord ('test'+i);
+        }
+      }
+      // Check records
+      for (var i = 0; i < max; i++) {
+        if ((i % 2) == 0) {
+          assertEqual (Browser.getRecord ('test'+i), '', 'testRms:1: getRecord after delete');
+        } else {
+          assertEqual (Browser.getRecord ('test'+i), 'set:'+i+data, 'testRms:2: getRecord after delete');
+        }
+      }
+      // Add records after deletion
+      for (var i = 0; i < max; i++) {
+        Browser.setRecord ('test2'+i,'2'+i+data);
+      }
+      // Check records
+      for (var i = 0; i < max; i++) {
+        assertEqual (Browser.getRecord ('test2'+i), '2'+i+data, 'testRms: getRecord after second insertion');
+      }
+    }
+    
+    function assertEqual (a, b, error) {
+      if (a != b) {
+        Browser.print (error+': '+a+' != '+b);
+        testError++;
+      }
+      testCnt++;
+    }
+
+    function displayResults() {
+      Browser.print ('Errors: '+testError+' / '+testCnt);
+    }
+  "
+}
