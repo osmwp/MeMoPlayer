@@ -42,7 +42,7 @@ class FunctionBank {
         m_maxRegPerFunc = data[offset++];
         // Decode string table
         size = data[offset++];
-        String[] stringTable = new String [size];
+        String[] stringTable = size > 0 ? new String [size] : null;
         for (int i=0; i<size; i++) {
             offset = Decoder.bytesToUtf8 (data, offset, sb);
             stringTable[i] = sb.toString();
@@ -50,7 +50,7 @@ class FunctionBank {
         m_stringTable = stringTable;
         // Decode int table
         size = data[offset++];
-        int[] intTable = new int [size];
+        int[] intTable = size > 0 ? new int [size] : null;
         for (int i=0; i<size; i++) {
             intTable[i] = Decoder.bytesToInt32  (data, offset);
             offset += 4;
@@ -64,22 +64,13 @@ class FunctionBank {
             // Read function index
             int index = data[offset++] - 1;
             if (index > maxIndex) maxIndex = index;
-            // Decode jump table
-            int jumpSize = Decoder.bytesToInt32 (data, offset) / 4; // jump table size
-            offset += 4;
-            int[] jumpTable = new int[jumpSize];
-            for (int j=0; j<jumpSize; j++) {
-                jumpTable[j] = Decoder.bytesToInt32 (data, offset);
-                offset +=4;
-            }
             // Get size and offset of the function code
             int codeSize = Decoder.bytesToInt32 (data, offset); // code size
             offset += 4;
             int codeOffset = offset; // the code offset
             offset += codeSize;
             // Add function
-            functions[index] = new Function (data, codeOffset, jumpTable,
-                    m_stringTable, m_intTable);
+            functions[index] = new Function (data, codeOffset, m_stringTable, m_intTable);
         }
         m_functions = new Function [maxIndex+1];
         System.arraycopy (functions, 0, m_functions, 0, maxIndex+1);

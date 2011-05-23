@@ -22,6 +22,10 @@
 
 class Function;
 
+# define MAX_REGISTERS 256
+# define MAX_LABELS 256
+# define MAX_REFS 30
+
 class Register {
 public:
     int m_index;
@@ -29,8 +33,12 @@ public:
     bool m_isUsed;
 };
 
-# define MAX_REGISTERS 256
-# define MAX_LABELS 256
+class Label {
+public:
+    int m_offset;
+    int m_maxRefs;
+    int m_refs[MAX_REFS];
+};
 
 class ByteCode {
     Register m_registery [MAX_REGISTERS];
@@ -49,8 +57,8 @@ class ByteCode {
     StringTable * m_stringTable;
     IntTable * m_intTable;
 
-    int m_labels[MAX_LABELS];
-    int m_maxLabels; 
+    Label m_labels[MAX_LABELS];
+    int m_maxLabels;
 public:
 
     // output old bytecode if true, new format if false
@@ -64,9 +72,9 @@ public:
         //ASM_ALLOC,
         //ASM_FREE,
         
-        ASM_JUMP,             // label/8: goto label
-        ASM_JUMP_ZERO,        // reg label/8: if val(ref) == 0 goto label 
-        ASM_LABEL,            // label/8: marker to a jump point (only used in compat mode)
+        ASM_JUMP_COMPAT,       // compat mode only: label/8: goto label
+        ASM_JUMP_ZERO_COMPAT,  // compat mode only: reg label/8: if val(ref) == 0 goto label
+        ASM_LABEL_COMPAT,      // compat mode only: label/8: marker to a jump point (only used in compat mode)
         ASM_EXT_CALL,         // label/8 label/8 reg
         ASM_INT_CALL,         // label/8 reg
         ASM_RETURN,           // reg
@@ -109,6 +117,8 @@ public:
         ASM_BIT_RS,
         ASM_BIT_RRS,
 
+        ASM_JUMP,
+        ASM_JUMP_ZERO,
         ASM_JUMP_NZERO,       // reg label/8: if val(ref) != 0 goto label
 
         //ASM_RET,
@@ -122,6 +132,10 @@ public:
     void addInt (int i);
     void addFloat (float f);
     void addString (char * s);
+    void addJump (int labelIndex);
+    void addJumpZero (int reg, int labelIndex, bool negate = false);
+    void addLabelOffset (Label& label);
+
 
     void add (int opcode) ;
     void add (int opcode, int reg1);
@@ -157,9 +171,6 @@ public:
     
     // return the current bytecode set and its length in bytes
     unsigned char * getCode (int & len);
-
-    // return the current jumptable and its length in bytes
-    unsigned char * getJumpTable (int & len);
 
     // Set the label at index to the current offset
     void setLabel (int index);

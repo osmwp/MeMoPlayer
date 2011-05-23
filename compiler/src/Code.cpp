@@ -116,15 +116,26 @@ int ByteCode::getLabel () {
         fprintf (stderr, "Max labels (%d) per Script reached !\n",MAX_LABELS);
         exit (-1);
     }
-    return m_maxLabels++;
+    int index = m_maxLabels++;
+    m_labels[index].m_maxRefs = 0;
+    m_labels[index].m_offset = -1;
+    return index;
 }
 
 void ByteCode::setLabel (int labelIndex) {
     if (s_compat) {
-        add (ByteCode::ASM_LABEL, labelIndex);
+        add (ByteCode::ASM_LABEL_COMPAT, labelIndex);
         return;
     }
-    m_labels [labelIndex] = m_bytecode - m_bytecodeStorage;
+    int offset = m_bytecode - m_bytecodeStorage;
+    Label& label = m_labels[labelIndex];
+    label.m_offset = offset;
+    // Correct offset of jumps referencing this label
+    for (int i = 0; i<label.m_maxRefs; i++) {
+        int refOffset = label.m_refs[i];
+        m_bytecodeStorage[refOffset] = (unsigned char) ((offset & 0xFF00) >> 8);
+        m_bytecodeStorage[refOffset+1] = (unsigned char) (offset & 0xFF);
+    }
 }
 
 void ByteCode::addByte (int i) {
@@ -187,6 +198,39 @@ void ByteCode::add (int opcode, int reg1, char * s) {
     addString (s);
 }
 
+void ByteCode::addJump (int labelIndex) {
+    if (s_compat) {
+        add (ASM_JUMP_COMPAT, labelIndex);
+        return;
+    }
+    add (ASM_JUMP);
+    addLabelOffset (m_labels[labelIndex]);
+}
+
+void ByteCode::addJumpZero (int reg, int labelIndex, bool negate) {
+    if (s_compat) {
+        assert (negate == false);
+        add (ASM_JUMP_ZERO_COMPAT, reg, labelIndex);
+        return;
+    }
+    add (negate ? ASM_JUMP_NZERO : ASM_JUMP_ZERO, reg);
+    addLabelOffset (m_labels[labelIndex]);
+}
+
+void ByteCode::addLabelOffset (Label& label) {
+    int offset = label.m_offset;
+    if (offset >= 0) { // Label offset is defined
+        add ((offset & 0xFF00) >> 8, offset & 0xFF);
+    } else { // Label offset is still unknown, register this jump
+        if (label.m_maxRefs >= MAX_REFS) {
+            fprintf (stderr, "Max jumps per label (%d) reached !\n", MAX_REFS);
+            exit (-1);
+        }
+        label.m_refs[label.m_maxRefs++] = m_bytecode - m_bytecodeStorage;
+        add (0, 0); // reserve 2 bytes for future offset value
+    }
+}
+
 unsigned char * ByteCode::getCode (int & len) {
     len = m_bytecode - m_bytecodeStorage;
     if (len <= 0) {
@@ -195,24 +239,6 @@ unsigned char * ByteCode::getCode (int & len) {
     char * tmp = (char *)malloc (len);
     memcpy (tmp, m_bytecodeStorage, len);
     return ((unsigned char *)tmp);
-}
-
-unsigned char * ByteCode::getJumpTable (int & len) {
-    len = m_maxLabels * 4; // sizeof (int)
-    unsigned char * buff = NULL;
-    if (len > 0) {
-        buff = (unsigned char *) malloc (len);
-        unsigned char * t = buff;
-        unsigned char * s; 
-        for (int i=0; i<m_maxLabels; i++) {
-            s = (unsigned char *) &m_labels[i];
-            *(t++) = s[3];
-            *(t++) = s[2];
-            *(t++) = s[1];
-            *(t++) = s[0];
-        }
-    }
-    return buff;
 }
 
 int ByteCode::setBreakLabel (int label)  {
@@ -407,12 +433,27 @@ void ByteCode::dump (unsigned char * data, int len) {
             printByte (data); data += 1;
             printByte (data); data += 1;
             break;
-        case ASM_JUMP:
+        case ASM_JUMP_COMPAT:
+            printf ("    ASM_JMP "); data++;
+            printByte (data); data += 1;
+            break;
+        case ASM_JUMP_ZERO_COMPAT:
             printf ("    ASM_JMP_ZERO "); data++; 
+            printByte (data); data += 1;
+            printByte (data); data += 1;
+            break;
+        case ASM_LABEL_COMPAT:
+            printf ("    ASM_LABEL "); data++;
+            printByte (data); data += 1;
+            break;
+        case ASM_JUMP:
+            printf ("    ASM_JMP "); data++;
+            printByte (data); data += 1;
             printByte (data); data += 1;
             break;
         case ASM_JUMP_ZERO:
             printf ("    ASM_JMP_ZERO "); data++; 
+            printByte (data); data += 1;
             printByte (data); data += 1;
             printByte (data); data += 1;
             break;
@@ -420,9 +461,6 @@ void ByteCode::dump (unsigned char * data, int len) {
             printf ("    ASM_JMP_NZERO "); data++;
             printByte (data); data += 1;
             printByte (data); data += 1;
-            break;
-        case ASM_LABEL:
-            printf ("ASM_LABEL "); data++;
             printByte (data); data += 1;
             break;
         case ASM_EXT_CALL:
@@ -462,7 +500,9 @@ void ByteCode::generate (char * n) {
     fprintf (fp, "    final static int ASM_NOP = %d;\n", ASM_NOP);
     //fprintf (fp, "    final static int ASM_ALLOC = %d;\n", ASM_ALLOC);
     //fprintf (fp, "    final static int ASM_FREE = %d;\n", ASM_FREE);
-    fprintf (fp, "    final static int ASM_LABEL = %d;\n", ASM_LABEL);
+    fprintf (fp, "    final static int ASM_LABEL_COMPAT = %d;\n", ASM_LABEL_COMPAT);
+    fprintf (fp, "    final static int ASM_JUMP_COMPAT = %d;\n", ASM_JUMP_COMPAT);
+    fprintf (fp, "    final static int ASM_JUMP_ZERO_COMPAT = %d;\n", ASM_JUMP_ZERO_COMPAT);
     fprintf (fp, "    final static int ASM_JUMP = %d;\n", ASM_JUMP);
     fprintf (fp, "    final static int ASM_JUMP_ZERO = %d;\n", ASM_JUMP_ZERO);
     fprintf (fp, "    final static int ASM_JUMP_NZERO = %d;\n", ASM_JUMP_NZERO);
@@ -1002,12 +1042,12 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         reg1 = bc->getRegister (f->m_blockLevel);
         m_first-> generate (bc, f, reg1);
         reg2 = bc->getLabel ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg1, reg2);
+        bc->addJumpZero (reg1, reg2);
         bc->freeRegister (reg1);
         m_second->generate (bc, f, -1);
         if (m_third) {
             reg3 = bc->getLabel ();
-            bc->add (ByteCode::ASM_JUMP, reg3); // jump to end of else 
+            bc->addJump (reg3); // jump to end of else
             bc->setLabel (reg2);
             m_third->generate (bc, f, -1);
             bc->setLabel (reg3);
@@ -1021,12 +1061,12 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         reg2 = bc->getRegister (f->m_blockLevel);
         m_first-> generate (bc, f, reg2);
         reg3 = bc->getLabel ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg2, reg3);
+        bc->addJumpZero (reg2, reg3);
         bc->freeRegister (reg2);
         continueLabel = bc->setContinueLabel (reg1);
         breakLabel = bc->setBreakLabel (reg3);
         m_second->generate (bc, f, -1);
-        bc->add (ByteCode::ASM_JUMP, reg1); // jump to end of else 
+        bc->addJump (reg1); // jump to end of else
         bc->setLabel (reg3);
         bc->setBreakLabel (breakLabel);
         bc->setContinueLabel (continueLabel);
@@ -1037,7 +1077,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         reg2 = bc->getRegister (f->m_blockLevel);
         m_first-> generate (bc, f, reg2);              // condition instruction
         reg3 = bc->getLabel ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg2, reg3); // test loop condition
+        bc->addJumpZero (reg2, reg3);                  // test loop condition
         bc->freeRegister (reg2);
         cnt1 = bc->getLabel ();
         continueLabel = bc->setContinueLabel (cnt1);   // set new continue / break labels
@@ -1045,16 +1085,16 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         m_second->generate (bc, f, -1);                // loop instructions
         bc->setLabel (cnt1);                           // mark post instruction (for continue jumps)
         m_third->generate (bc, f, -1);                 // post instruction
-        bc->add (ByteCode::ASM_JUMP, reg1);            // jump back to loop condition
+        bc->addJump (reg1);                            // jump back to loop condition
         bc->setLabel (reg3);                           // mark loop exit
         bc->setBreakLabel (breakLabel);                // restore previous break label
         bc->setContinueLabel (continueLabel);          // restore previous continue label
         break;
     case CODE_CONTINUE:
-        bc->add (ByteCode::ASM_JUMP, bc->getContinueLabel ());
+        bc->addJump (bc->getContinueLabel ());
         break;
     case CODE_BREAK:
-        bc->add (ByteCode::ASM_JUMP, bc->getBreakLabel ());
+        bc->addJump (bc->getBreakLabel ());
         break;
     case CODE_DEFAULT:
     case CODE_CASE:
@@ -1073,7 +1113,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
                 tmp->m_ival = bc->getLabel (); // reuse m_ival to store label index
                 tmp->m_first->generate (bc, f, reg3);
                 bc->add (ByteCode::ASM_TEST_NEQ, reg3, reg1);
-                bc->add (ByteCode::ASM_JUMP_ZERO, reg3, tmp->m_ival);
+                bc->addJumpZero (reg3, tmp->m_ival);
             } else if (tmp->m_type == CODE_DEFAULT) {
                 tmp->m_ival = bc->getLabel (); // reuse m_ival to store label
                 defaultLabel = tmp; // keep default until the end
@@ -1081,7 +1121,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
             tmp = tmp->m_next;
         }
         bc->freeRegister (reg3);
-        bc->add (ByteCode::ASM_JUMP, defaultLabel ? defaultLabel->m_ival : reg2);
+        bc->addJump (defaultLabel ? defaultLabel->m_ival : reg2);
         bc->freeRegister (reg1);
         m_second->generate (bc, f, -1);
         bc->setLabel (reg2);
@@ -1272,7 +1312,7 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         assert (reg>=0);
         cnt1 = bc->getLabel ();
         m_first->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg, cnt1);
+        bc->addJumpZero (reg, cnt1);
         m_second->generate (bc, f, reg);
         bc->setLabel (cnt1);
         break;
@@ -1284,11 +1324,11 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         if (ByteCode::s_compat) {
             // Old byte only supports the JUMP_ZERO and no negation...
             cnt2 = bc->getLabel ();
-            bc->add (ByteCode::ASM_JUMP_ZERO, reg, cnt2);
-            bc->add (ByteCode::ASM_JUMP, cnt1);
+            bc->addJumpZero (reg, cnt2);
+            bc->addJump (cnt1);
             bc->setLabel (cnt2);
         } else {
-            bc->add (ByteCode::ASM_JUMP_NZERO, reg, cnt1);
+            bc->addJumpZero (reg, cnt1, true);
         }
         m_second->generate (bc, f, reg);
         bc->setLabel (cnt1);
@@ -1314,10 +1354,10 @@ void Code::generate (ByteCode * bc, Function * f, int reg) {
         assert (reg>=0);
         m_first-> generate (bc, f, reg);
         cnt1 = bc->getLabel ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg, cnt1);
+        bc->addJumpZero (reg, cnt1);
         m_second->generate (bc, f, reg);
         cnt2 = bc->getLabel ();
-        bc->add (ByteCode::ASM_JUMP, cnt2); // jump to end 
+        bc->addJump (cnt2); // jump to end
         bc->setLabel (cnt1);
         m_third->generate (bc, f, reg);
         bc->setLabel (cnt2);

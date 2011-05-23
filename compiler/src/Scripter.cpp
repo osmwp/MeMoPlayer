@@ -1180,12 +1180,6 @@ bool Scripter::getFunction () {
     
     // Copy function index
     m_totalData[m_totalLen++] = (index+1) & 0xFF;
-    if (!ByteCode::s_compat) {
-        // Copy function jump table
-        data = bc.getJumpTable (len);
-        writeData (data, len);
-        free (data);
-    }
     // Copy function code
     data = bc.getCode (len);
     writeData (data, len);

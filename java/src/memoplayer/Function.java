@@ -23,14 +23,12 @@ class Function {
 
     byte [] m_codeTable;
     int m_codeOffset; // Offset to the function code
-    int [] m_jumpTable;
     String [] m_strTable;
     int [] m_intTable;
 
-    Function (byte[] data, int codeOffset, int[] jumpTable, String[] strTable, int[] intTable) {
+    Function (byte[] data, int codeOffset, String[] strTable, int[] intTable) {
         m_codeTable = data;
         m_codeOffset = codeOffset;
-        m_jumpTable = jumpTable;
         m_strTable = strTable;
         m_intTable = intTable;
     }
@@ -182,22 +180,42 @@ class Function {
                 r = register[regBase+a];
                 r.setInt (r.getInt() >>> register[regBase+b].getInt());
                 break;
-            case ByteCode.ASM_JUMP:
+//#ifdef MM.JsByteCodeCompat
+            case ByteCode.ASM_JUMP_COMPAT:
                 a = ((int)m_codeTable[pc++]&0xFF);
                 pc = m_codeOffset + m_jumpTable[a];
                 break;
-            case ByteCode.ASM_JUMP_ZERO:
+            case ByteCode.ASM_JUMP_ZERO_COMPAT:
                 a = ((int)m_codeTable[pc++]&0xFF);
                 b = ((int)m_codeTable[pc++]&0xFF);
                 if (register[regBase+a].getInt () == 0) {
                     pc = m_codeOffset + m_jumpTable[b];
                 }
                 break;
-            case ByteCode.ASM_JUMP_NZERO:
+//#endif
+            case ByteCode.ASM_JUMP:
                 a = ((int)m_codeTable[pc++]&0xFF);
                 b = ((int)m_codeTable[pc++]&0xFF);
+                pc = m_codeOffset + (a<<8 | b);
+                break;
+            case ByteCode.ASM_JUMP_ZERO:
+                a = ((int)m_codeTable[pc++]&0xFF);
+                if (register[regBase+a].getInt () == 0) {
+                    b = ((int)m_codeTable[pc++]&0xFF);
+                    d = ((int)m_codeTable[pc++]&0xFF);
+                    pc = m_codeOffset + (b<<8 | d);
+                } else {
+                    pc += 2;
+                }
+                break;
+            case ByteCode.ASM_JUMP_NZERO:
+                a = ((int)m_codeTable[pc++]&0xFF);
                 if (register[regBase+a].getInt () != 0) {
-                    pc = m_codeOffset + m_jumpTable[b];
+                    b = ((int)m_codeTable[pc++]&0xFF);
+                    d = ((int)m_codeTable[pc++]&0xFF);
+                    pc = m_codeOffset + (b<<8 | d);
+                } else {
+                    pc += 2;
                 }
                 break;
             case ByteCode.ASM_EXT_CALL:
@@ -270,6 +288,7 @@ class Function {
     int m_nbJump;
     int m_curStr, m_nbStr;
     int m_curInt, m_nbInt;
+    int [] m_jumpTable;
 
     static StringBuffer s_sb = new StringBuffer(); // for UTF8
 
@@ -404,7 +423,7 @@ class Function {
             case ByteCode.ASM_FIELD_POP:
                 i += add_O (code);
                 break;
-            case ByteCode.ASM_JUMP:
+            case ByteCode.ASM_JUMP_COMPAT:
             case ByteCode.ASM_RETURN:
             case ByteCode.ASM_FIELD_IDX_REG:
             case ByteCode.ASM_FIELD_USE_INT:
@@ -439,7 +458,7 @@ class Function {
             case ByteCode.ASM_BIT_RS:
             case ByteCode.ASM_BIT_RRS:
             case ByteCode.ASM_INT_CALL:
-            case ByteCode.ASM_JUMP_ZERO:
+            case ByteCode.ASM_JUMP_ZERO_COMPAT:
             case ByteCode.ASM_FIELD_SET_INT_REG:
             case ByteCode.ASM_FIELD_GET_INT_REG:
                 i += add_OBB (code, is);
@@ -447,7 +466,7 @@ class Function {
             case ByteCode.ASM_EXT_CALL:
                 i += add_OBBBB (code, is);
                 break;
-            case ByteCode.ASM_LABEL:
+            case ByteCode.ASM_LABEL_COMPAT:
                 i += addJump (Decoder.readUnsignedByte (is));
                 break;
             default:
