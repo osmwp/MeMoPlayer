@@ -132,7 +132,7 @@ public abstract class Node implements Observer {
         case NodeTable.Transform2D : return new Transform2D ();
         case NodeTable.WrapText : return new WrapText ();
         case NodeTable.TouchSensor : return new TouchSensor ();
-//#ifdef api.xparse
+//#ifdef api.richText
         case NodeTable.RichText : return new RichText ();
 //#endif
         

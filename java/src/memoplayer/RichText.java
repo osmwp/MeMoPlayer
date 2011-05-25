@@ -1,4 +1,4 @@
-//#condition api.xparse
+//#condition api.richText
 /*
  * Copyright (C) 2010 France Telecom
  *
