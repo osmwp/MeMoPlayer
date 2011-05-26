@@ -28,7 +28,7 @@
 	<!-- Default name for the MIDlet is the profile's name -->
 	<property name="midlet.name" value="${current.profile}" />
 	
-	<property name="pkg.dir" location="pkg/midlet"/>
+	<property name="pkg.dir" location="pkg"/>
 	
 	<!-- Emulator tasks -->
 
@@ -114,7 +114,7 @@
         </delete>
         <call pre-target="Clean" target="Build-ForSDK" iterations="iter-on-profiles" />
 		<copy todir="${sdk.dir}" overwrite="true">
-			<fileset dir="${pkg.dir}" includes="*.jar"/>
+			<fileset dir="${pkg.dir}/midlet" includes="*.jar"/>
 		</copy>
 	</target>
 
