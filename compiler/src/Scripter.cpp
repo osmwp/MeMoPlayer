@@ -198,7 +198,6 @@ Function::Function (Node * node) {
     m_code = NULL;
     m_node = node;
     m_blockLevel = 1;
-    m_counter = 0;
     m_inLoop = false;
     m_switchLevel = 0;
 }
@@ -383,6 +382,30 @@ Code * Function::parseAssign (Tokenizer * t) {
     return (NULL);
 }
 
+Code * Function::parsePreOperator (Tokenizer * t) {
+    t->skipSpace ();
+    char c = t->GETC ();
+    if ((c == '-' || c == '+') && t->check (c)) {
+        char * s = t->getNextToken ();
+        if (s != NULL) {
+            Code * lvalue = parseLValue (t, s);
+            if (lvalue != NULL) {
+                int operation = c == '-' ? Code::CODE_MINUS : Code::CODE_PLUS;
+                return selfAssign (operation, lvalue, new Code ((int)1));
+            }
+        }
+        fprintf (myStderr, "%s:%d: JS syntax error: Pre operator (%c%cX) must only be followed by a variable or a field.\n", t->getFile(), t->getLine (), c, c);
+        exit (1);
+    }
+    t->UNGETC (c);
+    return NULL;
+}
+
+Code * Function::selfAssign (int operation, Code * self, Code * value) {
+    Code * compute = new Code (operation, self->cloneInvertAccess(), value);
+    return new Code (Code::CODE_ASSIGN, self, compute);
+}
+
 int Function::parseAssign (Tokenizer * t, bool & self) {
     self = false;
     if (t->check('+')) {
@@ -465,66 +488,85 @@ int Function::parseAssign (Tokenizer * t, bool & self) {
     return (Code::CODE_ERROR);
 }
 
-int Function::parseOperation (Tokenizer * t, int & arity) {
-    arity = 2;
-    if (t->check('+')) {
-        if (t->CHECK ('+')) {
-            arity = 1;
+int Function::checkOperation (Tokenizer * t, int & arity, int & precedence) {
+  int op = parseOperation (t, true);
+  arity = Code::getOpArity (op);
+  precedence = Code::getOpPrecedence (op);
+  return op;
+}
+
+int Function::checkOperation (Tokenizer * t, int & arity, int & precedence, bool & rightAssociative) {
+  int op = checkOperation (t, arity, precedence);
+  rightAssociative = Code::isOpRightAssociative (op);
+  return op;
+}
+
+int Function::parseOperation (Tokenizer * t, bool pushBack) {
+    int op = Code::CODE_ERROR;
+    t->skipSpace ();
+    char c = t->GETC ();
+    switch (c) {
+    case '+':
+        op = t->CHECK ('+', pushBack) ? Code::CODE_INC : Code::CODE_PLUS;
+        break;
+    case '-':
+        op = t->CHECK ('-', pushBack) ? Code::CODE_DEC : Code::CODE_MINUS;
+        break;
+    case '/':
+        op = Code::CODE_DIV;
+        break;
+    case '*':
+        op = Code::CODE_MULT;
+        break;
+    case '%':
+        op = Code::CODE_MODULO;
+        break;
+    case '&':
+        op = t->CHECK ('&', pushBack) ? Code::CODE_LOG_AND : Code::CODE_BIT_AND;
+        break;
+    case '|':
+        op = t->CHECK ('|', pushBack) ? Code::CODE_LOG_OR : Code::CODE_BIT_OR;
+        break;
+    case '=':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_EQUAL;
         }
-        return Code::CODE_PLUS;
-    } else if (t->check('-')) {
-        if (t->CHECK ('-')) {
-            arity = 1;
+        break;
+    case '!':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_NOTEQUAL;
         }
-        return Code::CODE_MINUS;
-    } else if (t->check('/')) {
-        return (Code::CODE_DIV);
-    } else if (t->check('*')) {
-        return (Code::CODE_MULT);
-    } else if (t->check('%')) {
-        return (Code::CODE_MODULO);
-    } else if (t->check('&')) {
-        if (t->CHECK ('&')) {
-            return (Code::CODE_LOG_AND);
+        break;
+    case '<':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_LESSEQ;
+        } else if (t->CHECK ('<', pushBack)) {
+        	  op = Code::CODE_BIT_LSHIFT;
+        } else {
+            op = Code::CODE_LESSER;
         }
-        return (Code::CODE_BIT_AND);
-    } else if (t->check('|')) {
-        if (t->CHECK ('|')) {
-            return (Code::CODE_LOG_OR);
-        }
-        return (Code::CODE_BIT_OR);
-    } else if (t->check('=')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_EQUAL);
-        }
-    } else if (t->check('!')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_NOTEQUAL);
-        }
-    } else if (t->check('<')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_LESSEQ);
-        } else if (t->CHECK ('<')) {
-        	return (Code::CODE_BIT_LSHIFT);
-        }
-        return (Code::CODE_LESSER);
-    } else if (t->check('>')) {
-        if (t->CHECK ('=')) {
-            return (Code::CODE_GREATEQ);
+        break;
+    case '>':
+        if (t->CHECK ('=', pushBack)) {
+            op = Code::CODE_GREATEQ;
         } else if (t->CHECK ('>')) {
-          if (t->CHECK ('>')) {
-            return (Code::CODE_BIT_RRSHIFT);
-          }
-        	return (Code::CODE_BIT_RSHIFT);
+            op = t->CHECK ('>', pushBack) ? Code::CODE_BIT_RRSHIFT : Code::CODE_BIT_RSHIFT;
+            t->UNGETC ('>');
+        } else {
+            op = Code::CODE_GREATER;
         }
-        return (Code::CODE_GREATER);
-    } else if (t->check('^')) {
-        return (Code::CODE_BIT_XOR);
-    } else if (t->check('?')) {
-        arity = 3;
-        return (Code::CODE_TERNARY_COMP);
+        break;
+    case '^':
+        op = Code::CODE_BIT_XOR;
+        break;
+    case '?': 
+        op = Code::CODE_TERNARY_COMP;
+        break;
     }
-    return (Code::CODE_ERROR);
+    if (pushBack || op == Code::CODE_ERROR) {
+        t->UNGETC (c);
+    }
+    return op;
 }
 
 static bool checkInside (Tokenizer * t, const char * s) {
@@ -537,80 +579,76 @@ static bool checkInside (Tokenizer * t, const char * s) {
     return (false);
 }
 
-Code * Function::parseExpr (Tokenizer * t) {
-    // cases are :
-    // litteral
-    // var
-    // expr op expr
-    // ( expr op expr )
-    Code * left = NULL;
-    Code * right = NULL;
-    int operation = Code::CODE_NOP;
-    if (t->check ('-')) { // unary minus operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_MULT, new Code (-1), left);
-    }
-    if (t->check ('~')) { // unary ~ bit operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_BIT_INV, left);
-    }
-    if (t->check ('!')) { // unary ! not operator
-        left = parseExpr (t);
-        return new Code (Code::CODE_EQUAL, left, new Code(0));
-    }
-    if (t->check ('(')) {
-        left = parseExpr (t);
-        if (t->check (')') == false) {
-            fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
-            exit (1);
+Code * Function::parseExpr (Tokenizer * t, int min_precedence) {
+    return parseExprRec (t, parseUnaryExpr (t), min_precedence);
+}
+
+Code * Function::parseExprRec (Tokenizer * t, Code * left, int min_precedence) {
+    int arity = 0, precedence = 0;
+    Code * right;
+    int op = checkOperation (t, arity, precedence); // check op and pushback
+    while (arity == 2 && precedence >= min_precedence) {
+        parseOperation (t); // eat operator
+        right = parseUnaryExpr (t);
+        // Lookahead for an operator with higher precedence 
+        bool rightAssociative = false;
+        int lookaheadPrec = 0;
+        int lookahead = checkOperation (t, arity, lookaheadPrec, rightAssociative); // check op and pushback
+        while ((arity == 2 && lookaheadPrec > precedence) ||
+            (rightAssociative && lookaheadPrec == precedence)) {
+            right = parseExprRec (t, right, lookaheadPrec);
+            lookahead = checkOperation (t, arity, lookaheadPrec, rightAssociative); // check op and pushback
         }
-    } else {
-        left = parseVarOrVal (t);
-    }
-    if (checkInside (t, ";],):")) {
-        return left;
-    }
-    int arity = 0;
-    operation = parseOperation (t, arity);
-    if (operation == Code::CODE_ERROR) {
-        fprintf (myStderr, "%s:%d: JS syntax error: missing operator\n", t->getFile(), t->getLine ());
-        exit (1);
+        left = new Code (op, left, right);
+        op = checkOperation (t, arity, precedence); // check op and pushback
     }
     if (arity == 1) {
-        return new Code (operation, left);
+        //TODO: support unary operators
+        fprintf (myStderr, "%s:%d: JS syntax error : unary operator unsupported in this expression.\n", t->getFile(), t->getLine ());
+        exit (1);
+        //parseOperation (t); // eat unary operator
+        //return new Code (op, left);
+    } else if (arity == 3) { // ? : operator
+        parseOperation (t); // eat ? operator
+        right = parseExpr (t, precedence);
+        if (t->check (':')) {
+            return new Code (op, left, right, parseExpr (t, precedence));
+        } else {
+            fprintf (myStderr, "%s:%d: JS syntax error: missing ':' after '?' for ternary expression.\n", t->getFile(), t->getLine ());
+            exit (1);
+        }
+    }
+    return left;
+}
+
+Code * Function::parseUnaryExpr (Tokenizer * t) {
+    // cases are :
+    // unaryOp expr
+    // ( expr )
+    // litteral
+    // var
+    Code * code;
+    if ((code = parsePreOperator (t)) != NULL) { // pre inc/decrement operator
+      return code;
+    }
+    if (t->check ('-')) { // unary minus operator
+        return new Code (Code::CODE_MULT, new Code (-1), parseUnaryExpr (t));
+    }
+    if (t->check ('~')) { // unary ~ bit operator
+        return new Code (Code::CODE_BIT_INV, parseUnaryExpr (t));
+    }
+    if (t->check ('!')) { // unary ! not operator
+        return new Code (Code::CODE_EQUAL, parseUnaryExpr (t), new Code(0));
     }
     if (t->check ('(')) {
-        right = parseExpr (t);
+        Code * expr = parseExpr (t);
         if (t->check (')') == false) {
             fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
             exit (1);
         }
+        return expr;
     } else {
-        right = parseVarOrVal (t);
-    }
-    if (arity == 2) {
-        Code * tmp = new Code (operation, left, right);
-        if (t->check ('+')) { // special case of +, mostly for String concat
-            return new Code (Code::CODE_PLUS, tmp, parseExpr (t));
-        } else {
-            return tmp;
-        }
-    }
-    if (t->check (':')) { // arity == 3
-        Code * third = NULL;
-        if (t->check ('(')) {
-            third = parseExpr (t);
-            if (t->check (')') == false) {
-                fprintf (myStderr, "%s:%d: JS syntax error: missing ')'\n", t->getFile(), t->getLine ());
-                exit (1);
-            }
-        } else {
-            third = parseVarOrVal (t);
-        }
-        return new Code (operation, left, right, third);
-    } else {
-        fprintf (myStderr, "%s:%d: JS syntax error: missing ':' after '?' for ternary expression.\n", t->getFile(), t->getLine ());
-        exit (1);
+        return parseVarOrVal (t);
     }
 }
 
@@ -809,34 +847,20 @@ Code * Function::parseReturn (Tokenizer * t) {
     return new Code (Code::CODE_RETURN, tmp);
 }
 
-Code * Function::parseVarDeclaration (Tokenizer * t, bool hasVar) {
-    char * s = hasVar ? (char*)"var" : t->getNextToken ();
-    if (s && strcmp (s, "var") == 0) { // var declaration
-        //fprintf (myStderr, "DBG: got token VAR\n");
-        char * varName = t->getNextToken ();
-        if (varName == NULL) {
-            fprintf (myStderr, "%s:%d: JS syntax error: variable name expected\n", t->getFile(), t->getLine());
-            exit (1);
-        }
-        //fprintf (myStderr, "DBG: got var name %s\n", varName);
-        m_vars = new Var (varName, m_blockLevel, -1, m_vars);
-        Code * lvalue = new Code (Code::CODE_NEW_VAR, new Code (varName));
-        if (t->check (';', true)) {
-            //fprintf (myStderr, "DBG: got token ';'\n");
-            return new Code (Code::CODE_ASSIGN, lvalue, NULL);
-        } else if (t->check ('=')) {
-            //fprintf (myStderr, "DBG: got token '='\n");
-            Code * tmp = new Code (Code::CODE_ASSIGN, lvalue, parseExpr (t));
-            if (t->check (';', true) == false) {
-                fprintf (myStderr, "%s:%d: JS syntax error: missing ';'\n", t->getFile(), t->getLine ());
-                exit (1);
-            }
-            return tmp;
-        }
-        fprintf (myStderr, "%s:%d: JS syntax error: ';' or '=' expected\n", t->getFile(), t->getLine());
+Code * Function::parseVarDeclaration (Tokenizer * t) {
+    //fprintf (myStderr, "DBG: got token VAR\n");
+    char * varName = t->getNextToken ();
+    if (varName == NULL) {
+        fprintf (myStderr, "%s:%d: JS syntax error: variable name expected\n", t->getFile(), t->getLine());
         exit (1);
     }
-    return (NULL);
+    //fprintf (myStderr, "DBG: got var name %s\n", varName);
+    m_vars = new Var (varName, m_blockLevel, -1, m_vars);
+    Code * value = NULL;
+    if (t->check ('=')) {
+        value = parseExpr (t);
+    }
+    return new Code (Code::CODE_NEW_VAR, new Code (varName), value);
 }
 
 Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
@@ -847,7 +871,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
     // if (test) { instr; } [else { instr; } ]
     if (checkInside (t, ";)}")) {
         if (checkSemi) { t->check (';'); }
-        return new Code (Code::CODE_NOP);
+        return new Code (Code::CODE_NOP, NULL);
     }
     Code * tmp = NULL;
     char * s = t->getNextToken ();
@@ -860,7 +884,7 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             }
             return (tmp);
         } else if (strcmp (s, "var") == 0) { // var declaration
-            tmp = parseVarDeclaration (t, true);
+            tmp = parseVarDeclaration (t);
             if (checkSemi) {
                 ensure (';', "%s:%d: JS syntax error: missing ';' to end var declaration\n", t);
             }
@@ -914,10 +938,8 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
             bool self = false;
             int operation = parseAssign (t, self);
             if (operation == Code::CODE_ASSIGN || self == true) {
-                Code * tmp;
                 if (self) {
-                    Code * compute = new Code (operation, lvalue->cloneInvertAccess(), parseExpr (t));
-                    tmp = new Code (Code::CODE_ASSIGN, lvalue, compute);
+                    tmp = selfAssign (operation, lvalue, parseExpr (t));
                 } else {
                     tmp = new Code (Code::CODE_ASSIGN, lvalue, parseExpr (t));
                 }
@@ -926,17 +948,23 @@ Code * Function::parseInstr (Tokenizer * t, bool checkSemi) {
                 }
                 return tmp;
             }
-            int arity = 0;
-            operation = parseOperation (t, arity);
-            if (arity == 1) {
-                Code * compute = new Code (operation, lvalue->cloneInvertAccess(), new Code ((int)1));
-                Code * tmp = new Code (Code::CODE_ASSIGN, lvalue, compute);
+            operation = parseOperation (t);
+            if (Code::getOpArity (operation) == 1) { // ++ or --
+                tmp = selfAssign (operation, lvalue, new Code ((int)1));
                 if (checkSemi) {
                     ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);
                 }
                 return (tmp);
             }
             fprintf (myStderr, "%s:%d: JS syntax error (assignement expected)\n", t->getFile(), t->getLine());
+        }
+    } else { // not a token, maybe a pre operator followed by a field or var (eg, ++myVar) ?
+        Code * code = parsePreOperator (t);
+        if (code != NULL) { // pre inc/decrement operator
+            if (checkSemi) {
+                ensure (';', "%s:%d: JS syntax error: missing ';' to end instruction\n", t);
+            }
+            return code;
         }
     }
     fprintf (myStderr, "%s:%d: JS syntax error : unexpected expression\n", t->getFile(), t->getLine());
@@ -1020,6 +1048,10 @@ Code * Function::parse (Tokenizer * t, bool verbose) {
         exit (1);
     }
     m_code = parseBlock (t);
+    if (m_code && !ByteCode::s_compat) {
+        // New bytecode format: add an explicit code to mark the end of the function
+        m_code->append (new Code (Code::CODE_THEEND, NULL));
+    }
     //fprintf (myStderr, "Function '%s' parsed correctly\n", funcName);
     if (verbose) {
         printf ("function %s (", funcName);
@@ -1033,6 +1065,24 @@ Code * Function::parse (Tokenizer * t, bool verbose) {
     return (m_code);
 }
 
+int Function::allocIndex () {
+    int index = m_node->findFieldIdx (getName ());
+    if (index == -1) {
+        if (strcmp (getName(), "initialize") == 0) {
+            index = INITIALIZE_ID;
+        } else {
+            m_node->addField (strdup ("SFDefined"), getName (), true);
+            index = m_node->findFieldIdx (getName ());
+        }
+    } else {
+        Field * field = m_node->findField (getName());
+        if (field->m_type == Field::TYPE_ID_SFTMP) {
+            field->m_type = Field::TYPE_ID_SFDEFINED;
+        }
+    }
+    return index;
+}
+
 void setVarIndex (Var * v, ByteCode * bc) {
     if (v) {
         if (v->m_next) {
@@ -1044,145 +1094,141 @@ void setVarIndex (Var * v, ByteCode * bc) {
 
 void Function::setParamsIndex (ByteCode * bc) {
     setVarIndex (m_vars, bc);
-    Var * v = m_vars;
-    while (v) {
-        //fprintf (myStderr, "Function::setParamsIndex: param %s => %d\n", v->m_name, v->m_index);
-        v = v->m_next;
-    }
 }
 
-// static void exchangeBytes (char * s) {
-//     char t = s[0];
-//     s[0] = s[3];
-//     s[3] = t;
-//     t = s[1];
-//     s[1] = s[2];
-//     s[2] = t;
-// }
-
-Scripter::Scripter (Node * node, char * buffer, FILE * fp, bool verbose, char * fn, int ln, char * filename) {
+Scripter::Scripter (Node * node, Tokenizer * t, FILE * fp, bool verbose) {
+    m_tokenizer = t;  
     m_node = node;
-    m_tokenizer = new Tokenizer (buffer, true, fn, ln);
-    int totalLen = 0;
-    unsigned char totalData [64*1024];
-    int len = 0;
-    unsigned char * data = NULL;
+    m_totalLen = 0;
+    m_maxRegisters = 0;
+    m_verbose = verbose;
+    
+    int len = 0, nbFunctions = 0;
+    unsigned char * data;
+    
     if (s_externClasses == NULL) {
         s_externClasses = new ExternClasses (externCallsDef);
     }
-//     fprintf (myStderr, "---------------------------------------------------\n");
-//     for (int i = 0; i < sizeof(StaticObjectNames)/sizeof(StaticObject); i++) {
-//         fprintf (myStderr, "static %s {\n", StaticObjectNames[i].name);
-//         for (int j = 0; j < StaticObjectNames[i].nbMethods; j++) {
-//             fprintf (myStderr, "    %s\n", StaticObjectNames[i].methods[j]);
-//         }
-//         fprintf (myStderr, "}\n");
-//     }
-//     fprintf (myStderr, "---------------------------------------------------\n");
 
     if (m_tokenizer->checkToken ("javascript")) {
         if (!m_tokenizer->check (':')) {
             fprintf (myStderr, "%s:%d: Warning: the char ':' is expected after token 'javascript'\n", m_tokenizer->getFile(), m_tokenizer->getLine());
         }
     }
-    m_maxRegisters = 0;
-    Function * f = getFunction (verbose);
-    while (f) {
-        int index = m_node->findFieldIdx (f->getName ());
-        if (index == -1) {
-            if (strcmp (f->getName(), "initialize") == 0) {
-                index = INITIALIZE_ID;
-            } else {
-                m_node->addField (strdup ("SFDefined"), f->getName (), true);
-                index = m_node->findFieldIdx (f->getName ());
-            }
-        } else {
-            Field * field = m_node->findField (f->getName());
-            if (field->m_type == Field::TYPE_ID_SFTMP) {
-                field->m_type = Field::TYPE_ID_SFDEFINED;
-            }
-        }
-        if (index > 252) {
-            fprintf (myStderr, "%s:%d: Scripting error: Max number of fields and methods reached in Script node ! (function %s has index > 252)\n", 
-                     filename, m_tokenizer->getLine(), f->getName ());
-            exit (1);
-        }
-        if (index >= 0) {
-            //fprintf (myStderr, "$$ saving func %s with index %d\n", f->getName (), index);
-            data = f->getByteCode (len);
-            totalData[totalLen++] = (index+1) & 0xFF;
-            unsigned char * s = (unsigned char *) &len;
-            totalData[totalLen++] = s[3];
-            totalData[totalLen++] = s[2];
-            totalData[totalLen++] = s[1];
-            totalData[totalLen++] = s[0];
-            memcpy (&totalData[totalLen], data, len);
-            totalLen += len;
-        }
-        f = getFunction (verbose);
-    }
+    
+    while (getFunction ()) nbFunctions++;
+
     // now check all fields for remaining SFTmp, meaning that functions have been used but not defined 
     Field * field = m_node->m_field;
     while (field != NULL) {
         if (field->m_type == Field::TYPE_ID_SFTMP) {
             fprintf (stderr, "%s:%d function called but not defined, or syntax error: %s\n", 
-                     filename, field->m_lineNum, field->m_name);
+                     m_tokenizer->getFile(), field->m_lineNum, field->m_name);
             exit (1);
         }
         field = field->m_next;
     }
 
-    //fprintf (myStderr, "Scripter: save bytecode %d bytes\n", totalLen);
-//     exchangeBytes ((char *)(&totalLen));
-//     fwrite (&totalLen, 1, 4, fp);
-    //exchangeBytes ((char *)(&totalLen));
-    //fprintf (myStderr, "Script: maximum number of registers: %d\n", m_maxRegisters); 
-    fprintf (fp, "%c%c", 255, m_maxRegisters); 
-    fwrite (totalData, 1, totalLen, fp);
+    if (ByteCode::s_compat) {
+        // Add a last zero byte to mark the end of functions
+        m_totalData[m_totalLen++] = 0;
+        // Write 255 marker (older bytecode format) and max registers
+        fprintf (fp, "%c%c", 255, m_maxRegisters);
+    } else {
+        // Write max registers (<255)
+        // 255 is reserved for detection of the older
+        // bytecode format on the player side
+        fprintf (fp, "%c", m_maxRegisters);
+        // Write String table size
+        fprintf (fp, "%c", m_stringTable.getSize ());
+        // Write String table
+        data = m_stringTable.generate (len);
+        fwrite (data, 1, len, fp);
+        free (data);
+        // Write Int table size
+        fprintf (fp, "%c", m_intTable.getSize ());
+        // Write Int table
+        data = m_intTable.generate (len);
+        fwrite (data, 1, len, fp);
+        free (data);
+        // Write nb of functions
+        fprintf (fp, "%c", nbFunctions);
+    }
+    // Write all functions
+    fwrite (m_totalData, 1, m_totalLen, fp);
 }
 
-Function * Scripter::getFunction (bool verbose) {
-
-    Function * f = new Function (m_node);
-    if (verbose) {
+bool Scripter::getFunction () {
+    int len = 0;
+    unsigned char * data = NULL;
+    Function f (m_node);
+    if (m_verbose) {
         printf ("----------------------\n");
         printf ("-- Parsing function --\n");
     }
-    Code * code = f->parse (m_tokenizer, verbose);
+    Code * code = f.parse (m_tokenizer, m_verbose);
     if (code == NULL) {
-        if (verbose) {
+        if (m_verbose) {
             printf ("-- Empty function --\n");
             printf ("--------------------\n");
         }
-        return NULL;
-    } else {
-        if (verbose) {
-            printf ("-- Generating bytecode for function %s --\n", f->getName ());
-            f->printVars ();
-        }
-        ByteCode bc;
-        f->setParamsIndex (&bc);
-        f->removeVars (1, &bc);
-        code->generateAll (&bc, f);
-        f->removeVars (1, &bc);
-        int len = 0;
-        unsigned char * data = bc.getCode (len);
-        //fprintf (myStderr, "Scripter.getFunction: %s has max regs = %d\n", f->getName (), bc.getMaxRegisters ());
-        if (bc.getMaxRegisters () > m_maxRegisters) {
-            m_maxRegisters = bc.getMaxRegisters ();
-        }
-        if (len > 0) {
-            if (verbose) ByteCode::dump (data, len);
-            f->setByteCode (len, data);
-        } else {
-            data = NULL;
-            fprintf (myStderr, "Scripter.parseFunction: no bytecode generated!\n");
-        }
-        if (verbose) {
-            f->printVars ();
-            printf ("-- Bytecode generated --\n");
-            printf ("------------------------\n");
+        return false;
+    }
+    int index = f.allocIndex ();
+    if (index > 252) {
+        fprintf (myStderr, "%s:%d: Scripting error: Max number of fields and methods reached in Script node ! (function %s has index > 252)\n", 
+                 m_tokenizer->getFile(), m_tokenizer->getLine(), f.getName ());
+        exit (1);
+    }
+    if (m_verbose) {
+        printf ("-- Generating bytecode for function %s --\n", f.getName ());
+        f.printVars ();
+    }
+    ByteCode bc (&m_stringTable, &m_intTable);
+    f.setParamsIndex (&bc);
+    f.removeVars (1, &bc);
+    code->generateAll (&bc, &f);
+    f.removeVars (1, &bc);
+    
+    //fprintf (myStderr, "Scripter.getFunction: %s has max regs = %d\n", f.getName (), bc.getMaxRegisters ());
+    if (bc.getMaxRegisters () > m_maxRegisters) {
+        m_maxRegisters = bc.getMaxRegisters ();
+        if (m_maxRegisters > 254) { // 255 is reserved for detecting the previous bytecode format on player side
+            fprintf (myStderr, "Scripting error: Function %s is using too much registers: %d (maximum 253), refactor your code !\n",
+                     f.getName (), bc.getMaxRegisters ());
+            exit (1);
         }
     }
-    return f;
+    
+    // Copy function index
+    m_totalData[m_totalLen++] = (index+1) & 0xFF;
+    // Copy function code
+    data = bc.getCode (len);
+    writeData (data, len);
+    if (len > 0) {
+        if (m_verbose) ByteCode::dump (data, len);
+        free (data);
+    } else {
+        fprintf (myStderr, "Scripter.parseFunction: no bytecode generated!\n");
+    }
+    if (m_verbose) {
+        f.printVars ();
+        printf ("-- Bytecode generated --\n");
+        printf ("------------------------\n");
+    }
+    return true;
 }
+
+void Scripter::writeData (unsigned char * data, int len) {
+    //printf ("DBG: writeData: %d (%d)\n", data, len);
+    unsigned char * s = (unsigned char *) &len;
+    m_totalData[m_totalLen++] = s[3];
+    m_totalData[m_totalLen++] = s[2];
+    m_totalData[m_totalLen++] = s[1];
+    m_totalData[m_totalLen++] = s[0];
+    if (len > 0) {
+        memcpy (&m_totalData[m_totalLen], data, len);
+        m_totalLen += len;
+    }
+}
+

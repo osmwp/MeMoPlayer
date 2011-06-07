@@ -16,6 +16,8 @@
 
 # define INITIALIZE_ID 0
 
+#include "Code.h"
+
 class Scene; 
 
 class ByteCode;
@@ -82,7 +84,6 @@ class Function {
     Code * m_code;
     int m_len; // length of the bytecode
     unsigned char *  m_data; // the bytecode itself
-    int m_counter;
     bool m_inLoop;
     int m_switchLevel;
 public:
@@ -99,8 +100,6 @@ public:
         len = m_len;
         return m_data;
     }
-
-    int getCounter () { return m_counter++; }
 
     // Create a new var accoding to its name (may shadow an exiting one)
     Var * addVar (char * name, int level, int index);
@@ -126,6 +125,9 @@ public:
     // init the parameters whith register indexes
     void setParamsIndex (ByteCode * bc);
 
+    // allocate a index to this function (called after parsing)
+    int allocIndex ();
+
 private:
     // parse in between { and }
     Code * parseBlock (Tokenizer * t);
@@ -139,7 +141,7 @@ private:
     // parse an identifier ???
     Code * parseIdent (Tokenizer * t, char * token);
     
-    Code * parseVarDeclaration (Tokenizer * t, bool hasVar);
+    Code * parseVarDeclaration (Tokenizer * t);
 
     Code * parseFor (Tokenizer * t);
     
@@ -154,8 +156,13 @@ private:
     int parseAssign (Tokenizer * t, bool & self);
 
     // parse an operation like +, -, /, *, %, >>, <<, 
-    // if the operation is also an affectation (ex: +=)  self is set to true
-    int parseOperation (Tokenizer * t, int & arity);
+    int parseOperation (Tokenizer * t, bool pushBack=false);
+
+    // check the next operator and get its precedence
+    int checkOperation (Tokenizer * t, int & arity, int & precedence);
+    int checkOperation (Tokenizer * t, int & arity, int & precedence, bool & rightAssocitive);
+
+    Code * selfAssign (int operation, Code * self, Code * value);
 
     // parse a litteral value or a var name (including field access)
     Code * parseVarOrVal (Tokenizer * t);
@@ -170,7 +177,16 @@ private:
     Code * parseTest (Tokenizer * t);
 
     // parse a computational expression like (2*i)+3
-    Code * parseExpr (Tokenizer * t);
+    Code * parseExpr (Tokenizer * t, int min_precedence=0);
+    
+    // recursive helper for parseExpr to handle operators precedence
+    Code * parseExprRec (Tokenizer * t, Code * lhs, int min_precedence);
+    
+    // parse a unary expr like explicity parenthesis ( expr ) or unary ops like ++a, !b or ~c
+    Code * parseUnaryExpr (Tokenizer * t);
+
+    // parse a pre operator expr like ++x or --c
+    Code * parsePreOperator (Tokenizer * t);
 
     // parse call to an external method like Browser.print("hello world");
     //Code * parseExternCall (int objID, Tokenizer * t);
@@ -192,7 +208,6 @@ private:
 
     // return the node field if defined, NULL otherwize
     Field * findField (char * name);
-
 };
 
 
@@ -201,9 +216,15 @@ class Scripter {
     char * m_code;
     Node * m_node;
     int m_maxRegisters;
+    IntTable m_intTable;
+    StringTable m_stringTable;
+    unsigned char m_totalData [64*1024];
+    int m_totalLen;
+    bool m_verbose;
 public: 
-    Scripter (Node * node, char * buffer, FILE * fp, bool verbose, char * fn, int lineNumber, char * filename);
+    Scripter (Node * node, Tokenizer * t, FILE * fp, bool verbose);
 private:
-    Function * getFunction (bool verbose);
+    bool getFunction ();
+    void writeData (unsigned char * data, int len);
 };
  

@@ -18,16 +18,66 @@ package memoplayer;
 import java.io.*;
 
 
-// used to store an array of functions and the associated maximum of registers used
+// Store an array of functions, and shared int and string tables
 class FunctionBank {
     Function [] m_functions;
     int m_maxRegPerFunc = 16; // maximum regiters used during a function
+    String [] m_stringTable;
+    int[] m_intTable;
     
     FunctionBank (byte[] data) {
+//#ifdef MM.JsByteCodeCompat
+        if (data[0] == -1) { // 255 => old bytecode format !
+            parseOldByteCode(data);
+            return;
+        }
+//#endif
         parse(data);
     }
     
     void parse (byte[] data) {
+        StringBuffer sb = new StringBuffer();
+        int offset = 0, size;
+        // Decoder max register per functions
+        m_maxRegPerFunc = data[offset++];
+        // Decode string table
+        size = data[offset++];
+        String[] stringTable = size > 0 ? new String [size] : null;
+        for (int i=0; i<size; i++) {
+            offset = Decoder.bytesToUtf8 (data, offset, sb);
+            stringTable[i] = sb.toString();
+        }
+        m_stringTable = stringTable;
+        // Decode int table
+        size = data[offset++];
+        int[] intTable = size > 0 ? new int [size] : null;
+        for (int i=0; i<size; i++) {
+            intTable[i] = Decoder.bytesToInt32  (data, offset);
+            offset += 4;
+        }
+        m_intTable = intTable;
+        // Decode functions
+        size = data[offset++];
+        int maxIndex = 0;
+        Function[] functions = new Function [255];
+        for (int i=0; i<size; i++) {
+            // Read function index
+            int index = data[offset++] - 1;
+            if (index > maxIndex) maxIndex = index;
+            // Get size and offset of the function code
+            int codeSize = Decoder.bytesToInt32 (data, offset); // code size
+            offset += 4;
+            int codeOffset = offset; // the code offset
+            offset += codeSize;
+            // Add function
+            functions[index] = new Function (data, codeOffset, m_stringTable, m_intTable);
+        }
+        m_functions = new Function [maxIndex+1];
+        System.arraycopy (functions, 0, m_functions, 0, maxIndex+1);
+    }
+    
+//#ifdef MM.JsByteCodeCompat
+    void parseOldByteCode (byte[] data) {
         Function [] tmp = new Function [255];
         int maxIdx = -1;
         DataInputStream is = new DataInputStream (new ByteArrayInputStream (data));
@@ -47,6 +97,7 @@ class FunctionBank {
         System.arraycopy(tmp, 0, m_functions, 0, maxIdx);
         tmp = null;
     }
+//#endif
     
     boolean hasFunction (int index) {
         return (index >= 0 && index < m_functions.length && m_functions [index] != null);

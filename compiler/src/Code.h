@@ -18,8 +18,13 @@
 # define __CODE__
 # include <stdio.h>
 
+#include "CodeTables.h"
 
 class Function;
+
+# define MAX_REGISTERS 256
+# define MAX_LABELS 256
+# define MAX_REFS 30
 
 class Register {
 public:
@@ -28,7 +33,12 @@ public:
     bool m_isUsed;
 };
 
-# define MAX_REGISTERS 256
+class Label {
+public:
+    int m_offset;
+    int m_maxRefs;
+    int m_refs[MAX_REFS];
+};
 
 class ByteCode {
     Register m_registery [MAX_REGISTERS];
@@ -42,18 +52,29 @@ class ByteCode {
 
     int m_breakLabel;
     int m_continueLabel;
+
+    // shared accross all Function of the same Script
+    StringTable * m_stringTable;
+    IntTable * m_intTable;
+
+    Label m_labels[MAX_LABELS];
+    int m_maxLabels;
 public:
 
+    // output old bytecode if true, new format if false
+    static bool s_compat;
+
     enum {
+        ASM_ENDOFCODE = 255,
         ASM_ERROR = -1,
         ASM_NOP = 0,
         
         //ASM_ALLOC,
         //ASM_FREE,
         
-        ASM_JUMP,             // label/8: goto label
-        ASM_JUMP_ZERO,        // reg label/8: if val(ref) == 0 goto label 
-        ASM_LABEL,            // label/8: marker to a jump point
+        ASM_JUMP_COMPAT,       // compat mode only: label/8: goto label
+        ASM_JUMP_ZERO_COMPAT,  // compat mode only: reg label/8: if val(ref) == 0 goto label
+        ASM_LABEL_COMPAT,      // compat mode only: label/8: marker to a jump point (only used in compat mode)
         ASM_EXT_CALL,         // label/8 label/8 reg
         ASM_INT_CALL,         // label/8 reg
         ASM_RETURN,           // reg
@@ -96,16 +117,25 @@ public:
         ASM_BIT_RS,
         ASM_BIT_RRS,
 
+        ASM_JUMP,
+        ASM_JUMP_ZERO,
+        ASM_JUMP_NZERO,       // reg label/8: if val(ref) != 0 goto label
+
         //ASM_RET,
         //ASM_PUSH_BASE,
         //ASM_POP_BASE,
     };
 
-    ByteCode ();
+    ByteCode (StringTable * stringTable, IntTable * intTable);
 
     void addByte (int i);
     void addInt (int i);
     void addFloat (float f);
+    void addString (char * s);
+    void addJump (int labelIndex);
+    void addJumpZero (int reg, int labelIndex, bool negate = false);
+    void addLabelOffset (Label& label);
+
 
     void add (int opcode) ;
     void add (int opcode, int reg1);
@@ -117,15 +147,14 @@ public:
     // release the register of index i in the pool
     void freeRegister (int i);
 
-    // bunch mode: if true then all available registers will be allocated on top, returns previous mode 
-    bool setRegBunchMode (bool yes);
-
     // get a free register and set it the corresponding level
-    // calls the auxillary function above and record the max reg used
-    int getRegister (int level = 0);
+    // calls the getRegister2 function and records the max reg used
+    // bunch mode: if true then all available registers will be
+    // allocated on top
+    int getRegister (int level = 0, bool bunchMode = false);
 
     // auxillary function
-    int getRegister2 (int level = 0);
+    int getRegister2 (int level = 0, bool bunchMode = false);
 
     // return the maximum number of registers used in a function
     int getMaxRegisters () { return m_maxRegister + 1; }
@@ -143,7 +172,13 @@ public:
     // return the current bytecode set and its length in bytes
     unsigned char * getCode (int & len);
 
-    int setBreakLabel (int label);
+    // Set the label at index to the current offset
+    void setLabel (int index);
+
+    // Return a new unique index for a label
+    int getLabel ();
+
+    int setBreakLabel (int labelIndex);
     int setContinueLabel (int label);
     int getBreakLabel ();
     int getContinueLabel ();
@@ -153,6 +188,7 @@ public:
 class Code {
 public:
     enum {
+        CODE_THEEND = -2,
         CODE_ERROR= -1,
         CODE_NOP = 0,       // no operation 
         CODE_ASSIGN = 1,    // =
@@ -208,6 +244,9 @@ public:
         CODE_LOG_AND,       // && 
         CODE_LOG_OR,        // || 
         CODE_TERNARY_COMP,  // ?:
+        CODE_NOT,           // !
+        CODE_PRE_INC,       // ++x
+        CODE_PRE_DEC,       // --x
     };
     enum {
         STORE_FIELD_NUMERIC = 1,
@@ -262,6 +301,9 @@ public:
     Code * getNext ();
     int getLength ();
     bool generateAll (ByteCode * bc, Function * f);
+    static int getOpArity (int op);
+    static int getOpPrecedence (int op);
+    static bool isOpRightAssociative (int op);
 private:
     void init ();
     //void setOperation (int op, Code * first = NULL, Code * second = NULL, Code * third = NULL);
@@ -271,8 +313,8 @@ private:
     bool isTerm ();
 
     void setSecondToLast (Code * code);
-    int generateBinary (int opcode, ByteCode * bc, Function * f);
-    int generate (ByteCode * bc, Function * f, int reg);
+    void generateBinary (int opcode, ByteCode * bc, Function * f, int reg);
+    void generate (ByteCode * bc, Function * f, int reg);
 };
 
 # endif

@@ -663,7 +663,9 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
                     fprintf (myStderr, "ERROR: Cannot open tmpScript.bin for writing\n");
                     exit (1);
                 }
-                Scripter s (this, buffer, fp2, verbose, f->m_fn, f->m_line, m_scene->m_name);
+                Tokenizer * t = new Tokenizer (buffer, true, f->m_fn, f->m_line);
+                Scripter s (this, t, fp2, verbose);
+                delete t;
                 fclose (fp2);
                 char tmpName [255];
                 sprintf (tmpName, "%s/Script_%d", m_scene->getSceneName (), m_defID);//NodeName::findNodeID (m_defName));

@@ -17,13 +17,16 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
+# include <assert.h>
 
 # include "Code.h"
 # include "Tokenizer.h"
 # include "Types.h"
 # include "Scripter.h"
 
-ByteCode::ByteCode () {
+bool ByteCode::s_compat = false;
+
+ByteCode::ByteCode (StringTable * stringTable, IntTable * intTable) {
     m_bytecode = m_bytecodeStorage;
     for (int i = 0; i < MAX_REGISTERS; i++) {
         m_registery[i].m_index = i;
@@ -33,6 +36,10 @@ ByteCode::ByteCode () {
     m_topRegister = -1;
     m_bunchMode = false;
     m_maxRegister = 0;
+    m_maxLabels = 0;
+
+    m_stringTable = stringTable;
+    m_intTable = intTable;
 }
 
 void ByteCode::freeRegister (int i) {
@@ -55,23 +62,16 @@ void ByteCode::freeRegister (int i) {
     //printRegisters ();
 }
 
-
-bool ByteCode::setRegBunchMode (bool yes) {
-    bool old = m_bunchMode;
-    m_bunchMode = yes;
-    return old;
-}
-
-int ByteCode::getRegister (int level) {
-    int i = getRegister2 (level);
+int ByteCode::getRegister (int level, bool bunchMode) {
+    int i = getRegister2 (level, bunchMode);
     if (i > m_maxRegister) {
         m_maxRegister = i;
     }
     return i;
 }
 
-int ByteCode::getRegister2 (int level) {
-    if (m_bunchMode) {
+int ByteCode::getRegister2 (int level, bool bunchMode) {
+    if (bunchMode) {
         int i = ++m_topRegister;
         m_registery[i].m_isUsed = true;
         m_registery[i].m_level = level;
@@ -111,20 +111,62 @@ static void exchangeBytes (unsigned char * s) {
     s[2] = t;
 }
 
+int ByteCode::getLabel () {
+    if (m_maxLabels >= MAX_LABELS) {
+        fprintf (stderr, "Max labels (%d) per Script reached !\n",MAX_LABELS);
+        exit (-1);
+    }
+    int index = m_maxLabels++;
+    m_labels[index].m_maxRefs = 0;
+    m_labels[index].m_offset = -1;
+    return index;
+}
+
+void ByteCode::setLabel (int labelIndex) {
+    if (s_compat) {
+        add (ByteCode::ASM_LABEL_COMPAT, labelIndex);
+        return;
+    }
+    int offset = m_bytecode - m_bytecodeStorage;
+    Label& label = m_labels[labelIndex];
+    label.m_offset = offset;
+    // Correct offset of jumps referencing this label
+    for (int i = 0; i<label.m_maxRefs; i++) {
+        int refOffset = label.m_refs[i];
+        m_bytecodeStorage[refOffset] = (unsigned char) ((offset & 0xFF00) >> 8);
+        m_bytecodeStorage[refOffset+1] = (unsigned char) (offset & 0xFF);
+    }
+}
+
 void ByteCode::addByte (int i) {
-    *m_bytecode++ = (unsigned char)(i & 0xFF);;
+    *m_bytecode++ = (unsigned char)(i & 0xFF);
 }
 
 void ByteCode::addInt (int i) {
-    unsigned char * s = (unsigned char *)&i;
-    exchangeBytes (s);
-    for (int i = 0; i < 4; i++) {
-        addByte (*s++);
+    if (s_compat) {
+	    unsigned char * s = (unsigned char *)&i;
+	    exchangeBytes (s);
+	    for (int i = 0; i < 4; i++) {
+	        addByte (*s++);
+        }
+        return;
     }
+    addByte (m_intTable->findOrAdd (i));
 }
 
 void ByteCode::addFloat (float f) {
     addInt (int(f*65536));
+}
+
+void ByteCode::addString (char * s) {
+    if (s_compat) {
+        while (*s != 0) {
+            addByte (*s++);
+        }
+        addByte (0);
+        return;
+    }
+    addByte (m_stringTable->findOrAdd (s));
 }
 
 void ByteCode::add (int opcode) {
@@ -153,10 +195,40 @@ void ByteCode::add (int opcode, int reg1, int reg2, int reg3, int reg4) {
 
 void ByteCode::add (int opcode, int reg1, char * s) {
     add (opcode, reg1);
-    while (*s != 0) {
-        addByte (*s++);
+    addString (s);
+}
+
+void ByteCode::addJump (int labelIndex) {
+    if (s_compat) {
+        add (ASM_JUMP_COMPAT, labelIndex);
+        return;
     }
-    addByte (0);
+    add (ASM_JUMP);
+    addLabelOffset (m_labels[labelIndex]);
+}
+
+void ByteCode::addJumpZero (int reg, int labelIndex, bool negate) {
+    if (s_compat) {
+        assert (negate == false);
+        add (ASM_JUMP_ZERO_COMPAT, reg, labelIndex);
+        return;
+    }
+    add (negate ? ASM_JUMP_NZERO : ASM_JUMP_ZERO, reg);
+    addLabelOffset (m_labels[labelIndex]);
+}
+
+void ByteCode::addLabelOffset (Label& label) {
+    int offset = label.m_offset;
+    if (offset >= 0) { // Label offset is defined
+        add ((offset & 0xFF00) >> 8, offset & 0xFF);
+    } else { // Label offset is still unknown, register this jump
+        if (label.m_maxRefs >= MAX_REFS) {
+            fprintf (stderr, "Max jumps per label (%d) reached !\n", MAX_REFS);
+            exit (-1);
+        }
+        label.m_refs[label.m_maxRefs++] = m_bytecode - m_bytecodeStorage;
+        add (0, 0); // reserve 2 bytes for future offset value
+    }
 }
 
 unsigned char * ByteCode::getCode (int & len) {
@@ -361,17 +433,34 @@ void ByteCode::dump (unsigned char * data, int len) {
             printByte (data); data += 1;
             printByte (data); data += 1;
             break;
-        case ASM_JUMP:
+        case ASM_JUMP_COMPAT:
+            printf ("    ASM_JMP "); data++;
+            printByte (data); data += 1;
+            break;
+        case ASM_JUMP_ZERO_COMPAT:
             printf ("    ASM_JMP_ZERO "); data++; 
+            printByte (data); data += 1;
+            printByte (data); data += 1;
+            break;
+        case ASM_LABEL_COMPAT:
+            printf ("    ASM_LABEL "); data++;
+            printByte (data); data += 1;
+            break;
+        case ASM_JUMP:
+            printf ("    ASM_JMP "); data++;
+            printByte (data); data += 1;
             printByte (data); data += 1;
             break;
         case ASM_JUMP_ZERO:
             printf ("    ASM_JMP_ZERO "); data++; 
             printByte (data); data += 1;
             printByte (data); data += 1;
+            printByte (data); data += 1;
             break;
-        case ASM_LABEL:
-            printf ("ASM_LABEL "); data++; 
+        case ASM_JUMP_NZERO:
+            printf ("    ASM_JMP_NZERO "); data++;
+            printByte (data); data += 1;
+            printByte (data); data += 1;
             printByte (data); data += 1;
             break;
         case ASM_EXT_CALL:
@@ -411,9 +500,12 @@ void ByteCode::generate (char * n) {
     fprintf (fp, "    final static int ASM_NOP = %d;\n", ASM_NOP);
     //fprintf (fp, "    final static int ASM_ALLOC = %d;\n", ASM_ALLOC);
     //fprintf (fp, "    final static int ASM_FREE = %d;\n", ASM_FREE);
-    fprintf (fp, "    final static int ASM_LABEL = %d;\n", ASM_LABEL);
+    fprintf (fp, "    final static int ASM_LABEL_COMPAT = %d;\n", ASM_LABEL_COMPAT);
+    fprintf (fp, "    final static int ASM_JUMP_COMPAT = %d;\n", ASM_JUMP_COMPAT);
+    fprintf (fp, "    final static int ASM_JUMP_ZERO_COMPAT = %d;\n", ASM_JUMP_ZERO_COMPAT);
     fprintf (fp, "    final static int ASM_JUMP = %d;\n", ASM_JUMP);
     fprintf (fp, "    final static int ASM_JUMP_ZERO = %d;\n", ASM_JUMP_ZERO);
+    fprintf (fp, "    final static int ASM_JUMP_NZERO = %d;\n", ASM_JUMP_NZERO);
     fprintf (fp, "    final static int ASM_EXT_CALL = %d;\n", ASM_EXT_CALL);
     fprintf (fp, "    final static int ASM_INT_CALL = %d;\n", ASM_INT_CALL);
     fprintf (fp, "    final static int ASM_RETURN = %d;\n", ASM_RETURN);
@@ -539,10 +631,10 @@ Code * Code::cloneInvertAccess () {
         tmp->m_first = m_first->cloneInvertAccess ();
     }
     if (m_second) {
-        tmp->m_first = m_second->cloneInvertAccess ();
+        tmp->m_second = m_second->cloneInvertAccess ();
     }
     if (m_third) {
-        tmp->m_first = m_third->cloneInvertAccess ();
+        tmp->m_third= m_third->cloneInvertAccess ();
     }
     if (m_next) {
         tmp->m_next = m_next ->cloneInvertAccess (); 
@@ -668,6 +760,11 @@ void Code::print (int indentLevel) {
     case CODE_NEW_VAR:
         printSpaces (indentLevel);
         printf ("var %s", m_first ? m_first->m_name : "null");
+        if (m_second) {
+            printf (" = ");
+            m_second->print ();
+        }
+        printf (";\n"); break;
         break;
     case CODE_SET_VAR:
     case CODE_GET_VAR:
@@ -893,139 +990,143 @@ int Code::getLength () {
 }
 
 bool Code::generateAll (ByteCode * bc, Function * f) {
-    generate (bc, f, 0);
+    generate (bc, f, -1);
     if (m_next) {
         m_next->generateAll (bc, f);
     } 
     return (true);
 }
 
-int Code::generateBinary (int opcode, ByteCode * bc, Function * f) {
-    int reg1 = m_first->generate (bc, f, 0);
-    int reg2 = m_second->generate (bc, f, 0);
-    bc->add (opcode, reg1, reg2);
+void Code::generateBinary (int opcode, ByteCode * bc, Function * f, int reg) {
+    //fprintf (stderr, "genBin: %d: %d\n", opcode, reg);
+    assert (reg>=0);
+    m_first->generate (bc, f, reg);
+    int reg2 = bc->getRegister(f->m_blockLevel);
+    m_second->generate (bc, f, reg2);
+    bc->add (opcode, reg, reg2);
     bc->freeRegister (reg2);
-    return (reg1);
-
 }
 
-int Code::generate (ByteCode * bc, Function * f, int reg) {
-    if (reg < 0) {
-        printf ("ERROR: generate: bad index %d\n", reg);
-        ((char *)0)[0] = 0;
-    }
+void Code::generate (ByteCode * bc, Function * f, int reg) {
     int reg1, reg2, reg3, nbParams;
     int breakLabel, continueLabel;
     int cnt1, cnt2;
-    bool prevMode;
     Var * var;
     Code * tmp;
     Code * defaultLabel = NULL;
     switch (m_type) {
+    case CODE_THEEND:
+        bc->add (ByteCode::ASM_ENDOFCODE);
+        break;
     case CODE_NOP:
         bc->add (ByteCode::ASM_NOP);
         break;
     case CODE_INT: 
-        reg1 = bc->getRegister (f->m_blockLevel);
-        bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
+        assert (reg>=0);
+        bc->add (ByteCode::ASM_LOAD_REG_INT, reg);
         bc->addInt (m_ival);
-        return reg1;
-    case CODE_FLOAT: 
-        reg1 = bc->getRegister (f->m_blockLevel);
-        bc->add (ByteCode::ASM_LOAD_REG_FLT, reg1);
+        break;
+    case CODE_FLOAT:
+        assert (reg>=0);
+        bc->add (ByteCode::ASM_LOAD_REG_FLT, reg);
         bc->addFloat (m_fval);
-        return reg1;
+        break;
     case CODE_STRING: 
-        reg1 = bc->getRegister (f->m_blockLevel);
-        bc->add (ByteCode::ASM_LOAD_REG_STR, reg1, m_name);
-        return reg1;
+        assert (reg>=0);
+        bc->add (ByteCode::ASM_LOAD_REG_STR, reg, m_name);
+        break;
     case CODE_NAME:
         printf ("generate CODE_NAME (%s) not implemented", m_name);
-        return -1;
-    case CODE_IF: 
-        reg1 = m_first-> generate (bc, f, reg);
-        reg2 = f->getCounter ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg1, reg2);
+        break;
+    case CODE_IF:
+        reg1 = bc->getRegister (f->m_blockLevel);
+        m_first-> generate (bc, f, reg1);
+        reg2 = bc->getLabel ();
+        bc->addJumpZero (reg1, reg2);
         bc->freeRegister (reg1);
-        m_second->generate (bc, f, reg);
+        m_second->generate (bc, f, -1);
         if (m_third) {
-            int reg3 = f->getCounter ();
-            bc->add (ByteCode::ASM_JUMP, reg3); // jump to end of else 
-            bc->add (ByteCode::ASM_LABEL, reg2);
-            m_third->generate (bc, f, reg);
-            bc->add (ByteCode::ASM_LABEL, reg3);
+            reg3 = bc->getLabel ();
+            bc->addJump (reg3); // jump to end of else
+            bc->setLabel (reg2);
+            m_third->generate (bc, f, -1);
+            bc->setLabel (reg3);
         } else {
-            bc->add (ByteCode::ASM_LABEL, reg2);
+            bc->setLabel (reg2);
         }
-        return (-1);
+        break;
     case CODE_WHILE: 
-        reg1 = f->getCounter ();
-        bc->add (ByteCode::ASM_LABEL, reg1);
-        reg2 = m_first-> generate (bc, f, reg);
-        reg3 = f->getCounter ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg2, reg3);
+        reg1 = bc->getLabel ();
+        bc->setLabel (reg1);
+        reg2 = bc->getRegister (f->m_blockLevel);
+        m_first-> generate (bc, f, reg2);
+        reg3 = bc->getLabel ();
+        bc->addJumpZero (reg2, reg3);
         bc->freeRegister (reg2);
         continueLabel = bc->setContinueLabel (reg1);
         breakLabel = bc->setBreakLabel (reg3);
-        m_second->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_JUMP, reg1); // jump to end of else 
-        bc->add (ByteCode::ASM_LABEL, reg3);
+        m_second->generate (bc, f, -1);
+        bc->addJump (reg1); // jump to end of else
+        bc->setLabel (reg3);
         bc->setBreakLabel (breakLabel);
         bc->setContinueLabel (continueLabel);
-        return (-1);
+        break;
     case CODE_FOR:
-        reg1 = f->getCounter ();
-        bc->add (ByteCode::ASM_LABEL, reg1);           // mark condition
-        reg2 = m_first-> generate (bc, f, reg);        // condition instruction
-        reg3 = f->getCounter ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg2, reg3); // test loop condition
+        reg1 = bc->getLabel ();
+        bc->setLabel (reg1);                           // mark condition
+        reg2 = bc->getRegister (f->m_blockLevel);
+        m_first-> generate (bc, f, reg2);              // condition instruction
+        reg3 = bc->getLabel ();
+        bc->addJumpZero (reg2, reg3);                  // test loop condition
         bc->freeRegister (reg2);
-        cnt1 = f->getCounter ();
+        cnt1 = bc->getLabel ();
         continueLabel = bc->setContinueLabel (cnt1);   // set new continue / break labels
         breakLabel = bc->setBreakLabel (reg3);         //  before start of loop (and keep the old ones)
-        m_second->generate (bc, f, reg);               // loop instructions
-        bc->add (ByteCode::ASM_LABEL, cnt1);           // mark post instruction (for continue jumps)
-        m_third->generate (bc, f, reg);                // post instruction
-        bc->add (ByteCode::ASM_JUMP, reg1);            // jump back to loop condition
-        bc->add (ByteCode::ASM_LABEL, reg3);           // mark loop exit
+        m_second->generate (bc, f, -1);                // loop instructions
+        bc->setLabel (cnt1);                           // mark post instruction (for continue jumps)
+        m_third->generate (bc, f, -1);                 // post instruction
+        bc->addJump (reg1);                            // jump back to loop condition
+        bc->setLabel (reg3);                           // mark loop exit
         bc->setBreakLabel (breakLabel);                // restore previous break label
         bc->setContinueLabel (continueLabel);          // restore previous continue label
-        return (-1);
+        break;
     case CODE_CONTINUE:
-        bc->add (ByteCode::ASM_JUMP, bc->getContinueLabel ());
-        return (-1);
+        bc->addJump (bc->getContinueLabel ());
+        break;
     case CODE_BREAK:
-        bc->add (ByteCode::ASM_JUMP, bc->getBreakLabel ());
-        return (-1);
+        bc->addJump (bc->getBreakLabel ());
+        break;
     case CODE_DEFAULT:
     case CODE_CASE:
-        bc->add (ByteCode::ASM_LABEL, m_ival); // use label stored in m_ival
-        return (-1);
+        bc->setLabel (m_ival); // use label index stored in m_ival
+        break;
     case CODE_SWITCH:
-        reg1 = m_first-> generate (bc, f, reg);
-        reg2 = f->getCounter ();
+        reg1 = bc->getRegister (f->m_blockLevel);
+        m_first->generate (bc, f, reg1);
+        reg2 = bc->getLabel ();
         breakLabel = bc->setBreakLabel (reg2);
         // Parse all BLOCK's CASE & DEFAULT to build test & jump code
         tmp = m_second->m_first;
+        reg3 = bc->getRegister (f->m_blockLevel);
         while (tmp) {
             if (tmp->m_type == CODE_CASE) {
-                tmp->m_ival = f->getCounter (); // reuse m_ival to store label
-                reg3 = tmp->m_first->generate (bc, f, reg);
+                tmp->m_ival = bc->getLabel (); // reuse m_ival to store label index
+                tmp->m_first->generate (bc, f, reg3);
                 bc->add (ByteCode::ASM_TEST_NEQ, reg3, reg1);
-                bc->add (ByteCode::ASM_JUMP_ZERO, reg3, tmp->m_ival);
-                bc->freeRegister (reg3);
+                bc->addJumpZero (reg3, tmp->m_ival);
             } else if (tmp->m_type == CODE_DEFAULT) {
-                tmp->m_ival = f->getCounter (); // reuse m_ival to store label
+                tmp->m_ival = bc->getLabel (); // reuse m_ival to store label
                 defaultLabel = tmp; // keep default until the end
             }
             tmp = tmp->m_next;
         }
-        bc->add (ByteCode::ASM_JUMP, defaultLabel ? defaultLabel->m_ival : reg2);
+        bc->freeRegister (reg3);
+        bc->addJump (defaultLabel ? defaultLabel->m_ival : reg2);
         bc->freeRegister (reg1);
-        m_second->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_LABEL, reg2);
+        m_second->generate (bc, f, -1);
+        bc->setLabel (reg2);
         bc->setBreakLabel (breakLabel);
-        return (-1);
+        break;
     case CODE_BLOCK:
         f->m_blockLevel++;
         if (m_first) {
@@ -1033,214 +1134,334 @@ int Code::generate (ByteCode * bc, Function * f, int reg) {
         }
         f->removeVars (f->m_blockLevel, bc);
         f->m_blockLevel--;
-        return -1;
+        break;
     case CODE_PARAM:
-        return m_first->generate (bc, f, reg);
+        assert (reg>=0);
+        m_first->generate (bc, f, reg);
         break;
     case CODE_CALL_STATIC:
         reg1 = m_first->m_ival;
         reg2 = m_second->m_ival;
-        prevMode = bc->setRegBunchMode (true);
         if (m_third) {
-            nbParams = 1;
-            reg3 = m_third->generate (bc, f, reg);
-            tmp = m_third->m_next; 
+            nbParams = m_third->getLength();
+            reg3 = bc->getRegister (f->m_blockLevel, true);
+            for (int i=1; i<nbParams; i++) {
+                bc->getRegister (f->m_blockLevel, true);
+            }
+            int preg = reg3;
+            tmp = m_third;
             while (tmp) {
-                nbParams++;
-                tmp->generate (bc, f, reg);
+                tmp->generate (bc, f, preg++);
                 tmp = tmp->m_next;
             }
         } else {
             nbParams = 0;
-            reg3 = bc->getRegister (f->m_blockLevel); // at least one register to store the return value
+            // at least one register to store the return value
+            reg3 = bc->getRegister (f->m_blockLevel, true);
         }
-        bc->setRegBunchMode (prevMode);
         bc->add (ByteCode::ASM_EXT_CALL, reg1, reg2, reg3, nbParams);
-        if (m_third) {
-            tmp = m_third->m_next; 
-            int r = reg3+1;
-            while (tmp) {
-                bc->freeRegister (r++);
-                tmp = tmp->m_next;
-            }
+        if (reg>=0) {
+            bc->add (ByteCode::ASM_MOVE_REG_REG, reg, reg3);
         }
-        return reg3;
+        if (m_third) {
+            for (int i=0; i<nbParams; i++) {
+                bc->freeRegister (reg3++);
+            }
+        } else {
+            bc->freeRegister (reg3);
+        }
+        break;
     case CODE_CALL_FUNCTION:
         reg1 = m_first->m_ival;
-        prevMode = bc->setRegBunchMode (true);
         if (m_second) {
-            reg2 = m_second->generate (bc, f, reg);
-            tmp = m_second->m_next; 
+            nbParams = m_second->getLength();
+            reg3 = bc->getRegister (f->m_blockLevel, true);
+            for (int i=1; i<nbParams; i++) {
+                bc->getRegister (f->m_blockLevel, true);
+            }
+            int preg = reg3;
+            tmp = m_second;
             while (tmp) {
-                tmp->generate (bc, f, reg);
+                tmp->generate (bc, f, preg++);
                 tmp = tmp->m_next;
             }
         } else {
-            reg2 = bc->getRegister (f->m_blockLevel); // at least one register to store the return value
+            nbParams = 0;
+            // at least one register to store the return value
+            reg3 = bc->getRegister (f->m_blockLevel, true);
         }
-        bc->setRegBunchMode (prevMode);
-        bc->add (ByteCode::ASM_INT_CALL, reg1, reg2);
+        bc->add (ByteCode::ASM_INT_CALL, reg1, reg3);
+        if (reg>=0) {
+            bc->add (ByteCode::ASM_MOVE_REG_REG, reg, reg3);
+        }
         if (m_second) {
-            tmp = m_second->m_next; 
-            int r = reg2+1;
-            while (tmp) {
-                bc->freeRegister (r++);
-                tmp = tmp->m_next;
+            for (int i=0; i<nbParams; i++) {
+                bc->freeRegister (reg3++);
             }
+        } else {
+            bc->freeRegister (reg3);
         }
-        return reg2;
+        break;
     case CODE_RETURN:
+        reg1 = bc->getRegister (f->m_blockLevel);
         if (m_first) {
-            reg1 = m_first->generate (bc, f, reg);
+            m_first->generate (bc, f, reg1);
         } else {
-            reg1 = bc->getRegister (f->m_blockLevel);
             bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
             bc->addInt (0);
         }
         bc->add (ByteCode::ASM_RETURN, reg1);
-        return -1;
+        bc->freeRegister (reg1);
+        break;
     case CODE_NEW_VAR:
         reg1 = bc->getRegister (f->m_blockLevel);
         var = f->addVar (m_first->m_name, f->m_blockLevel, reg1);
         if (var) {
             var->setIndex (reg1);
-            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg);
-            bc->freeRegister (reg);
+            if (m_second) {
+                m_second->generate (bc, f, reg1);
+            } else {
+                bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
+                bc->addInt (0);
+            }
         } else {
             fprintf (stderr, "error: no var found for %s\n", m_first->m_name);
         }
-        return -1;
-    case CODE_ASSIGN: 
+        break;
+    case CODE_ASSIGN:
+        reg1 = reg < 0 ? bc->getRegister (f->m_blockLevel) : reg;
         if (m_second) {
-            reg1 = m_second->generate (bc, f, reg);
-            m_first->generate (bc, f, reg1);
-        } else {
-            reg1 = bc->getRegister (f->m_blockLevel);
-            bc->add (ByteCode::ASM_LOAD_REG_INT, reg1);
-            bc->addInt (0);
+            m_second->generate (bc, f, reg1);
             m_first->generate (bc, f, reg1);
         }
-        return -1;
+        if (reg < 0) bc->freeRegister (reg1);
+        break;
     case CODE_GET_VAR:
         var = f->findVar (m_first->m_name);
-        //f->printVars ();
         if (var) {
-            reg1 = bc->getRegister (f->m_blockLevel);
+            assert (reg>=0);
             reg2 = var->getIndex ();
-            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg2);
-            //printf (">> CODE_GET_VAR: %s is %d\n", m_first->m_name, reg2);
-            return (reg1);
+            bc->add (ByteCode::ASM_MOVE_REG_REG, reg, reg2);
         } else {
             fprintf (stderr, "error: no var found for %s\n", m_first->m_name);
             exit (1);
         }
-        return -1;
+        break;
     case CODE_SET_VAR:
         var = f->findVar (m_first->m_name);
         if (var) {
+            assert (reg>=0);
             reg1 = var->getIndex ();
-            reg2 = reg; //m_second->generate (bc, f);
-            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg2);
-            bc->freeRegister (reg2);
+            bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg);
         } else {
             fprintf (stderr, "error: no var found for %s\n", m_first->m_name);
             exit (1);
         }
-        return -1;
+        break;
     case CODE_SET_FIELD:
-        //bc->add (ByteCode::ASM_FIELD_PUSH);
-        reg1 = reg; //m_second->generate (bc, f);
-        //bc->add (ByteCode::ASM_FIELD_POP);
-        bc->add (ByteCode::ASM_FIELD_SET_INT_REG, m_first->m_ival, reg1);
-        bc->freeRegister (reg1);
-        return -1;
+        assert (reg>=0);
+        bc->add (ByteCode::ASM_FIELD_SET_INT_REG, m_first->m_ival, reg);
+        break;
     case CODE_GET_FIELD: 
-        reg1 = bc->getRegister (f->m_blockLevel);
-        bc->add (ByteCode::ASM_FIELD_GET_INT_REG, m_first->m_ival, reg1);
-        //fprintf (stderr, ".%d->", m_first->m_ival); break;
-        //printf ("$$ CODE_GET_FIELD => %d\n", reg1);
-        return reg1;
-        //printf (".%d->", m_first->m_ival); break;
+        assert (reg>=0);
+        bc->add (ByteCode::ASM_FIELD_GET_INT_REG, m_first->m_ival, reg);
+        break;
     case CODE_USE_FIELD:
+        assert (reg>=0);
         bc->add (ByteCode::ASM_FIELD_USE_INT, m_first->m_ival);
         if (m_next) {
-            reg1 = m_next->generate (bc, f, reg);
-        } else {
-            reg1 = -1; 
+            m_next->generate (bc, f, reg);
         }
-        //bc->freeRegister (reg);
-
-        //printf ("$$ CODE_USE_FIELD => %d\n", reg1);
-        return reg1;
+        break;
     case CODE_USE_IDX_FIELD:
+        assert (reg>=0);
         bc->add (ByteCode::ASM_FIELD_PUSH);
-        reg1 = m_first->generate (bc, f, reg);
+        reg1 = bc->getRegister (f->m_blockLevel);
+        m_first->generate (bc, f, reg1);
         bc->add (ByteCode::ASM_FIELD_POP);
         bc->add (ByteCode::ASM_FIELD_IDX_REG, reg1);
         bc->freeRegister (reg1);
-        reg2 = m_next->generate (bc, f, reg);
-        //printf ("$$ CODE_USE_FIELD => %d\n", reg1);
-        return reg2;
+        m_next->generate (bc, f, reg);
+        break;
+    case CODE_INC:
     case CODE_PLUS: 
-        return (generateBinary (ByteCode::ASM_ADD_REG_REG, bc, f));
+        generateBinary (ByteCode::ASM_ADD_REG_REG, bc, f, reg); break;
+    case CODE_DEC:
     case CODE_MINUS:
-        return (generateBinary (ByteCode::ASM_SUB_REG_REG, bc, f));
-    case CODE_MULT: 
-        return (generateBinary (ByteCode::ASM_MUL_REG_REG, bc, f));
-    case CODE_DIV: 
-        return (generateBinary (ByteCode::ASM_DIV_REG_REG, bc, f));
-    case CODE_MODULO: 
-        return (generateBinary (ByteCode::ASM_MOD_REG_REG, bc, f));
-    case CODE_EQUAL: 
-        return (generateBinary (ByteCode::ASM_TEST_EQU, bc, f));
-    case CODE_NOTEQUAL: 
-        return (generateBinary (ByteCode::ASM_TEST_NEQ, bc, f));
-    case CODE_GREATER: 
-        return (generateBinary (ByteCode::ASM_TEST_GRT, bc, f));
-    case CODE_GREATEQ: 
-        return (generateBinary (ByteCode::ASM_TEST_GRE, bc, f));
-    case CODE_LESSER: 
-        return (generateBinary (ByteCode::ASM_TEST_LES, bc, f));
-    case CODE_LESSEQ: 
-        return (generateBinary (ByteCode::ASM_TEST_LEE, bc, f));
-    case CODE_LOG_AND: 
-        return (generateBinary (ByteCode::ASM_TEST_AND, bc, f));
-    case CODE_LOG_OR: 
-        return (generateBinary (ByteCode::ASM_TEST_OR, bc, f));
-    case CODE_BIT_AND: 
-        return (generateBinary (ByteCode::ASM_BIT_AND, bc, f));
-    case CODE_BIT_OR: 
-        return (generateBinary (ByteCode::ASM_BIT_OR, bc, f));
-    case CODE_BIT_XOR: 
-        return (generateBinary (ByteCode::ASM_BIT_XOR, bc, f));
-    case CODE_BIT_INV: 
-        reg1 = m_first->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_BIT_INV, reg1);
-        return (reg1);
-    case CODE_BIT_LSHIFT: 
-        return (generateBinary (ByteCode::ASM_BIT_LS, bc, f));
-    case CODE_BIT_RSHIFT: 
-        return (generateBinary (ByteCode::ASM_BIT_RS, bc, f));
-    case CODE_BIT_RRSHIFT: 
-        return (generateBinary (ByteCode::ASM_BIT_RRS, bc, f));
+        generateBinary (ByteCode::ASM_SUB_REG_REG, bc, f, reg); break;
+    case CODE_MULT:
+        generateBinary (ByteCode::ASM_MUL_REG_REG, bc, f, reg); break;
+    case CODE_DIV:
+        generateBinary (ByteCode::ASM_DIV_REG_REG, bc, f, reg); break;
+    case CODE_MODULO:
+        generateBinary (ByteCode::ASM_MOD_REG_REG, bc, f, reg); break;
+    case CODE_EQUAL:
+        generateBinary (ByteCode::ASM_TEST_EQU, bc, f, reg); break;
+    case CODE_NOTEQUAL:
+        generateBinary (ByteCode::ASM_TEST_NEQ, bc, f, reg); break;
+    case CODE_GREATER:
+        generateBinary (ByteCode::ASM_TEST_GRT, bc, f, reg); break;
+    case CODE_GREATEQ:
+        generateBinary (ByteCode::ASM_TEST_GRE, bc, f, reg); break;
+    case CODE_LESSER:
+        generateBinary (ByteCode::ASM_TEST_LES, bc, f, reg); break;
+    case CODE_LESSEQ:
+        generateBinary (ByteCode::ASM_TEST_LEE, bc, f, reg); break;
+    case CODE_LOG_AND:
+        //generateBinary (ByteCode::ASM_TEST_AND, bc, f, reg); break;
+        assert (reg>=0);
+        cnt1 = bc->getLabel ();
+        m_first->generate (bc, f, reg);
+        bc->addJumpZero (reg, cnt1);
+        m_second->generate (bc, f, reg);
+        bc->setLabel (cnt1);
+        break;
+    case CODE_LOG_OR:
+        //generateBinary (ByteCode::ASM_TEST_OR, bc, f, reg); break;
+        assert (reg>=0);
+        m_first->generate (bc, f, reg);
+        cnt1 = bc->getLabel ();
+        if (ByteCode::s_compat) {
+            // Old byte only supports the JUMP_ZERO and no negation...
+            cnt2 = bc->getLabel ();
+            bc->addJumpZero (reg, cnt2);
+            bc->addJump (cnt1);
+            bc->setLabel (cnt2);
+        } else {
+            bc->addJumpZero (reg, cnt1, true);
+        }
+        m_second->generate (bc, f, reg);
+        bc->setLabel (cnt1);
+        break;
+    case CODE_BIT_AND:
+        generateBinary (ByteCode::ASM_BIT_AND, bc, f, reg); break;
+    case CODE_BIT_OR:
+        generateBinary (ByteCode::ASM_BIT_OR, bc, f, reg); break;
+    case CODE_BIT_XOR:
+        generateBinary (ByteCode::ASM_BIT_XOR, bc, f, reg); break;
+    case CODE_BIT_INV:
+        assert (reg>=0);
+        m_first->generate (bc, f, reg);
+        bc->add (ByteCode::ASM_BIT_INV, reg);
+        break;
+    case CODE_BIT_LSHIFT:
+        generateBinary (ByteCode::ASM_BIT_LS, bc, f, reg); break;
+    case CODE_BIT_RSHIFT:
+        generateBinary (ByteCode::ASM_BIT_RS, bc, f, reg); break;
+    case CODE_BIT_RRSHIFT:
+        generateBinary (ByteCode::ASM_BIT_RRS, bc, f, reg); break;
     case CODE_TERNARY_COMP: // reg1 ? reg2 : reg3
-        reg1 = m_first-> generate (bc, f, reg);
-        cnt1 = f->getCounter ();
-        bc->add (ByteCode::ASM_JUMP_ZERO, reg1, cnt1);
-        reg2 = m_second->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg2);
-        bc->freeRegister (reg2);
-        cnt2 = f->getCounter ();
-        bc->add (ByteCode::ASM_JUMP, cnt2); // jump to end 
-        bc->add (ByteCode::ASM_LABEL, cnt1);
-        reg3 = m_third->generate (bc, f, reg);
-        bc->add (ByteCode::ASM_MOVE_REG_REG, reg1, reg3);
-        bc->freeRegister (reg3);
-        bc->add (ByteCode::ASM_LABEL, cnt2);
-        return (reg1);
+        assert (reg>=0);
+        m_first-> generate (bc, f, reg);
+        cnt1 = bc->getLabel ();
+        bc->addJumpZero (reg, cnt1);
+        m_second->generate (bc, f, reg);
+        cnt2 = bc->getLabel ();
+        bc->addJump (cnt2); // jump to end
+        bc->setLabel (cnt1);
+        m_third->generate (bc, f, reg);
+        bc->setLabel (cnt2);
+        break;
     default:
         fprintf (stderr, "Code::generate: unknown code %d\n", m_type);
     }
-    return (-1);
 };
+
+int Code::getOpArity (int op) {
+    switch (op) {
+    case CODE_NOT:
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_INC:
+    case CODE_DEC:
+        return 1;
+    case CODE_PLUS:
+    case CODE_MINUS:
+    case CODE_MULT:
+    case CODE_DIV:
+    case CODE_MODULO:
+    case CODE_GREATER:
+    case CODE_GREATEQ:
+    case CODE_LESSER:
+    case CODE_LESSEQ:
+    case CODE_EQUAL:
+    case CODE_NOTEQUAL:
+    case CODE_LOG_AND:
+    case CODE_LOG_OR:
+    case CODE_BIT_AND:
+    case CODE_BIT_OR:
+    case CODE_BIT_XOR:
+    case CODE_BIT_LSHIFT:
+    case CODE_BIT_RSHIFT:
+    case CODE_BIT_RRSHIFT:
+        return 2;
+    case CODE_TERNARY_COMP:
+        return 3;
+    default:
+        fprintf (stderr, "Code::getOpArity: unknown code %d\n", op);
+    case CODE_ERROR:
+        return 0;
+    }
+}
+
+int Code::getOpPrecedence (int op) {
+    switch (op) {
+    case CODE_INC:
+    case CODE_DEC:
+        return 12;
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_NOT:
+        return 11;
+    case CODE_MULT:
+    case CODE_DIV:
+    case CODE_MODULO:
+        return 10;
+    case CODE_PLUS:
+    case CODE_MINUS:
+        return 9;
+    case CODE_BIT_LSHIFT:
+    case CODE_BIT_RSHIFT:
+    case CODE_BIT_RRSHIFT:
+        return 8;
+    case CODE_GREATER:
+    case CODE_GREATEQ:
+    case CODE_LESSER:
+    case CODE_LESSEQ:
+        return 7;
+    case CODE_EQUAL:
+    case CODE_NOTEQUAL:
+        return 6;
+    case CODE_BIT_AND:
+        return 5;
+    case CODE_BIT_XOR:
+        return 4;
+    case CODE_BIT_OR:
+        return 3;
+    case CODE_LOG_AND:
+        return 2;
+    case CODE_LOG_OR:
+        return 1;
+    case CODE_TERNARY_COMP:
+        return 0;
+    default:
+        fprintf (stderr, "Code::getOpPrecedence: unknown code %d\n", op);
+    case CODE_ERROR:
+        return 0;
+    }
+}
+
+bool Code::isOpRightAssociative (int op) {
+    switch (op) {
+    case CODE_PRE_INC:
+    case CODE_PRE_DEC:
+    case CODE_BIT_INV:
+    case CODE_NOT:
+    case CODE_TERNARY_COMP:
+        return true;
+    }
+    return false;
+}
 

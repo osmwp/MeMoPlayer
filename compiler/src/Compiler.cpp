@@ -186,6 +186,8 @@ int main (int argc, char * argv []) {
         } else if (strcmp (argv[start], "-h") ==0) {
             usage (argv[0]);
             return (0);
+        } else if (strcmp (argv[start], "--compat") == 0) {
+            ByteCode::s_compat = true;
         } else {
             file = argv [start];
         }
