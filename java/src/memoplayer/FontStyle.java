@@ -85,7 +85,12 @@ public class FontStyle extends Node {
     }
     
     public void fieldChanged (Field f) {
-        m_isUpdated = true;
+        if (f == m_field [0]) {
+            int tmpSize = FixFloat.fix2int (((SFFloat)m_field[0]).getValue ());
+            m_isUpdated = m_externFont == null || size != tmpSize;
+        } else {
+            m_isUpdated = true;
+        }
     }
 
     final boolean compose (Context c, Region clip, boolean forceUpdate) {
@@ -106,8 +111,9 @@ public class FontStyle extends Node {
     }
 
     public ExternFont getExternFont (Context c) {
-        if (m_externFont == null) {
+        if (m_externFont == null || m_isUpdated) {
             openFont (c);
+            m_isUpdated  = false;
         }
         return m_externFont;
     }
