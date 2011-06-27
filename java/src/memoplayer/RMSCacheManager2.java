@@ -276,7 +276,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
     }
 
     private boolean markReusedEntry (int id) {
-        if (id >= 0 && id < m_nbEntries && m_indexes[id] < -1) {
+        if (id >= 0 && id < m_nbEntries && m_indexes[id] < 0) {
             m_indexes[id] = -m_indexes[id];
             return true;
         }
@@ -296,16 +296,19 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         }
     }
 
-    private boolean saveData (int id, byte [] data, boolean add) {
+    private int saveData (int id, byte [] data) {
         if (data == null || data.length == 0) {
             data = EMPTY.getBytes();
         }
         try {
-            if (add) m_recordStore.addRecord (data, 0, data.length);
-            else m_recordStore.setRecord(id, data, 0, data.length);
-            return true;
+            if (id == 0) {
+                return m_recordStore.addRecord (data, 0, data.length);
+            }
+            m_recordStore.setRecord(id, data, 0, data.length);
+            return id;
         } catch (RecordStoreException e) {
             Logger.println("RMSCache: saveData error: "+e+" for "+m_storeName+" at index "+id);
+            return -1;
         }
     }
     
@@ -411,11 +414,11 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             if (id >= 0) {
                 int index = m_indexes[id];
                 if (index >= 0) {
-                    byte[] result = loadData (m_indexes[id]);
+                    byte[] result = loadData (index);
                     if (result == null) { // corrupted data
                         Logger.println ("RMSCache: getByteRecord error for "+s+": removing null entry for "+m_storeName+'/'+m_indexes[id]);
                         removeEntry (id);
-                        removeData (m_indexes[id]);
+                        removeData (index);
                     } // remove the whole store if removing bad entry failed
                     return result;
                 }
@@ -428,7 +431,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         if (open ()) {
             int id = findEntry (s);
             if (id == -1) {
-                id = addEntry (s, -1, true);
+                id = addEntry (s, 0, true);
                 //Logger.println("RMS2: "+m_storeName+": Added entry:"+s+":"+id);
             } else {
                 //Logger.println("RMS2: "+m_storeName+": Reuse entry:"+s+":"+id);
@@ -541,21 +544,17 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             int id = findEntry (s);
             if (id != -1) {
                 int index = m_indexes[id];
-                if (index == -1) {
-                    try {
-                        index = m_recordStore.getNextRecordID();
-                    } catch (RecordStoreException e) {
-                        Logger.println ("RMSCache: error: Could not get next recordID: "+e+" for "+m_storeName);
-                        return false;
-                    }
-                    m_indexes[id] = index;
-                    return saveData (index, data, true);
-                } else if (data != null) {
-                    return saveData (index, data, false);
-                } else if (index < -1) {
+                if (data != null) {
+                    index = saveData (index, data);
+                    m_indexes[id] = index; // add index to entry
+                } else if (index < 0) {
                     removeData (-index);
+                    index = -1; // force remove of entry
                 }
-                return removeEntry (id);
+                if (index == -1) { // error during add, save or delete
+                    removeEntry (id);
+                }
+                return true;
             } else {
                 Logger.println("RMSCache: "+m_storeName+": Error: Could not find "+s+" in index table");
             }
