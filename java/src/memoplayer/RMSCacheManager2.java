@@ -291,7 +291,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             }
             return data;
         } catch (RecordStoreException e) {
-            Logger.println("RMSCache: loadData error: "+e+" for "+m_storeName);
+            Logger.println("RMSCache: loadData error: "+e+" for "+m_storeName+" at index: "+id);
             return null;
         }
     }
@@ -305,8 +305,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             else m_recordStore.setRecord(id, data, 0, data.length);
             return true;
         } catch (RecordStoreException e) {
-            Logger.println("RMSCache: saveData error: "+e+" for "+m_storeName);
-            return false;
+            Logger.println("RMSCache: saveData error: "+e+" for "+m_storeName+" at index "+id);
         }
     }
     
@@ -315,7 +314,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             m_recordStore.deleteRecord(id);
             return true;
         } catch (RecordStoreException e) {
-            Logger.println("RMSCache: removeData error: "+e+" for "+m_storeName);
+            Logger.println("RMSCache: removeData error: "+e+" for "+m_storeName+" at index "+id);
             return false;
         }
     }
@@ -414,7 +413,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
                 if (index >= 0) {
                     byte[] result = loadData (m_indexes[id]);
                     if (result == null) { // corrupted data
-                        //Logger.println ("RMSCache: getByteRecord error for "+s+": removing null entry for "+m_storeName+'/'+m_indexes[id]);
+                        Logger.println ("RMSCache: getByteRecord error for "+s+": removing null entry for "+m_storeName+'/'+m_indexes[id]);
                         removeEntry (id);
                         removeData (m_indexes[id]);
                     } // remove the whole store if removing bad entry failed
@@ -558,7 +557,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
                 }
                 return removeEntry (id);
             } else {
-                Logger.println("RMS2: "+m_storeName+": Error: Could not find "+s+" in index table");
+                Logger.println("RMSCache: "+m_storeName+": Error: Could not find "+s+" in index table");
             }
         }
         return false;
