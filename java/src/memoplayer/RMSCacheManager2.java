@@ -352,7 +352,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         if (!m_quit && m_thread != null) {
             m_quit = true;
             synchronized (m_thread) {
-                m_thread.notify();
+                m_thread.interrupt();
             }
         }
     }
@@ -495,7 +495,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         }
         }
         synchronized (m_thread) {
-            m_thread.notify();
+            m_thread.interrupt();
         }
     }
 
@@ -511,20 +511,21 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
     public void run() {
         try {
             boolean needFlush = false;
-            long lastFlushTime = 0;
             while (!m_quit) {
                 if (m_asyncQueue == null) {
-                    synchronized (m_thread) {
-                        try { m_thread.wait (Integer.MAX_VALUE); } catch (InterruptedException e) {}
+                    try {
+                        synchronized (m_thread) {
+                            m_thread.wait (needFlush ? MAX_FLUSH_DELAY : Integer.MAX_VALUE);
+                        }
+                        if (needFlush) { // wait completed after MAX_FLUSH_DELAY
+                            needFlush = false;
+                            flush();
+                        }
+                    } catch (InterruptedException e) {
+                        // Wait interrupted, execute async operations
                     }
                 }
                 while (doAsyncOp()) needFlush = true;
-                // Always flush RMS after multiple write/delete operations
-                if (needFlush && System.currentTimeMillis() - lastFlushTime > MAX_FLUSH_DELAY) {
-                    flush();
-                    needFlush = false;
-                    lastFlushTime = System.currentTimeMillis();
-                }
             }
         } catch (Throwable t) {
             Logger.println ("RMSCache: "+m_storeName+": Thread died: "+t);
