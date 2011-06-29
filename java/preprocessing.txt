@@ -57,6 +57,7 @@ Debug features
  - debug.clipping: Displays a red rectangle around the clip zone on each paint and prints clip region in stdout.
  - debug.safePaint: Try/catch around paint(): This prevents OutOfMemoryException during paint() of locking the Canvas thread, this is not safe as it can render screen partially !
  - debug.console: Allows the console to be displayed by the user when pressing #*# or when an error occurs.
+ - debug.forceLang: Allows to force a language for the Inline locale table and Browser.getLanguage() method using MeMo-Force-Lang JAD property.
  
 Platform dependent
 ------------------

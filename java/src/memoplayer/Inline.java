@@ -43,6 +43,12 @@ public class Inline extends Node {
     // The value contained in locale is lang_country (2 letters each) like:
     // en_US, fr_FR, es_ES, fr_CA , ...
     static String getMobileLanguage () {
+//#ifdef debug.forceLang
+        String forceLang = MiniPlayer.getJadProperty("MeMo-Force-Lang");
+        if (forceLang != "") {
+            return forceLang;
+        }
+//#endif
         String curLocale = System.getProperty("microedition.locale");
         // Logger.println ("getMobileLanguage: "+curLocale);
         // code to get the user language mobile setting
