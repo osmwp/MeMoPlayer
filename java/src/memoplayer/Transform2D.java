@@ -59,7 +59,7 @@ public class Transform2D extends Group {
         } else if (f == m_field[2]) {
             m_sx = ((SFVec2f)f).m_x;
             m_sy = ((SFVec2f)f).m_y;
-            m_hasScale = m_sx != 1 || m_sy != 1;
+            m_hasScale = m_sx != 1<<16 || m_sy != 1<<16;
         } else { // RC 13/10/07
             m_a = ((SFFloat)f).m_f;
             m_hasRot = m_a != 0;
