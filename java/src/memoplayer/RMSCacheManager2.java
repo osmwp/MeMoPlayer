@@ -62,18 +62,11 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             storename = EMPTY;
         }
         RMSCacheManager2 cm = s_instances;
-        RMSCacheManager2 prev = null;
         while (cm != null) {
             if (storename.equals(cm.m_storeName)) {
                 cm.erase();
-                if (prev == null) {
-                    s_instances = cm.m_next;
-                } else {
-                    prev.m_next = cm.m_next;
-                }
                 return;
             }
-            prev = cm;
             cm = cm.m_next;
         }
         try { RecordStore.deleteRecordStore (storename); }
