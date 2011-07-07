@@ -15,6 +15,4 @@ all: ../dump ../mkTable ../process
 
 clean:
 	-rm -f *.o *.d *~
-CCFLAGS=-g -Wall
-CCC=g++ 
 

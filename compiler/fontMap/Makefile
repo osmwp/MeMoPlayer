@@ -15,4 +15,4 @@ CCC=echo ${MSG}
 endif 
 
 ../fontExtractor: fontExtractor.cpp
-	$(CCC) -g $(FE_CCFLAGS) -o ../fontExtractor fontExtractor.cpp $(FE_LDFLAGS)
+	$(CCC) $(CCFLAGS) $(FE_CCFLAGS) -o ../fontExtractor fontExtractor.cpp $(FE_LDFLAGS)
