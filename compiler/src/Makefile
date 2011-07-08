@@ -28,7 +28,7 @@ ExternCalls.inc: ExternCalls.def ../mkTable
 	../mkTable ExternCalls.def ExternCalls.inc externCallsDef 
 
 $(TARGET) : NodeTable.inc ExternCalls.inc $(OBJS) 
-	$(CCC) -o $(TARGET) $(OBJS)
+	$(CCC) $(CCFLAGS) -o $(TARGET) $(OBJS)
 
 clean:
 	-rm *.o *.d *~ $(TARGET)
