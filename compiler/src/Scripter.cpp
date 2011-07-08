@@ -551,7 +551,6 @@ int Function::parseOperation (Tokenizer * t, bool pushBack) {
             op = Code::CODE_GREATEQ;
         } else if (t->CHECK ('>')) {
             op = t->CHECK ('>', pushBack) ? Code::CODE_BIT_RRSHIFT : Code::CODE_BIT_RSHIFT;
-            t->UNGETC ('>');
         } else {
             op = Code::CODE_GREATER;
         }
