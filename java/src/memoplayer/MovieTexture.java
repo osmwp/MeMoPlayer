@@ -88,7 +88,12 @@ public class MovieTexture extends MediaNode  {
                 Logger.println("WAP2 COVERAGE AVAIL");
             }
         }
-        return m_trDetective.getWap2ServiceRecord();
+        net.rim.device.api.servicebook.ServiceRecord sr = m_trDetective.getWap2ServiceRecord();
+        if (sr == null) {
+            Logger.println ("WAP2 NOT AVAIL, FALLBACK CELL");
+            sr = m_trDetective.getDefaultTcpCellularServiceRecord();
+        }
+        return sr;
     }
 //#endif
 }
