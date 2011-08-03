@@ -2067,6 +2067,9 @@ void MFNode::parseValue (Scene * scene, Tokenizer *t) {
         }
     } else {
         m_node = scene->parseNode (t, m_node);
+        if (m_node) { // can be null if no node ("NULL" token)
+            m_size++;
+        }
     }
 }
 
