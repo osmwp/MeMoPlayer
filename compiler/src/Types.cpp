@@ -922,6 +922,7 @@ void Node::encodeScript (FILE * fp) {
 
 Proto::Proto () : Node () {
     m_scene = NULL;
+    m_referenced = false;
 }
 
 Proto::Proto (Tokenizer * t, Scene * master, Proto * next) : Node () {
@@ -931,6 +932,7 @@ Proto::Proto (Tokenizer * t, Scene * master, Proto * next) : Node () {
     m_master = master;
     m_name = t->getNextToken ();
     m_next = next;
+    m_referenced = false;
     
     if (m_name == NULL) {
         fprintf (myStderr, "%s:%d: syntax error: PROTO declaration: missing name\n", t->getFile(), t->getLine ());
@@ -1003,6 +1005,7 @@ void Proto::printAll (int n) {
 }
 
 Node * Proto::clone (Node * next) {
+    m_referenced = true;
     Proto * n = new Proto ();
     n->m_name = m_name;
     n->m_next = next;
@@ -1066,7 +1069,7 @@ void Proto::encodeValue (FILE * fp) {
 
 int Proto::encode (FILE * fp, bool verbose) {
     int total = 0;
-    if (m_scene->m_root) {
+    if (m_scene->m_root && m_referenced) {
         char buffer [2048];
         
         //createTmpFileName (buffer, m_name, "proto");

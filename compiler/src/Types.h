@@ -207,6 +207,7 @@ public:
     Scene * m_master; // the scene this proto belongs to
     //int m_fieldNumber;
     //Proto * m_next;
+    bool m_referenced; // true if the proto is instantiated (cloned) at least once
 
     Proto ();
     Proto (Tokenizer * t, Scene * master, Proto * next);
