@@ -445,7 +445,7 @@ class ExternCall {
             registers[r].setFloat (FixFloat.arcTan(n));
             return;
         case 10: // PI
-            registers[r].setFloat (205587);
+            registers[r].setFloat (205887); // π * 65536
             return;
         case 11: // E
             registers[r].setFloat (178145);
