@@ -60,6 +60,11 @@ public class LcdUI implements CommandListener {
             m_textInput.setLength(0);
         }
 
+        // truncate initial text if its length is greater than size to avoid an illegal argument exception
+        if (text.length()>size) {
+        	text = text.substring(0, size);
+        }
+        
         TextBox textBox = new TextBox(title, text, size, type);
         Command command = new Command(okLabel, Command.OK, 2);
         textBox.addCommand(command);
