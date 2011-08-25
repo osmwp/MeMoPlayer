@@ -25,6 +25,8 @@ public class ImageContext {
 //#ifdef MM.blitWithImage
     public static boolean s_blitWithImage = MiniPlayer.getJadProperty("MeMo-BlitWithImage").equals("true");
 //#endif
+    // +1 : Alcatel OT-800++ bugs with drawRGB() on last pixel line
+    public static char s_blitPlus = MiniPlayer.getJadProperty("MeMo-BlitPlus").equals("true") ? (char)1 : 0;
 
 //#ifdef debug.console
     private static boolean bLogImage = MiniPlayer.getJadProperty("MeMo-Debug-Image").equals("true");
@@ -294,7 +296,8 @@ public class ImageContext {
         m_dstW = w;
         m_dstH = h;
         m_trs = trs;
-        int destS = m_dstW * m_dstH;
+        // +1 : Alcatel OT-800++ bugs with drawRGB() on last pixel line
+        int destS = m_dstW * (m_dstH+s_blitPlus);
         if (m_dstD == null) {
             //MCP: Initial destination size must not be smaller than source size
             //MCP: (so no realocation occurs during zoom in effects)
@@ -398,6 +401,7 @@ public class ImageContext {
             g.drawRGB (data, offset, stride, x, y, w, h, processAlpha);
         } catch (Exception e) {
             Logger.println ("Exception on IC.blit: "+e);
+            Logger.println ("h:"+h+" w:"+w+" o:"+offset+" s:"+stride+" l:"+data.length);
         }
     }
 
