@@ -28,7 +28,7 @@
 # include "LocaleManager.h"
 
 
-# define VERSION "1.5.1"
+# define VERSION "1.5.2"
 
 extern void exchangeBytes (char * s);
 extern void write (FILE * fp, int f);
