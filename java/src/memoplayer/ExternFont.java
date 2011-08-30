@@ -153,7 +153,7 @@ class BitmapFont extends ExternFont {
         // retrieve the pixels
         m_width = image.getWidth();
         m_height = image.getHeight();
-        m_image = new int [m_width*(m_height+1)]; // +1 : Alcatel OT-800 bugs with drawRGB() on last pixel line
+        m_image = new int [m_width*(m_height+ImageContext.s_blitPlus)]; // +1 : Alcatel OT-800 bugs with drawRGB() on last pixel line
         image.getRGB (m_image, 0, m_width, 0, 0, m_width, m_height);
         // the font itself
         m_maxBaseline = Decoder.readUnsignedByte (is);
