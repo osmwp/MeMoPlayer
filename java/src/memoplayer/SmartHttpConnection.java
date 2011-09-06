@@ -40,6 +40,7 @@ class SmartHttpConnection implements Connection {
     DataInputStream m_dis;
     
     boolean m_handleRedirects = true;
+    boolean m_noCookies = false;
     String[] m_headers;
     int m_headersCnt;
     
@@ -151,10 +152,13 @@ class SmartHttpConnection implements Connection {
     	addTagsHeader ();
 //#endif
         
-        String cookie = SmartHttpCookies.load(m_conn.getHost());
-        if (cookie != null) {
-            m_conn.setRequestProperty(HTTP_COOKIE_FIELD, cookie);
+        if ( m_noCookies == false ) {
+            String cookie = SmartHttpCookies.load(m_conn.getHost());
+            if (cookie != null) {
+                m_conn.setRequestProperty(HTTP_COOKIE_FIELD, cookie);
+            }
         }
+
         String extraUA = s_extraUA;
         // Set headers found during parse of URL
         for (int i=0; i<m_headersCnt; i+=2) {
@@ -218,10 +222,15 @@ class SmartHttpConnection implements Connection {
             }
             m_headers[m_headersCnt++] = ext.substring(start, sep);
             m_headers[m_headersCnt++] = ext.substring(sep+1, end);
-        } else if (ext.substring(start, end).trim().equals("noredirects")) {
-            //Logger.println("SmartHttpConnection: Disabling redirects");
-            m_handleRedirects = false;
-        }
+        } else {
+            String extraCommand = ext.substring(start, end).trim();
+            if ( extraCommand.equals("noredirects") ) {
+                //Logger.println("SmartHttpConnection: Disabling redirects");
+                m_handleRedirects = false;
+            } else if ( extraCommand.equals("nocookies") ) {
+                m_noCookies = true;
+            }
+    	}
     }
     
 //#ifdef MM.pfs
