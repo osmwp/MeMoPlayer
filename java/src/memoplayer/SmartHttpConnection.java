@@ -45,6 +45,11 @@ class SmartHttpConnection implements Connection {
     
     public SmartHttpConnection(String url, boolean write) throws IOException {
         m_url = checkForExtensions (url);
+
+        boolean addHeaders = true;
+        if (url.endsWith("||NO_HEADERS") ) {
+	        addHeaders = false;
+        }
         
         if (write) {
             //Logger.println ("SmartHttpConnection: opening url: "+url+" in write mode");
@@ -53,7 +58,8 @@ class SmartHttpConnection implements Connection {
             // Then the response code will be fetch when the InputStream is asked for.
             m_conn = (HttpConnection) Connector.open(m_url, Connector.READ_WRITE);
             m_conn.setRequestMethod(HttpConnection.POST);
-            addHttpHeaders();
+            if (addHeaders==true)
+            	addHttpHeaders();
             m_responseCode = POST_MODE;
             return;
         }
@@ -61,7 +67,8 @@ class SmartHttpConnection implements Connection {
         while (m_url != null) {            
             m_conn = (HttpConnection) Connector.open(m_url);
             m_conn.setRequestMethod(HttpConnection.GET);
-            addHttpHeaders();
+            if (addHeaders==true)
+            	addHttpHeaders();
             m_responseCode = getResponse();
             switch (m_responseCode) {
             case HttpConnection.HTTP_MOVED_PERM:
