@@ -40,17 +40,13 @@ class SmartHttpConnection implements Connection {
     DataInputStream m_dis;
     
     boolean m_handleRedirects = true;
+    boolean m_noCookies = false;
     String[] m_headers;
     int m_headersCnt;
     
     public SmartHttpConnection(String url, boolean write) throws IOException {
         m_url = checkForExtensions (url);
 
-        boolean addHeaders = true;
-        if (url.endsWith("||NO_HEADERS") ) {
-	        addHeaders = false;
-        }
-        
         if (write) {
             //Logger.println ("SmartHttpConnection: opening url: "+url+" in write mode");
             //MCP: When opening a SmartHttpConnection for write, the POST method is used.
@@ -58,8 +54,7 @@ class SmartHttpConnection implements Connection {
             // Then the response code will be fetch when the InputStream is asked for.
             m_conn = (HttpConnection) Connector.open(m_url, Connector.READ_WRITE);
             m_conn.setRequestMethod(HttpConnection.POST);
-            if (addHeaders==true)
-            	addHttpHeaders();
+           	addHttpHeaders();
             m_responseCode = POST_MODE;
             return;
         }
@@ -67,8 +62,7 @@ class SmartHttpConnection implements Connection {
         while (m_url != null) {            
             m_conn = (HttpConnection) Connector.open(m_url);
             m_conn.setRequestMethod(HttpConnection.GET);
-            if (addHeaders==true)
-            	addHttpHeaders();
+           	addHttpHeaders();
             m_responseCode = getResponse();
             switch (m_responseCode) {
             case HttpConnection.HTTP_MOVED_PERM:
@@ -158,7 +152,10 @@ class SmartHttpConnection implements Connection {
     	addTagsHeader ();
 //#endif
         
-        String cookie = SmartHttpCookies.load(m_conn.getHost());
+        String cookie = null;
+        if ( m_noCookies == false ) {
+            cookie = SmartHttpCookies.load(m_conn.getHost());
+        }
         if (cookie != null) {
             m_conn.setRequestProperty(HTTP_COOKIE_FIELD, cookie);
         }
@@ -213,6 +210,10 @@ class SmartHttpConnection implements Connection {
     }
     
     private void checkExt(String ext, int start, int end) {
+
+        // reinit cookies handling 
+        m_noCookies = false;
+    	
         int sep = ext.indexOf('=', start);
         if (sep != -1 && sep < end) {
             //Logger.println("SmartHttpConnection: Found HTTP header: "+ext.substring(start, end));
@@ -228,7 +229,9 @@ class SmartHttpConnection implements Connection {
         } else if (ext.substring(start, end).trim().equals("noredirects")) {
             //Logger.println("SmartHttpConnection: Disabling redirects");
             m_handleRedirects = false;
-        }
+        } else if (ext.substring(start, end).trim().equals("nocookies")) {
+            m_noCookies = true;
+    	}
     }
     
 //#ifdef MM.pfs
