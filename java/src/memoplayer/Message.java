@@ -88,10 +88,16 @@ public class Message extends Node {
      * Queue of incoming messages that will be delivered on next queue switch
      */
     private static ObjLink s_incoming;
+
+    /**
+     * Keep a static counter to uniquely identify by integer all Message instances
+     */
+    private static int s_count;
     
     private String m_url;
     private MFString m_data;
     private boolean m_enabled;
+    private final int m_id = s_count++; // unique integer id (safe as always instantiated from main thread)
     
     Message() {
         super(3);
@@ -122,8 +128,8 @@ public class Message extends Node {
         if (m_enabled) {
             ObjLink o = s_delivered;
             while (o != null) {
-                // check hashcode is different so the sender does not receive the message 
-                if(m_url.equals(o.m_object) && o.m_z != this.hashCode()) {
+                // check id is different so the sender does not receive the message
+                if(m_url.equals(o.m_object) && o.m_z != m_id) {
                     if (o.m_param instanceof MFString) {
                         ((MFString)m_field[2]).setValues((MFString)o.m_param);
                     } else {
@@ -139,7 +145,7 @@ public class Message extends Node {
                 MFString data = new MFString();
                 data.setValues(m_data);
                 // Send message to incoming queue
-                sendMessage(m_url, data, this.hashCode());
+                sendMessage(m_url, data, m_id);
                 
             }
         } 

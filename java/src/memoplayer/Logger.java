@@ -19,6 +19,7 @@ package memoplayer;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 //#endif
+import javax.microedition.rms.RecordEnumeration;
 import javax.microedition.rms.RecordStore;
 
 public class Logger {
@@ -289,12 +290,13 @@ public class Logger {
                 try {
                     RecordStore rs = RecordStore.openRecordStore(s_rmsTableName, false);
                     if (rs != null) {
-                        int nbRecords = rs.getNumRecords();
-                        for (int j=1; j<=nbRecords; j++) {
-                            int s = rs.getRecordSize(j);
-                            sb.append(j).append(':').append(s);
+                        RecordEnumeration re = rs.enumerateRecords(null, null, false);
+                        while (re.hasNextElement()) {
+                            int id = re.nextRecordId();
+                            int s = rs.getRecordSize(id);
+                            sb.append(id).append(':').append(s);
                             if (s < 512) {
-                                try { sb.append(" DATA:").append(new String(rs.getRecord(j), "UTF-8")); } catch (Exception e) {}
+                                try { sb.append(" DATA:").append(new String(rs.getRecord(id), "UTF-8")); } catch (Exception e) {}
                             }
                             Logger.println (sb.toString());
                             sb.setLength(0);

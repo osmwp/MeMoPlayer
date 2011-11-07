@@ -38,6 +38,9 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
     // Max delay before flushing data (close/open RMS) after a write/delete operation
     private final long MAX_FLUSH_DELAY = 3000;
 
+    // Max delay before closing RMS and stop the background thread
+    private final long MAX_LIFE_DELAY = 30000;
+
     // deleteAllRMS, deleteRMS, getInstance are synchronized
     // to prevent concurrent access to s_instances 
     private static RMSCacheManager2 s_instances;
@@ -122,8 +125,6 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         m_tableLoaded = false;
         m_modified = false;
         m_next = next;
-        m_thread = new java.lang.Thread (this);
-        m_thread.start();
     }
     
     private boolean readEntries () {
@@ -486,6 +487,11 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
                 o = o.m_next;
             }
         }
+        if (m_thread == null || !m_thread.isAlive()) {
+            m_thread = new java.lang.Thread (this);
+            m_thread.start();
+            return;
+        }
         }
         synchronized (m_thread) {
             m_thread.interrupt();
@@ -507,12 +513,12 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             while (!m_quit) {
                 if (m_asyncQueue == null) {
                     try {
-                        synchronized (m_thread) {
-                            m_thread.wait (needFlush ? MAX_FLUSH_DELAY : Integer.MAX_VALUE);
-                        }
+                        Thread.sleep (needFlush ? MAX_FLUSH_DELAY : MAX_LIFE_DELAY);
                         if (needFlush) { // wait completed after MAX_FLUSH_DELAY
                             needFlush = false;
                             flush();
+                        } else { // end of thread life
+                            return; // RMS will be closed by the finally statement below
                         }
                     } catch (InterruptedException e) {
                         // Wait interrupted, execute async operations
@@ -524,7 +530,6 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
             Logger.println ("RMSCache: "+m_storeName+": Thread died: "+t);
         } finally {
             finalCloseAsync();
-            m_thread = null;
         }
     }
 
