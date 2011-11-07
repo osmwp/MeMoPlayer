@@ -48,6 +48,10 @@ Specific features, JSR independent
  - api.richText: Support for the RichText VRML node (should be called MM.richText)
  - MM.CacheUseFile: Add support to persist data with CacheManager to the File System.
                     This will only be activated if the "MeMo-CachePath" is set.
+ - MM.CacheUseRms2: Alternative cache implementation (faster but less secure than default one).
+                    This will only be activated if the "MeMo-CachePath" is set to 'RMS2'.
+ - MM.CacheUseRms3: Alternative cache implementation (even faster but less secure than default one).
+                    This will only be activated if the "MeMo-CachePath" is set to 'RMS3'.
  - MM.Upload: Adds Upload node for HTTP POST file upload. This is a synchronous upload !! (seems unfinished)
  - MM.JsByteCodeCompat: Add support for older Javascript bytecode format
 
