@@ -54,20 +54,19 @@ public class ObjLink {
         return ol;
     }
 
-    public synchronized static void release (ObjLink ol) {
+    public synchronized static ObjLink release (ObjLink ol) {
         //Logger.println("release de "+ol.toString()+" nb element:"+nb);
+        ObjLink next = ol.m_next;
         ol.m_param = null;
         ol.m_object = null;
         ol.m_next = s_root;
         s_root = ol;
-
+        return next;
     }
 
     public static void releaseAll (ObjLink ol) {
         while (ol != null) {
-            ObjLink tmp = ol;
-            ol = ol.m_next;
-            release (tmp);
+            ol = release (ol);
         }
     }
 

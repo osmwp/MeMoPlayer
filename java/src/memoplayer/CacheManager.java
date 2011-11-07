@@ -23,6 +23,7 @@ abstract class CacheManager {
     private final static int BACKEND_RMS = 0;
     private final static int BACKEND_FILE = 1;
     private final static int BACKEND_RMS2 = 2;
+    private final static int BACKEND_RMS3 = 3;
 
     static String s_basePath = null;
     static int s_backend = selectBackend ();
@@ -37,6 +38,12 @@ abstract class CacheManager {
             if (s_basePath.equals("RMS2")) {
                 Logger.println ("Using CacheManager of type RMS2");
                 return BACKEND_RMS2;
+            }
+//#endif
+//#ifdef MM.CacheUseRms3
+            if (s_basePath.equals("RMS3")) {
+                Logger.println ("Using CacheManager of type RMS3");
+                return BACKEND_RMS3;
             }
 //#endif
 //#ifdef MM.CacheUseFile
@@ -70,6 +77,11 @@ abstract class CacheManager {
             RMSCacheManager2.deleteAllRMS ();
             break;
 //#endif
+//#ifdef MM.CacheUseRms3
+        case BACKEND_RMS3:
+            RMSCacheManager3.deleteAllRMS ();
+            break;
+//#endif
         default:
             RMSCacheManager.deleteAllRMS();
         }
@@ -86,6 +98,11 @@ abstract class CacheManager {
 //#ifdef MM.CacheUseRms2
         case BACKEND_RMS2:
             RMSCacheManager2.deleteRMS (baseName);
+            break;
+//#endif
+//#ifdef MM.CacheUseRms3
+        case BACKEND_RMS3:
+            RMSCacheManager3.deleteRMS (baseName);
             break;
 //#endif
         default:
@@ -154,6 +171,13 @@ abstract class CacheManager {
             RMSCacheManager2.closeAll ();
         }
 //#endif
+//#ifdef MM.CacheUseRms3
+        // RMSCacheManager3 ignores close() calls, only the closeAll() call
+        // will close all RecordStores on application exit !
+        if (s_backend == BACKEND_RMS3) {
+            RMSCacheManager3.closeAll ();
+        }
+//#endif
     }
 
     // instantiate a manager, according to the jad preperty
@@ -166,6 +190,10 @@ abstract class CacheManager {
 //#ifdef MM.CacheUseRms2
       case BACKEND_RMS2:
           return RMSCacheManager2.getInstance(basename);
+//#endif
+//#ifdef MM.CacheUseRms3
+      case BACKEND_RMS3:
+          return RMSCacheManager3.getInstance(basename);
 //#endif
       default:
           return new RMSCacheManager (basename);
@@ -236,8 +264,6 @@ abstract class CacheManager {
     abstract void erase ();
 
     abstract int getSizeAvailable ();
-
-    abstract public int getNbCaches ();
 
     abstract byte[] getByteRecord (String s);
 
