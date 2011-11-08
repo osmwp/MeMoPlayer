@@ -67,7 +67,7 @@ void dumpTable (char * o) {
 void compile (char * inName, char * dir, MediaList &includeMedia, bool verbose) {
     char * orgName = inName;
 
-    MultiPathFile::addPath (inName);
+    MultiPathFile::addPath (inName, true); // main path is set as last path
     int cd = open (".", O_RDONLY);
     int i = lastIndexOf (inName, '/');
     if (i >= 0) {

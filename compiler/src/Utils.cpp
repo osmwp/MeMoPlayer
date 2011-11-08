@@ -56,7 +56,7 @@ public:
 };
 
 
-bool MultiPathFile::addPath (char * path) {
+bool MultiPathFile::addPath (char * path, bool atEnd) {
     //fprintf (myStderr, ">>> MultiPathFile::addPath: adding from %s\n", path);
     int i = lastIndexOf (path, '/');
     if (i >= 0) {
@@ -65,10 +65,19 @@ bool MultiPathFile::addPath (char * path) {
         chdir (path);
         path [i] = '/';
         char * tmp = (char *)malloc (4096);
-        s_path = new Link (getcwd (tmp, 4096), s_path);
+        char * cwd = getcwd (tmp, 4096);
         //fprintf (myStderr, ">>> MultiPathFile::addPath: adding  %s\n", tmp);
         fchdir (cd);
         close(cd);
+        if (atEnd && s_path != NULL) {
+            Link * last = s_path;
+            while (last->next != NULL) {
+                last = last->next;
+            }
+            last->next = new Link (cwd, NULL);
+        } else {
+            s_path = new Link (cwd, s_path);
+        }
         return true;
     }
     return false;

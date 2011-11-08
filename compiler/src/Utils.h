@@ -30,7 +30,7 @@ class Link;
 class MultiPathFile {
     static Link * s_path;
 public:
-    static bool addPath (char * path);
+    static bool addPath (char * path, bool atEnd = false);
     static void addMultiplePaths (char * paths);
     static void removeLastPath ();
     static void removePath (char * path);
