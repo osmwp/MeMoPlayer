@@ -188,6 +188,8 @@ int main (int argc, char * argv []) {
             return (0);
         } else if (strcmp (argv[start], "--compat") == 0) {
             ByteCode::s_compat = true;
+        } else if (strcmp (argv[start], "--ignore-new-paths") == 0) {
+            MultiPathFile::s_follow = false;
         } else {
             file = argv [start];
         }

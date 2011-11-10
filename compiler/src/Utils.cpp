@@ -55,8 +55,10 @@ public:
     }
 };
 
+bool MultiPathFile::s_follow = true; // follow paths by default
 
 bool MultiPathFile::addPath (char * path, bool atEnd) {
+    if (!s_follow) return false;
     //fprintf (myStderr, ">>> MultiPathFile::addPath: adding from %s\n", path);
     int i = lastIndexOf (path, '/');
     if (i >= 0) {
@@ -109,6 +111,7 @@ void MultiPathFile::addMultiplePaths (char * paths) {
 }
 
 void MultiPathFile::removeLastPath () {
+    if (!s_follow) return;
     if (s_path != NULL) {
         //fprintf (myStderr, ">>> MultiPathFile::removeLastPath: removing %s\n", s_path->value);
         Link * l = s_path;
@@ -121,6 +124,7 @@ void MultiPathFile::removeLastPath () {
  * Removes a path added by addPath()
  */
 void MultiPathFile::removePath (char * path) {
+    if (!s_follow) return;
     int i = lastIndexOf (path, '/');
     if (i >= 0 && s_path != NULL) {
         path [i] = '\0';
