@@ -189,7 +189,7 @@ public class FontStyle extends Node {
                 if ( (m_externFont = ExternFont.open (c.decoder, str, tmpSize)) != null) {
                     break;
                 } else {
-                    family = Font.FACE_MONOSPACE;
+                    family = Font.FACE_SYSTEM;
                 }
             }
         }
