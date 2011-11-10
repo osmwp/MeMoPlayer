@@ -30,6 +30,8 @@ class Link;
 class MultiPathFile {
     static Link * s_path;
 public:
+    static bool s_follow; // disable addPath / removePath feature (command line option)
+
     static bool addPath (char * path, bool atEnd = false);
     static void addMultiplePaths (char * paths);
     static void removeLastPath ();
