@@ -341,17 +341,24 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
     public void close () { }
 
     // Called only by closeAll() on application exit. 
-    private synchronized void finalClose() {
+    private void finalClose() {
         m_asyncQueue = null;
         if (!m_quit && m_thread != null) {
             m_quit = true;
+            // force thread to terminate
             synchronized (m_thread) {
                 m_thread.interrupt();
             }
+            // now wait end of thread
+            try {
+                m_thread.join();
+            } catch (InterruptedException e) {
+                Logger.println("RMSCache2.finalClose: interrupted when waiting ...");
+            }
         }
     }
+
     private void finalCloseAsync() {
-        Logger.println("RMSCache: final close: "+m_storeName);
         if (m_modified) {
             saveEntries ();
         }
