@@ -42,7 +42,6 @@ class FunctionBank {
         m_maxRegPerFunc = data[offset++] & 0xFF;;
         // Decode string table
         size = data[offset++] & 0xFF;
-        System.out.println("string table size: "+size);
         String[] stringTable = size > 0 ? new String [size] : null;
         for (int i=0; i<size; i++) {
             offset = Decoder.bytesToUtf8 (data, offset, sb);
