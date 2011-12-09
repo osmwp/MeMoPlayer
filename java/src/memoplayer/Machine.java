@@ -39,9 +39,10 @@ class FunctionBank {
         StringBuffer sb = new StringBuffer();
         int offset = 0, size;
         // Decoder max register per functions
-        m_maxRegPerFunc = data[offset++];
+        m_maxRegPerFunc = data[offset++] & 0xFF;;
         // Decode string table
-        size = data[offset++];
+        size = data[offset++] & 0xFF;
+        System.out.println("string table size: "+size);
         String[] stringTable = size > 0 ? new String [size] : null;
         for (int i=0; i<size; i++) {
             offset = Decoder.bytesToUtf8 (data, offset, sb);
@@ -49,7 +50,7 @@ class FunctionBank {
         }
         m_stringTable = stringTable;
         // Decode int table
-        size = data[offset++];
+        size = data[offset++] & 0xFF;;
         int[] intTable = size > 0 ? new int [size] : null;
         for (int i=0; i<size; i++) {
             intTable[i] = Decoder.bytesToInt32  (data, offset);
@@ -57,12 +58,12 @@ class FunctionBank {
         }
         m_intTable = intTable;
         // Decode functions
-        size = data[offset++];
+        size = data[offset++] & 0xFF;;
         int maxIndex = 0;
         Function[] functions = new Function [255];
         for (int i=0; i<size; i++) {
             // Read function index
-            int index = data[offset++] - 1;
+            int index = (data[offset++] & 0xFF) - 1;
             if (index > maxIndex) maxIndex = index;
             // Get size and offset of the function code
             int codeSize = Decoder.bytesToInt32 (data, offset); // code size
