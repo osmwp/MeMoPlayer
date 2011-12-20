@@ -258,8 +258,9 @@ class ExternCall {
             MediaObject.printCapabilities ();
 //#endif
             return;
-        //case 25: // UNUSED (DEPRECATED wakeup call)
-        //    return;
+        case 25: // getSizeAvailable
+            registers[r].setInt(CacheManager.getCurrentManager().getSizeAvailable());
+            return;
         case 26: //transformImage (String in, String out, int width, int height, boolean rotate)
 //#ifdef jsr.amms            
             try {

@@ -43,6 +43,7 @@
 #  int getFreeMemory () - Returns the avaiable memory.
 #  int getTotalMemory () - Returns the total memory. This value can changed dynamicaly on some phones. 
 #                         The garbage collector each time this function is called. Use carefully.
+#  int getSizeAvailable () - Return the available size in the persistent cache.
 #  boolean forceBacklight(boolean force) - Force the backlight on when force is true. Returns true if forcing backlight on is supported.
 #  void deleteStore (String storename) - Delete all records of a given store.
 #  void setStore (String storename) - Use another place to store the records of setRecord/getRecord.
@@ -69,7 +70,7 @@ Browser {
     cleanRMS
     displayTextBox displayAlert
     getVersion
-    vibrate logCapability wakeUp 
+    vibrate logCapability getSizeAvailable
     transformImage sendMessage
     getProperty
     setTimeout
