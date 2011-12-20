@@ -28,6 +28,7 @@ import javax.microedition.lcdui.Image;
 class GlyphInfo {
     int id, x, y, w, h, l, o;
     int color;
+    Image cache; // only used when BitmapFont.useImageGlyphs == true
     
     GlyphInfo (DataInputStream is) {
         id = Decoder.readUnsignedByte (is)*256 + Decoder.readUnsignedByte (is);
@@ -142,6 +143,15 @@ public abstract class ExternFont {
 }
 
 class BitmapFont extends ExternFont {
+    // Render glyphs as images for phones that do not support blending on drawRGB
+    // as some phones still support blending with drawImage (like Nokia C3300).
+    // Overriding autodetection can be done using the "MeMo-BitmapFont: image" property
+    static final boolean useImageGlyphs;
+    static {
+        String s = MiniPlayer.getJadProperty("MeMo-BitmapFont");
+        useImageGlyphs = s.equals("") ? MiniPlayer.getAlphaLevels() <= 2 : s.equalsIgnoreCase("image") ;
+    }
+
     int m_nbGlyphs, m_maxBaseline, m_maxHeight;
     GlyphInfo [] m_glyphs; // the array of glyphs
     int [] m_image; // the font pixels stored as an image data
@@ -225,6 +235,19 @@ class BitmapFont extends ExternFont {
         m_color = color & 0xFFFFFF;
     }
     
+    void updateImageCache (GlyphInfo g) {
+        int[] cache = new int[g.w * m_maxHeight];
+        int k = 0, base = g.x + g.y*m_width;
+        for (int j = m_maxHeight; j > 0; j--) {
+            int pm = base+g.w;
+            for (int p = base; p < pm; p++, k++) {
+                cache[k] = (m_image[p] & 0xFF000000) | m_color;
+            }
+            base += m_width;
+        }
+        g.cache = Image.createRGBImage (cache, g.w, m_maxHeight, true);
+    }
+
     void updatePixels (GlyphInfo g) {
         int base = g.x + g.y*m_width;
         for (int j = m_maxHeight; j > 0; j--) {
@@ -243,13 +266,21 @@ class BitmapFont extends ExternFont {
             GlyphInfo glyph = getGlyph (text.charAt (i));
             if (glyph != null) {
                 if (glyph.w > 0) {
-                    // check the color
-                    if (glyph.color != m_color) {
-                        glyph.color = m_color;
-                        updatePixels (glyph);
+                    if (useImageGlyphs) {
+                        if (glyph.color != m_color || glyph.cache == null) {
+                            glyph.color = m_color;
+                            updateImageCache (glyph);
+                        }
+                        g.drawImage (glyph.cache, x, y, 0);
+                    } else {
+                        // check the color
+                        if (glyph.color != m_color) {
+                            glyph.color = m_color;
+                            updatePixels (glyph);
+                        }
+                        // draw the char
+                        ImageContext.blit (g, m_image, glyph.x + glyph.y*m_width, m_width, x + glyph.l, y, glyph.w, m_maxHeight, true);
                     }
-                    // draw the char
-                    ImageContext.blit (g, m_image, glyph.x + glyph.y*m_width, m_width, x + glyph.l, y, glyph.w, m_maxHeight, true);
                 }
                 x += glyph.o;
             }

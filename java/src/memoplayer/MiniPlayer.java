@@ -123,6 +123,16 @@ public class MiniPlayer extends UiApplication {
         self = null;
     }
 
+    static int getAlphaLevels () {
+//#ifndef BlackBerry
+        //Logger.println ("MiniPlayer.vibrate: "+ms);
+        if (s_display != null) {
+            return s_display.numAlphaLevels ();
+        }
+//#endif
+        return 256;
+    }
+
     static void vibrate (int ms) {
 //#ifndef BlackBerry
         //Logger.println ("MiniPlayer.vibrate: "+ms);
