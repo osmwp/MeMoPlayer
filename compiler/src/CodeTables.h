@@ -4,8 +4,11 @@
 // Tables to keep Strings and Number unique for each Script
 // Totaly brainless implementation...
 
-#define MAX_STRING 256
-#define MAX_INTS 256
+
+// MeMo player release from 1.5.0 to 1.5.2 (included) had a bug that prevents
+// decoding of tables above 128 ! Limit compiler to 128 for now but should be 256 !
+#define MAX_STRING 128
+#define MAX_INTS 128
 
 class StringTable {
     char *m_entries[MAX_STRING];
