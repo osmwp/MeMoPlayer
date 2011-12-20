@@ -23,7 +23,7 @@ import javax.microedition.rms.RecordEnumeration;
 import javax.microedition.rms.RecordStore;
 
 public class Logger {
-    public final static String s_version = "1.5.2";
+    public final static String s_version = "1.5.3";
 //#ifdef debug.console
     private final static int MAX_MESSAGES = 100;
     private final static int MENU_MAIN = 0;
