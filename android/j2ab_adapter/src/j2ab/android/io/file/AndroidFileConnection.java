@@ -34,6 +34,9 @@ import java.util.regex.Pattern;
 
 import javax.microedition.io.file.FileConnection;
 
+import android.os.Environment;
+import android.os.StatFs;
+
 public class AndroidFileConnection implements FileConnection {
 
     private static final String SPECIAL_CHARACTERS = "*.^?[]\\";
@@ -68,8 +71,9 @@ public class AndroidFileConnection implements FileConnection {
     }
 
     public long availableSize () {
-        // this isn't available
-        return -1;
+        StatFs statFs = new StatFs(Environment.getRootDirectory().getAbsolutePath());
+        long blockSize = statFs.getBlockSize();
+        return statFs.getAvailableBlocks()*blockSize;
     }
 
     public boolean canRead () {

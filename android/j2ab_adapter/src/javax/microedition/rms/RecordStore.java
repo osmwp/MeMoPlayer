@@ -25,6 +25,8 @@ import java.util.Hashtable;
 
 import javax.microedition.midlet.MIDlet;
 
+import android.os.Environment;
+import android.os.StatFs;
 import android.util.Log;
 
 public class RecordStore {
@@ -184,8 +186,9 @@ public class RecordStore {
     }
 
     public int getSizeAvailable () throws RecordStoreNotOpenException {
-        // guess what, this isn't available!!
-        return DEFAULT_MAX_RECORDSTORE_SIZE - this.getSize ();
+        StatFs statFs = new StatFs(Environment.getRootDirectory().getAbsolutePath());
+        long blockSize = statFs.getBlockSize();
+        return (int) (statFs.getAvailableBlocks()*blockSize);
     }
 
     public void closeRecordStore () throws RecordStoreException {
