@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
 import java.util.regex.Pattern;
@@ -158,7 +159,7 @@ public class AndroidFileConnection implements FileConnection {
 
     public Enumeration list (String filter, boolean includeHidden)
             throws IOException {
-        Pattern pattern;
+        FilenameFilter filefilter = null;
         if (filter != null) {
             String[] literalParts = filter.split ("\\*");
             StringBuffer sb = new StringBuffer (filter.length ());
@@ -170,22 +171,25 @@ public class AndroidFileConnection implements FileConnection {
                 }
                 sb.append (literalPart);
             }
-            pattern = Pattern.compile (sb.toString ());
-        } else {
-            pattern = Pattern.compile (".*");
+            final Pattern pattern = Pattern.compile (sb.toString ());
+            filefilter = new FilenameFilter () {
+                public boolean accept (File dir, String name) {
+                    return pattern.matcher (name).matches ();
+                }
+            };
         }
-        final Pattern filterPattern = pattern;
-        String[] a = this.file.list (new FilenameFilter () {
-
-        
-            public boolean accept (File dir, String name) {
-                return filterPattern.matcher (name).matches ();
+        List<String> list = new LinkedList<String>();
+        File[] files = file.listFiles(filefilter);
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    list.add(f.getName()+"/");
+                } else {
+                    list.add(f.getName());
+                }
             }
-
-        });
-        List<String> list = Arrays.asList (a);
-        Vector<String> v = new Vector<String> (list);
-        return v.elements ();
+        }
+        return new Vector<String>(list).elements();
     }
 
     public void mkdir () throws IOException {
