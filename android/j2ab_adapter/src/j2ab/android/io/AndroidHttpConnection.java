@@ -44,6 +44,11 @@ public class AndroidHttpConnection extends AndroidURLConnection implements HttpC
         super (connection);
         this.connection = (HttpURLConnection)connection;
         this.connection.setInstanceFollowRedirects (false);
+        // Disable Gzip compression for newer Android implementation
+        // When Gzip compression is enabled, content-length is not the size of the content
+        // - MeMo non compressed contents are quite small (XML/BML)
+        // - Prevents use of a progress bar for download progress
+        this.connection.setRequestProperty("Accept-Encoding", "identity");
     }
 
     public long getDate () {
