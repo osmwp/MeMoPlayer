@@ -211,6 +211,10 @@ public class RecordStore {
         }
     }
 
+    public RecordEnumeration enumerateRecords (RecordFilter filter, RecordComparator comparator, boolean keepUpdated) throws RecordStoreException {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
     /*public RecordEnumeration enumerateRecords (RecordFilter filter, RecordComparator comparator, boolean keepUpdated) throws RecordStoreException {
         String[] filenames = filter (filter);
         String[] orderedFilenames = order (comparator, filenames);
