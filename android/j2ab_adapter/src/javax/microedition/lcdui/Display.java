@@ -148,6 +148,9 @@ public class Display {
         return false;
     }
 
+    public int numAlphaLevels() {
+        return 8;
+    }
     
     public void callSerialy (Runnable r) {
         midlet.post (r);
