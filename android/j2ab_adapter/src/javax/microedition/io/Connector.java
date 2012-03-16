@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import javax.wireless.messaging.MessageConnection;
+
 import android.util.Log;
 
 public class Connector {
@@ -36,6 +38,7 @@ public class Connector {
     private static final String PROTOCOL_FILE = "file:";
     private static final String PROTOCOL_HTTP = "http:";
     private static final String PROTOCOL_HTTPS = "https:";
+    private static final String PROTOCOL_SMS = "sms:";
 
     public static final Connection open (String name) throws IOException {
         return open (name, READ_WRITE);
@@ -47,6 +50,8 @@ public class Connector {
             connection = new AndroidFileConnection (name);
         } else if (name.startsWith (PROTOCOL_HTTP) || name.startsWith (PROTOCOL_HTTPS)) {
             connection = new AndroidHttpConnection (name);
+        } else if (name.startsWith(PROTOCOL_SMS)) {
+            connection = new MessageConnection(name);
         } else {
             Log.e ("Connector", "Sorry, unsuported scheme for: "+name);
             connection = new AndroidURLConnection (name);

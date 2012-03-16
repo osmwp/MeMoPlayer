@@ -52,7 +52,7 @@ public class AndroidURLConnection implements StreamConnection, OutputConnection,
     }
 
     public InputStream openInputStream () throws IOException {
-        return connection.getInputStream ();
+        return connection.getInputStream();
     }
 
     public void close () throws IOException {
