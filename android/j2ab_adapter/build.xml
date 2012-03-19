@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="MeMoAndro" default="Build">
+    <property file="local.properties" />
+    <loadproperties srcFile="project.properties" />
+    <fail message="sdk.dir is missing. Make sure to generate local.properties using 'android update project' or to inject it through an env var" unless="sdk.dir" />
+    <!-- version-tag: 1 -->
+    <import file="${sdk.dir}/tools/ant/build.xml" />
+    <target name="-post-compile" />
+
+    <!-- Base of the Java version of MeMo -->
+    <property name="java.path" location="../../java"/>
+
+    <target name="Build" description="Package the MeMo classes for MemoSDK">
+        <!-- Define some default / fake values -->
+        <property name="profile" value="ulow-debug"/>
+        <property name="wtk.home" location="."/>
+        <echo message="Building MeMo for Android profile: ${profile}"/>
+        <!-- Load Antenna tools for preprocessing -->
+        <taskdef resource="antenna.properties">
+            <classpath>
+                <fileset dir="${java.path}/ant/lib" includes="*.jar" />
+            </classpath>
+        </taskdef>
+        <!-- Load profile properties for preprocessing  -->
+        <loadproperties srcFile="${java.path}/ant/profiles/Android-${profile}.properties" />
+        <!-- Preprocess MeMo sources for Android compilation to /src dir -->
+        <mkdir dir="${java.path}/psrc"/>
+        <wtkpreprocess srcdir="${java.path}/src" destdir="src" printsymbols="false" symbols="${preprocessor.symbols}" device="" verbose="false" filter="true"/>
+        <!-- Compile and generate the classes.dex file -->
+        <ant target="-dex"/>
+        <move file="${intermediate.dex.file}" tofile="MemoPlayer-${profile}.dex"/>
+    </target>
+</project>
