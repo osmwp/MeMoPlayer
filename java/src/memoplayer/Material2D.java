@@ -23,7 +23,7 @@ public class Material2D extends Node {
     Material2D () {
         super (3);
         //System.out.println ("Material2D created");
-        m_field[0] = new SFColor (1, 1, 1, this); // emissiveColor
+        m_field[0] = new SFColor (0, 0, 0, this); // emissiveColor
         m_field[1] = new SFFloat (0, this);       // transparency
         m_field[2] = new SFBool (true, this);     // filled
     }
