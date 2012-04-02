@@ -238,12 +238,25 @@ class BitmapFont extends ExternFont {
     void updateImageCache (GlyphInfo g) {
         int[] cache = new int[g.w * m_maxHeight];
         int k = 0, base = g.x + g.y*m_width;
-        for (int j = m_maxHeight; j > 0; j--) {
-            int pm = base+g.w;
-            for (int p = base; p < pm; p++, k++) {
-                cache[k] = (m_image[p] & 0xFF000000) | m_color;
+        if (g.color != m_color) {
+            g.color = m_color;
+            for (int j = m_maxHeight; j > 0; j--) {
+                int pm = base+g.w;
+                for (int p = base; p < pm; p++, k++) {
+                    cache[k] = (m_image[p] & 0xFF000000) | m_color;
+                }
+                base += m_width;
             }
-            base += m_width;
+        } else { // just copy
+            for (int j = m_maxHeight; j > 0; j--) {
+                int pm = base+g.w;
+                //System.arraycopy(m_image, base, cache, k, g.w);
+                //k += g.w;
+                for (int p = base; p < pm; p++, k++) {
+                    cache[k] = m_image[p];
+                }
+                base += m_width;
+            }
         }
         g.cache = Image.createRGBImage (cache, g.w, m_maxHeight, true);
     }
@@ -268,7 +281,6 @@ class BitmapFont extends ExternFont {
                 if (glyph.w > 0) {
                     if (useImageGlyphs) {
                         if (glyph.color != m_color || glyph.cache == null) {
-                            glyph.color = m_color;
                             updateImageCache (glyph);
                         }
                         g.drawImage (glyph.cache, x, y, 0);
