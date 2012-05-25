@@ -19,6 +19,7 @@ package memoplayer;
 
 import javax.microedition.rms.RecordStore;
 import javax.microedition.rms.RecordStoreException;
+import java.lang.Thread;
 
 /**
  * This implementation is speed oriented but it requires the RMS
@@ -114,7 +115,9 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
 
     private ObjLink m_asyncQueue;
     private boolean m_quit;
-    private java.lang.Thread m_thread;
+    private Thread m_thread;
+    private Object m_flushLock = new Object();
+    private boolean m_immmediateFlush;
 
     private RMSCacheManager2 (String name, RMSCacheManager2 next) {
         super (name);
@@ -470,7 +473,24 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
         return result;
     }
 
-    private synchronized void flush () {
+    // Wait until all pending operations are done
+    public void flushRecords() {
+        Thread thread = m_thread;
+        if (m_asyncQueue != null && thread != null) {
+            synchronized (m_flushLock) {
+                m_immmediateFlush = true;
+                synchronized (thread) {
+                    thread.interrupt();
+                }
+                try {
+                    m_flushLock.wait();
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+    }
+
+    private synchronized void flushAsync () {
         if (m_recordStore != null) {
             finalCloseAsync();
             open();
@@ -523,7 +543,7 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
                         Thread.sleep (needFlush ? MAX_FLUSH_DELAY : MAX_LIFE_DELAY);
                         if (needFlush) { // wait completed after MAX_FLUSH_DELAY
                             needFlush = false;
-                            flush();
+                            flushAsync();
                         } else { // end of thread life
                             return; // RMS will be closed by the finally statement below
                         }
@@ -532,6 +552,17 @@ class RMSCacheManager2 extends CacheManager implements Runnable {
                     }
                 }
                 while (doAsyncOp()) needFlush = true;
+                // When interrupted for flush handle it immediately
+                synchronized (m_flushLock) {
+                   if (m_immmediateFlush) {
+                       if (needFlush) {
+                           flushAsync();
+                           needFlush = false;
+                       }
+                       m_immmediateFlush = false;
+                       m_flushLock.notifyAll();
+                   }
+                }
             }
         } catch (Throwable t) {
             Logger.println ("RMSCache: "+m_storeName+": Thread died: "+t);

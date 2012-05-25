@@ -48,6 +48,7 @@
 #  void deleteStore (String storename) - Delete all records of a given store.
 #  void setStore (String storename) - Use another place to store the records of setRecord/getRecord.
 #  boolean hasRecord (String record) - Return true if record exists.
+#  void flushRecords () - Flush records still in memory to persistent memory
 #
 # Widget SDK:
 #  In a widget context, some of these methods are not available for security constraints:
@@ -80,7 +81,7 @@ Browser {
     getFreeMemory getTotalMemory
     forceBacklight
     deleteStore setStore
-    hasRecord
+    hasRecord flushRecords
 }
 
 

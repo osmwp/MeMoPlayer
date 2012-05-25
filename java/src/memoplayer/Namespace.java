@@ -72,23 +72,18 @@ class Namespace extends Group {
         ObjLink ol = s_list, prev = null;
         while (ol != null) {
             if (ol.m_object == name) {
-                Object o;
-//#ifdef MM.weakreference
-                o = ((WeakReference)ol.m_param).get();
-                if (o == null) { // ref was GCed, remove ObjLink
+                CacheManager c = getCacheManager(ol);
+                if (c == null) { // ref was GCed, remove ObjLink
                     if (prev != null) {
                         prev.m_next = ol.m_next;
-                    } else { // ol == first element
+                    } else {
                         s_list = null;
                     }
                     ObjLink.release(ol);
                     break;
                 }
-//#else
-                o = ol.m_param;
-//#endif
                 //Logger.println("Namespace: "+name+": reusing from cache");
-                return (CacheManager)o;
+                return c;
             }
             prev = ol;
             ol = ol.m_next;
@@ -102,15 +97,35 @@ class Namespace extends Group {
         //Logger.println("Namespace: "+name+": new CM cached");
         return mgr;
      }
-     
+
      public static synchronized void clean () {
          ObjLink.releaseAll(s_list);
      }
-     
+
+     /** Flush records for each active CacheManager */
+     public static void flushAll() {
+         ObjLink ol = s_list;
+         while (ol !=null) {
+             CacheManager c = getCacheManager(ol);
+             if (c != null) {
+                 c.flushRecords();
+             }
+             ol = ol.m_next;
+         }
+     }
+
      public static void throwException (String code) {
          if (s_current != null) {
              s_current.exception(code);
          }
+     }
+
+     private static synchronized CacheManager getCacheManager(ObjLink o) {
+//#ifdef MM.weakreference
+         return (CacheManager) ((WeakReference)o.m_param).get();
+//#else
+//@      return (CacheManager) o.m_param;
+//#endif
      }
     
     // Note: always use intern version of String for "m_name"

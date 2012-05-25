@@ -204,6 +204,21 @@ abstract class CacheManager {
       }        
     }
 
+    /**
+     * From the master namespace, will flush CacheManager of all Namespaces.
+     * From another namespace, will just flush the current CacheManager
+     */
+    public static void flush() {
+//#ifdef MM.namespace
+        if ("".equals(Namespace.getName ())) {
+            Namespace.flushAll();
+            getMasterManager().flushRecords();
+            return;
+        }
+//#endif
+        getCurrentManager().flushRecords();
+    }
+
     protected static int computeHashNumber (byte [] data) {
         if (data == null || data.length == 0)  {
             return 0;
@@ -306,4 +321,8 @@ abstract class CacheManager {
         return getDataString(getByteRecord (s));
     }
 
+    /** Default flush does nothing */
+    void flushRecords () {
+        Logger.println("CacheManaher.flushRecords: nothing");
+    }
 }

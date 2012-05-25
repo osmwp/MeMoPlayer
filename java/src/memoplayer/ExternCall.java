@@ -392,6 +392,26 @@ class ExternCall {
         case 39: // hasRecord (String name)
             registers[r].setBool (CacheManager.getManager().hasRecord (registers[r].getString()));
             return;
+        case 40: // flushRecords([completionCb, [cbParams, ...]])
+            if (nbParams > 0) { // asynchronous call
+                final int cb = registers[r].getInt();
+                final Script script = c.script;
+                final Register[] params = new Register[nbParams-1];
+                for (int i=0; i<nbParams-1; i++) {
+                    (params[i] = new Register()).set (registers[r+i+1]);
+                }
+                script.releaseMachineOnInit = false; // prevent release of Machine on Script start
+                new Thread() {
+                    public void run() {
+                        CacheManager.flush();
+                        script.addCallback (cb, params);
+                        MiniPlayer.wakeUpCanvas();
+                    };
+                }.start();
+            } else {
+                CacheManager.flush();
+            }
+            return;
         default:
             System.err.println ("doBrowser(m:"+m+")Static call: Invalid method");
             return;

@@ -21,6 +21,8 @@ import javax.microedition.rms.InvalidRecordIDException;
 import javax.microedition.rms.RecordStore;
 import javax.microedition.rms.RecordStoreException;
 
+import java.lang.Thread;
+
 /**
  * All the entries (keys and data) are cached in memory.
  * A background thread will dump modifications (add, modify delete)
@@ -121,7 +123,9 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
 
     private ObjLink queue;
     private boolean m_quit;
-    private java.lang.Thread m_thread;
+    private Thread m_thread; // worker thread in charge of async operations
+    private Object m_flushLock = new Object();
+    private boolean m_immediateFlush;
 
     private RMSCacheManager3 (String name, RMSCacheManager3 next) {
         super (name);
@@ -364,6 +368,24 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         return m_availableSize;
     }
 
+    /** This call will block until all pending operations are done */
+    public void flushRecords() {
+        //Logger.println("RMS3: flushRecords for "+m_storeName);
+        Thread thread = m_thread;
+        if (queue != null && thread != null) {
+            try {
+                synchronized (m_flushLock) {
+                    m_immediateFlush = true;
+                    synchronized (thread) {
+                        thread.interrupt();
+                    }
+                    m_flushLock.wait();
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
     private synchronized void addAsyncOperation (String key, Entry e) {
         if (queue == null) {
             queue = ObjLink.create (key, e, null);
@@ -488,13 +510,23 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                             pack();
                             //Logger.println("RMS3: Packed in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
                         }
-                        if (System.currentTimeMillis() - m_lastAccess > 10000) {
+                        // Never unload entries for Master manager
+                        if (CacheManager.getMasterManager() != this &&
+                                System.currentTimeMillis() - m_lastAccess > 10000) {
                             unloadEntries();
                             //Logger.println("RMS3: Free memory cache for "+m_storeName);
                             break; // exit loop
                         }
                     }
                 } catch (InterruptedException e) {
+                    // When interrupted for flush handle it immediately
+                    synchronized (m_flushLock) {
+                        if (m_immediateFlush) {
+                            executeAsyncOperations();
+                            m_immediateFlush = false;
+                            m_flushLock.notifyAll();
+                        }
+                    }
                 }
             }
             executeAsyncOperations();
