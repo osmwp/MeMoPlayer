@@ -144,7 +144,11 @@ abstract class CacheManager {
         if (s.equals ("")) {
             s_mgr = getMasterManager();
         } else {
+//#ifdef MM.namespace
+            s_mgr = Namespace.getCacheManager(s);
+//#else
             s_mgr = createManager (s);
+//#endif
         }
     }
 
