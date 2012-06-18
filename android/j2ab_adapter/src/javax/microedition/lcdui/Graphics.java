@@ -186,6 +186,7 @@ public class Graphics {
     public void drawRect (int x, int y, int width, int height) {
         tmpPaint.set(paint);
         tmpPaint.setStyle (Style.STROKE);
+        tmpPaint.setAntiAlias(false);
         canvas.drawRect (x, y, x + width, y + height, tmpPaint);
     }
 
