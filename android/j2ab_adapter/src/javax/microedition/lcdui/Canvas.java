@@ -173,8 +173,8 @@ public abstract class Canvas extends Displayable {
         int y2 = y + h;
         if (x < 0) x = 0;
         if (y < 0) y = 0;
-        if (x2 > W) x2 = W-1;
-        if (y2 > H) y2 = H-1;
+        if (x2 > W) x2 = W;
+        if (y2 > H) y2 = H;
         if (canvasBackend != null && x2 > x && y2 > y) {
             canvasBackend.repaint (x, y, x2, y2);
         }
