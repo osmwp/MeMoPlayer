@@ -164,19 +164,19 @@ public abstract class Canvas extends Displayable {
         }
         return 0;
     }
-    
+
     public void repaint (int x, int y, int w, int h) {
-    	// Out of bound values cause Android to ignore 
-    	// postInvalidate which locks serviceRepaints !
-    	int W = getWidth (), H = getHeight ();
-    	if (x < 0) x=0;	
-    	if (y < 0) y=0;
-    	w += x;
-    	h += y;
-    	if (w > W) w = W;
-    	if (h > H) h = H;
-        if (canvasBackend != null) {
-            canvasBackend.repaint (x, y, w, h);
+        // Out of bound values cause Android to ignore
+        // postInvalidate which locks serviceRepaints !
+        int W = getWidth (), H = getHeight ();
+        int x2 = x + w;
+        int y2 = y + h;
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x2 > W) x2 = W-1;
+        if (y2 > H) y2 = H-1;
+        if (canvasBackend != null && x2 > x && y2 > y) {
+            canvasBackend.repaint (x, y, x2, y2);
         }
     }
 
@@ -333,9 +333,9 @@ public abstract class Canvas extends Displayable {
             postInvalidate ();
         }
 
-        public void repaint (int x, int y, int w, int h) {
+        public void repaint (int x, int y, int x2, int y2) {
             needsRepaint = true;
-            postInvalidate (x, y, w, h);
+            postInvalidate (x, y, x2, y2);
         }
 
         public void serviceRepaints () {
