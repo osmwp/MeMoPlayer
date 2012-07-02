@@ -124,8 +124,8 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
     private ObjLink queue;
     private boolean m_quit;
     private Thread m_thread; // worker thread in charge of async operations
+    private Object m_threadLock = new Object();
     private Object m_flushLock = new Object();
-    private boolean m_immediateFlush;
 
     private RMSCacheManager3 (String name, RMSCacheManager3 next) {
         super (name);
@@ -289,8 +289,8 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         java.lang.Thread t = m_thread;
         if (!m_quit && t != null && t.isAlive()) {
             m_quit = true;
-            synchronized (t) {
-                t.interrupt();
+            synchronized (m_threadLock) {
+                m_threadLock.notify();
             }
             try {
                 t.join();
@@ -368,24 +368,6 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         return m_availableSize;
     }
 
-    /** This call will block until all pending operations are done */
-    public void flushRecords() {
-        //Logger.println("RMS3: flushRecords for "+m_storeName);
-        Thread thread = m_thread;
-        if (queue != null && thread != null) {
-            try {
-                synchronized (m_flushLock) {
-                    m_immediateFlush = true;
-                    synchronized (thread) {
-                        thread.interrupt();
-                    }
-                    m_flushLock.wait();
-                }
-            } catch (InterruptedException e) {
-            }
-        }
-    }
-
     private synchronized void addAsyncOperation (String key, Entry e) {
         if (queue == null) {
             queue = ObjLink.create (key, e, null);
@@ -413,57 +395,61 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                 return;
             }
         }
-        synchronized (m_thread) {
-            m_thread.interrupt();
+        synchronized (m_threadLock) {
+            m_threadLock.notify();
         }
     }
 
-    private void executeAsyncOperations() {
-        ObjLink pendingOp;
-        synchronized(this) {
-            pendingOp = queue; // Get pending operations
-            queue = null;      // and empty the queue
-        }
-        while (pendingOp != null) {
-            if (pendingOp.m_object.equals(ERASE_ALL)) {
-                closeStore();
-                try {
-                    RecordStore.deleteRecordStore(m_storeName);
-                } catch (RecordStoreException e) {
-                    Logger.println("RMS3: Erase error: "+e+" for "+m_storeName);
-                }
-            } else if (openStore()) {
-                final Entry e = (Entry)pendingOp.m_param;
-                byte[] data;
-                int index;
-                synchronized (this) {
-                    data = e.data;
-                    index = e.index;
-                }
-                try {
-                    if (data == null) { // delete
-                        if (index > 0) { // index could be 0 if data is deleted just after creation
-                            //Logger.println("RMS3: Delete "+e.name+" at "+index);
-                            m_recordStore.deleteRecord(index);
-                            m_recordStore.deleteRecord(index+1);
-                        }
-                    } else if (index > 0) { // set
-                        //Logger.println("RMS3: Write "+e.name+" at "+index);
-                        m_recordStore.setRecord(index+1, data, 0, data.length);
-                    } else { // add
-                        //Logger.println("RMS3: Add "+e.name);
-                        byte[] stringBuff = e.name.getBytes();
-                        index = m_recordStore.addRecord(stringBuff, 0, stringBuff.length);
-                        m_recordStore.addRecord(data, 0, data.length);
-                        e.index = index;
-                    }
-                } catch (RecordStoreException ex) {
-                    Logger.println("RMS3: write error: "+ex+" for "+e.name);
-                }
+    /** This call will block until all pending operations are done */
+    public void flushRecords() {
+        synchronized (m_flushLock) {
+            //Logger.println("RMS3: flushRecords for "+m_storeName);
+            ObjLink pendingOp;
+            synchronized(this) {
+                pendingOp = queue; // Get pending operations
+                queue = null;      // and empty the queue
             }
-            pendingOp = ObjLink.release(pendingOp);
+            while (pendingOp != null) {
+                if (pendingOp.m_object.equals(ERASE_ALL)) {
+                    closeStore();
+                    try {
+                        RecordStore.deleteRecordStore(m_storeName);
+                    } catch (RecordStoreException e) {
+                        Logger.println("RMS3: Erase error: "+e+" for "+m_storeName);
+                    }
+                } else if (openStore()) {
+                    final Entry e = (Entry)pendingOp.m_param;
+                    byte[] data;
+                    int index;
+                    synchronized (this) {
+                        data = e.data;
+                        index = e.index;
+                    }
+                    try {
+                        if (data == null) { // delete
+                            if (index > 0) { // index could be 0 if data is deleted just after creation
+                                //Logger.println("RMS3: Delete "+e.name+" at "+index);
+                                m_recordStore.deleteRecord(index);
+                                m_recordStore.deleteRecord(index+1);
+                            }
+                        } else if (index > 0) { // set
+                            //Logger.println("RMS3: Write "+e.name+" at "+index);
+                            m_recordStore.setRecord(index+1, data, 0, data.length);
+                        } else { // add
+                            //Logger.println("RMS3: Add "+e.name);
+                            byte[] stringBuff = e.name.getBytes();
+                            index = m_recordStore.addRecord(stringBuff, 0, stringBuff.length);
+                            m_recordStore.addRecord(data, 0, data.length);
+                            e.index = index;
+                        }
+                    } catch (RecordStoreException ex) {
+                        Logger.println("RMS3: write error: "+ex+" for "+e.name);
+                    }
+                }
+                pendingOp = ObjLink.release(pendingOp);
+            }
+            closeStore();
         }
-        closeStore();
     }
 
     private synchronized void pack () {
@@ -499,15 +485,22 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         try {
             while (!m_quit) {
                 try {
-                    Thread.sleep(FLUSH_DELAY);
+                    synchronized (m_threadLock) {
+                        m_threadLock.wait(FLUSH_DELAY);
+                    }
                     //long ts = System.currentTimeMillis();
-                    executeAsyncOperations();
+                    flushRecords();
                     //Logger.println("RMS3: Flush in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
                     if (queue == null) {
-                        Thread.sleep(INACTIVITY_DELAY);
+                        synchronized (m_threadLock) {
+                            m_threadLock.wait(INACTIVITY_DELAY);
+                        }
                         if (m_pack) {
+                            m_pack = false;
                             //ts = System.currentTimeMillis();
-                            pack();
+                            synchronized (m_flushLock) {
+                                pack();
+                            }
                             //Logger.println("RMS3: Packed in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
                         }
                         // Never unload entries for Master manager
@@ -519,17 +512,9 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                         }
                     }
                 } catch (InterruptedException e) {
-                    // When interrupted for flush handle it immediately
-                    synchronized (m_flushLock) {
-                        if (m_immediateFlush) {
-                            executeAsyncOperations();
-                            m_immediateFlush = false;
-                            m_flushLock.notifyAll();
-                        }
-                    }
                 }
             }
-            executeAsyncOperations();
+            flushRecords();
             //Logger.println ("RMS3: Thread ended for "+m_storeName);
         } catch (Throwable t) {
             Logger.println ("RMS3: Thread died: "+t+" for "+m_storeName);
