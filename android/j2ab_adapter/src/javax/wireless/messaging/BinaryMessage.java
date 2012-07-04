@@ -13,17 +13,14 @@ public class BinaryMessage implements Message {
         mPayloadData = data;
     }
 
-    @Override
     public String getAddress() {
         return null;
     }
 
-    @Override
     public Date getTimestamp() {
         return null;
     }
 
-    @Override
     public void setAddress(String addr) {
     }
 

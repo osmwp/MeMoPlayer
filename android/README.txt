@@ -4,7 +4,7 @@ Pré-requis
 ----------
 
 Ceci n'est pas un guide d'installation d'Eclipse, ou du SDK Android.
-Installer Eclipse, Subclipse ou Subversion (SVN pour Eclipse), le SDK Android ainsi que le plugin Android pour Eclipse.
+Installer Eclipse, Subclipse ou Subversion (SVN pour Eclipse), le SDK Android ainsi que le plugin Android pour Eclipse et le WTK.
 
 Les chemins suivant seront utilisés:
  Eclipse: ~/dev/eclipse
@@ -33,7 +33,13 @@ afin de n'avoir que des appels systèmes gérés par le portage.
 2. Modifier le fichier "profile.properties" du projet "MeMoPlayer" pour compiler le projet avec un profil adapté à Android:
     current.profile=Android
 
-3. Lancer le script And Build.xml avec la tâche "Build" pour préparer une version des sources preprocessées.
+3. Déclarer la variable Ant wtk.home
+	Sélectionner Windows => Preferences => Ant => Runtime =>Properties
+	Cliquer sur Add Property...
+	Pour Name, entrer : wtk.home
+	Pour Value, entrer le chemin ABSOLU du dossier WTK2.5.2_01 : C:\WTK2.5.2_01
+
+4. Lancer le script Ant Build.xml avec la tâche "Build" pour préparer une version des sources preprocessées.
     Sélectionner Windows => Show View => Ant pour rajouter dans la vue Ant.
     Clisser déposer le fichier "build.xml" du projet "MeMoPlayer" dans la vue Ant.
     Lancer la tâche "Build" pour forcer le preprocesseur préparer le code source.
@@ -41,7 +47,7 @@ afin de n'avoir que des appels systèmes gérés par le portage.
     Seule l'étape de preprocessing du code importe à ce stade.
     Un nouveau dossier psrc/ est créé à l'issue de cette étape avec du code compatible Android.
 
-4. Déclarer le dossier psrc/ du projet comme ressource liée:
+5. Déclarer le dossier psrc/ du projet comme ressource liée:
     Aller dans Preference => General => Workspace => Linked Resources
     Cliquer sur New
     Pour Name, entrer : MEMO_ANDROID_PSRC_PATH
@@ -62,7 +68,7 @@ Build du MeMoPlayer pour Android
 Configuration du MeMoPlayer pour Android
 ----------------------------------------
 
-Les fichiers M4M sont à mettre dans le répertoire src/ du projet "MeMoAndro".
+Les fichiers M4M sont à mettre dans le répertoire assets/ du projet "MeMoAndro".
 Les paramètres de JAD doivent être mis dans le fichier src/jad.properties.
 
 Pour booter sur une scene "toto.m4m", il suffit de renseigner la ligne suivante:
