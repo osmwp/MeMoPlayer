@@ -885,6 +885,17 @@ class ExternCall {
         sb.append(Integer.toHexString (v));
     }
     
+    static private final String HEX_DIGITS_MAJ = "0123456789abcdef";
+    static private final String HEX_DIGITS_MIN = "0123456789ABCDEF";
+    
+    static private int HEX_DIGITS_value(byte c) {
+    	int idx = HEX_DIGITS_MIN.indexOf(c);
+    	if(idx<0) {
+    		return HEX_DIGITS_MAJ.indexOf(c);
+    	}
+    	return idx;
+    }
+
     static void doString (Context c, int m, Register [] registers, int r, int nbParams) {
         String s = registers[r].getString();
         int i, j;
@@ -968,25 +979,46 @@ class ExternCall {
             return;
         case 17: //decodeUrl
         case 15: //URLdecode
-            try {
-                if (s.length() != 0) s = new String (s.getBytes(), "UTF-8"); // getBytes() on empty string throws ArrayOutOfBoundsException on Samsung F480
-                StringBuffer out = new StringBuffer(s.length());
-                int a = 0;
-                int b = 0;
-                while (a < s.length()){
-                    char ch = s.charAt(a);
-                    a++;
-                    if (ch == '+') {
-                        ch = ' ';
-                    } else if (ch == '%'){
-                        ch = (char)Integer.parseInt(s.substring(a,a+2), 16);
-                        a+=2;
+            byte[] bytes = CacheManager.getStringData(s);
+
+            if(bytes == null){
+                return;
+            }
+
+            byte[] decodeBytes   = new byte[bytes.length];
+            int decodedByteCount = 0;
+
+            try{
+                for( int count = 0; count < bytes.length; count++ ) {
+                    switch( bytes[count] ) {
+                      case '+':
+                        decodeBytes[decodedByteCount++] = (byte) ' ';
+                        break ;
+
+                      case '%':
+                        decodeBytes[decodedByteCount++] = (byte)((HEX_DIGITS_value(bytes[++count]) << 4) +
+                                                                 (HEX_DIGITS_value(bytes[++count])) );
+                        break ;
+
+                      default:
+                        decodeBytes[decodedByteCount++] = bytes[count] ;
                     }
-                    out.append(ch);
-                    b++;
                 }
-                registers[r].setString (new String(out));
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (IndexOutOfBoundsException ae) {
+            	Logger.println( "Malformed UTF-8 string?" );
+                return;
+            }
+
+            String processedPageName = null ;
+
+            if ( decodedByteCount>0 ) {
+                try { processedPageName = new String(decodeBytes, 0, decodedByteCount, "UTF-8"); } catch (Exception e) { }
+                try { processedPageName = new String(decodeBytes, 0, decodedByteCount, "utf-8"); } catch (Exception e) { }
+                try { processedPageName = new String(decodeBytes, 0, decodedByteCount, "utf8"); } catch (Exception e) { }
+            }
+
+            if(processedPageName!=null)
+            	registers[r].setString (processedPageName);
             return;
         case 16: // makeAscii (int)
             registers[r].setString (String.valueOf((char)registers[r].getInt()));
