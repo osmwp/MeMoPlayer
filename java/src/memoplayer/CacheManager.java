@@ -154,10 +154,6 @@ abstract class CacheManager {
 
     // Clean up on application exit
     public static void clean () {
-        if (s_masterMgr != null) {
-            s_masterMgr.close ();
-            s_masterMgr = null;
-        }
         // If closing midlet while still on another Manager
         if (s_mgr != s_masterMgr) {
             s_mgr.close ();
@@ -167,7 +163,6 @@ abstract class CacheManager {
         // When using namespace also clean other Managers
         Namespace.clean ();
 //#endif
-        
 //#ifdef MM.CacheUseRms2
         // RMSCacheManager2 ignores close() calls, only the closeAll() call
         // will close all RecordStores on application exit !
@@ -182,6 +177,10 @@ abstract class CacheManager {
             RMSCacheManager3.closeAll ();
         }
 //#endif
+        if (s_masterMgr != null) {
+            s_masterMgr.close ();
+            s_masterMgr = null;
+        }
     }
 
     // instantiate a manager, according to the jad preperty

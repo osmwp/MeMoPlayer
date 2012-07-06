@@ -39,7 +39,7 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
     private final static int FLUSH_DELAY = 3000;
 
     // Delay to wait before freeing the in memory cache.
-    private final static int INACTIVITY_DELAY = 7000;
+    private final static int INACTIVITY_DELAY = 10000;
 
     private final static String ERASE_ALL = "__ERASE_ALL_RECORDS";
 
@@ -117,7 +117,6 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
 
     private RecordStore m_recordStore;
     private int m_availableSize;
-    private boolean m_pack;
 
     private RMSCacheManager3 m_next;
 
@@ -168,9 +167,15 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                     recordId += 2;
                 }
                 sortEntries();
-                if (deleted > m_nbEntries / 4) {
+                if (deleted > m_nbEntries * 3 / 4) {
                     Logger.println("RMS3: Packing needed for "+m_storeName);
-                    m_pack = true;
+                    // Add all entries to queue after ERASE_ALL operation
+                    addAsyncOperation(ERASE_ALL, null);
+                    for (int i = 0; i<m_nbEntries; i++) {
+                        final Entry e = m_entries[i];
+                        e.index = 0; // force add operation
+                        addAsyncOperation(e.name, e);
+                    }
                 }
                 m_tableLoaded = true;
                 closeStore();
@@ -231,7 +236,7 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         e.index = index;
         e.data = data;
         if (m_nbEntries >= m_entries.length) { // expand the array
-            Entry [] tmp = new Entry [m_entries.length+INITIAL_CAPACITY];
+            Entry [] tmp = new Entry [m_entries.length*2];
             System.arraycopy (m_entries, 0, tmp, 0, m_nbEntries);
             m_entries = tmp;
         }
@@ -310,7 +315,6 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
             }
             m_nbEntries = 0;
         }
-        m_pack = false; // no need to pack after erase
         addAsyncOperation(ERASE_ALL, null);
     }
 
@@ -387,16 +391,10 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         wakeThread(); // ensure thread is awake to execute delayed operations
     }
 
-    private void wakeThread() {
-        synchronized (this) {
-            if (m_thread == null || !m_thread.isAlive()) {
-                m_thread = new java.lang.Thread(this);
-                m_thread.start();
-                return;
-            }
-        }
-        synchronized (m_threadLock) {
-            m_threadLock.notify();
+    private synchronized void wakeThread() {
+        if (m_thread == null || !m_thread.isAlive()) {
+            m_thread = new java.lang.Thread(this);
+            m_thread.start();
         }
     }
 
@@ -440,7 +438,9 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                             byte[] stringBuff = e.name.getBytes();
                             index = m_recordStore.addRecord(stringBuff, 0, stringBuff.length);
                             m_recordStore.addRecord(data, 0, data.length);
-                            e.index = index;
+                            synchronized (this) {
+                                e.index = index;
+                            }
                         }
                     } catch (RecordStoreException ex) {
                         Logger.println("RMS3: write error: "+ex+" for "+e.name);
@@ -452,66 +452,26 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
         }
     }
 
-    private synchronized void pack () {
-        try {
-            RecordStore.deleteRecordStore(m_storeName);
-        } catch (RecordStoreException e) {
-            Logger.println("RMS3: Pack erase error: "+e+" for "+m_storeName);
-        }
-        if (openStore()) {
-            for (int i=0; i<m_nbEntries; i++) {
-                Entry e = m_entries[i];
-                byte[] name = e.name.getBytes();
-                byte[] data = e.data;
-                if (data == null) continue;
-                try {
-                    m_recordStore.addRecord(name, 0, name.length);
-                    m_recordStore.addRecord(data, 0, data.length);
-                } catch (RecordStoreException ex) {
-                    Logger.println("RMS3: pack error: "+ex+" for "+e.name);
-                }
-            }
-            closeStore();
-        }
-    }
-
-    private synchronized void unloadEntries() {
-        m_entries = null;
-        m_tableLoaded = false;
-    }
-
     // Main loop for the background thread
     public void run() {
         try {
             while (!m_quit) {
-                try {
-                    synchronized (m_threadLock) {
-                        m_threadLock.wait(FLUSH_DELAY);
-                    }
-                    //long ts = System.currentTimeMillis();
-                    flushRecords();
-                    //Logger.println("RMS3: Flush in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
-                    if (queue == null) {
-                        synchronized (m_threadLock) {
-                            m_threadLock.wait(INACTIVITY_DELAY);
-                        }
-                        if (m_pack) {
-                            m_pack = false;
-                            //ts = System.currentTimeMillis();
-                            synchronized (m_flushLock) {
-                                pack();
-                            }
-                            //Logger.println("RMS3: Packed in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
-                        }
-                        // Never unload entries for Master manager
-                        if (CacheManager.getMasterManager() != this &&
-                                System.currentTimeMillis() - m_lastAccess > 10000) {
-                            unloadEntries();
+                synchronized (m_threadLock) {
+                    m_threadLock.wait(FLUSH_DELAY);
+                }
+                //long ts = System.currentTimeMillis();
+                flushRecords();
+                //Logger.println("RMS3: Flush in "+(System.currentTimeMillis()-ts)+"ms for "+m_storeName);
+                // Never unload entries for Master manager
+                if (s_masterMgr != this) {
+                    synchronized (this) {
+                        if (queue == null && System.currentTimeMillis() - m_lastAccess > INACTIVITY_DELAY) {
+                            m_entries = null;
+                            m_tableLoaded = false;
                             //Logger.println("RMS3: Free memory cache for "+m_storeName);
                             break; // exit loop
                         }
                     }
-                } catch (InterruptedException e) {
                 }
             }
             flushRecords();
