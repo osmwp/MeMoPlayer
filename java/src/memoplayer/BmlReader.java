@@ -88,10 +88,10 @@ class BmlReader {
     }
     
     int decodeSize () {
-        int n = m_buffer[m_pos++];
+        int n = m_buffer[m_pos++] & 0xFF;
         if (n == 255) {
-            n *= (int) m_buffer[m_pos++];
-            n += (int) m_buffer[m_pos++];
+            n *= (int) (m_buffer[m_pos++] & 0xFF);
+            n += (int) (m_buffer[m_pos++] & 0xFF);
         }
         return n;
     }
