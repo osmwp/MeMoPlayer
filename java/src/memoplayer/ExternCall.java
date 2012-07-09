@@ -140,8 +140,8 @@ class ExternCall {
 
     static void doBrowser (Machine mc, Context c, int m, Register [] registers, int r, int nbParams) {
 //#ifdef MM.namespace
-        if ((m==1 || m==15 || m==16 || m==17 || m==19) && Namespace.getName() != "") {
-            Logger.println("Browser API: Access to some methods are unauthorize from the current Namespace.");
+        if ((m==1 || m==15 || m==17 || m==19) && Namespace.getName() != "") {
+            Logger.println("Browser API: Access to some methods are unauthorize from the current Namespace. m="+m);
             return;
         }
 //#endif
