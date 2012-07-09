@@ -161,7 +161,7 @@ class RMSCacheManager3 extends CacheManager implements Runnable {
                         addEntry(name, recordId, data, false);
                     } catch (InvalidRecordIDException e) {
                         deleted++;
-                    } catch (RecordStoreException e) {
+                    } catch (Exception e) {
                         Logger.println ("RMS3: ReadEntries error: "+e);
                     }
                     recordId += 2;
