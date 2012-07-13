@@ -22,6 +22,8 @@
 # include "fcntl.h"
 
 # include "LocaleManager.h"
+# include "Utils.h"
+
 LocaleEntry::LocaleEntry (int id, char * key, char * message, LocaleEntry * next) {
     m_id = id;
     m_key = strdup (key);
@@ -328,8 +330,7 @@ void LocaleManager::saveDefault () {
 //     }
 // }
 
-void LocaleManager::encodeExtra (FILE * fp, char * filename, char * langName) {
-    LocaleSet * extra = new LocaleSet (filename);
+void LocaleManager::parseFile(FILE * fp, LocaleSet * extra) {
     char c = fgetc (fp);
     while (!feof (fp)) {
         // check for comment
@@ -364,7 +365,9 @@ void LocaleManager::encodeExtra (FILE * fp, char * filename, char * langName) {
             c = fgetc (fp);
         }
         *tmp = 0;
-        extra->addEntry (key, msg);
+        if (extra->getEntry(key) == NULL) {
+            extra->addEntry (key, msg);
+        }
         if (c == '\r') { // eat optional \n after \r
            c = fgetc(fp);
            if (c != '\n') {
@@ -372,6 +375,20 @@ void LocaleManager::encodeExtra (FILE * fp, char * filename, char * langName) {
            }
         }
         c = fgetc (fp);
+    }
+}
+
+bool LocaleManager::encodeExtra (char * filename, char * langName) {
+    FILE * fp = MultiPathFile::fopenNext (filename, "rb", true);
+    if (fp == NULL) {
+        fprintf (stderr, "cannot open any language file '%s'\n", filename);
+        return false;
+    }
+    LocaleSet * extra = new LocaleSet (filename);
+    while (fp != NULL) {
+        parseFile (fp, extra);
+        fclose (fp);
+        fp = MultiPathFile::fopenNext (filename, "rb");
     }
     int missing = extra->compareWithModel (m_master);
     if (missing > 0) {
@@ -387,4 +404,5 @@ void LocaleManager::encodeExtra (FILE * fp, char * filename, char * langName) {
         exit (1);
     }
     delete extra;
+    return true;
 }

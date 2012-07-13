@@ -29,6 +29,7 @@ class Link;
 
 class MultiPathFile {
     static Link * s_path;
+    static Link * s_current;
 public:
     static bool s_follow; // disable addPath / removePath feature (command line option)
 
@@ -39,6 +40,9 @@ public:
     
     // open a file by trying the filename, then concantenation of each path and the file name
     static FILE * fopen (const char * filename, const char * mode);
+
+    // open a file by trying each path, use first to reset the path list
+    static FILE * fopenNext (const char * filename, const char * mode, bool first = false);
 
     // return complete path to a file if found and accessible, or NULL
     static char * find (const char * filename, const char * mode);

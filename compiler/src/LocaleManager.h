@@ -94,8 +94,11 @@ public :
     // encode the master file as a binary file in "default.loc"
     // void encodeDefault (); 
 
+    // parse the *.lng file and add its entries to the LocalSet
+    void parseFile(FILE * fp, LocaleSet * extra);
+
     // encode an extra file according to master using the lang name like FR, EN, IT
-    void encodeExtra (FILE * fp, char * fileName, char * langName);
+    bool encodeExtra (char * fileName, char * langName);
 
     static char key [LOCALE_KEY_LEN]; // tmp array to store current key
     static char msg [LOCALE_MSG_LEN];// tmp array to store current massage
