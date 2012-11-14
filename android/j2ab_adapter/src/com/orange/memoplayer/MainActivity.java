@@ -82,15 +82,21 @@ public class MainActivity extends Activity {
     	setContentView( splash );*/
 
         // Fix orientation according to jad parameter
-        String androidOrientation = midlet.getAppProperty("MEMO-ANDROID-ORIENTATION");
-        if( androidOrientation != null ) {
-            if( androidOrientation.equals("portrait") ) {
-                setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_PORTRAIT );
-	        } else if( androidOrientation.equals("landscape") ) {
-	            setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE );
+        setFixedOrientation();
+    }
+
+	protected void setFixedOrientation() {
+        if( midlet!=null ) {
+            String androidOrientation = midlet.getAppProperty("MEMO-ANDROID-ORIENTATION");
+            if( androidOrientation != null ) {
+	            if( androidOrientation.equals("portrait") ) {
+	                setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_PORTRAIT );
+		        } else if( androidOrientation.equals("landscape") ) {
+		            setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE );
+		        }
 	        }
         }
-    }
+	}
 	
     @Override
     protected void onDestroy()
@@ -161,6 +167,12 @@ public class MainActivity extends Activity {
 	    	        	if( midlet != null )
 	    	        	{
 	    	        		midlet.doStartApp();
+                            MainActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    MainActivity.this.setFixedOrientation();
+                                }
+                            });
 	    	        	}
 	    	        }
 	    	        catch( Exception ex )
