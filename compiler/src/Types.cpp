@@ -717,19 +717,12 @@ int Node::encodeSpecial (FILE * fp, bool verbose) {
                 char * buffer = f->getValue(i);
                 if (buffer && strlen (buffer) > 0 && endsWith (buffer, ".lng")) {
                     bool added = MultiPathFile::addPath (buffer);
-                    FILE * in = MultiPathFile::fopen (buffer, "rb");
-                    if (in == NULL) {
-                        fprintf (myStderr, "cannot open language file '%s'\n", buffer);
-                    } else {
-                        char * text = strdup (buffer);
-                        strcpy (text+strlen(text)-3, "loc");
-                        int tmpTotal = 0;
-                        LocaleManager::getManager()->encodeExtra (in, buffer, text);
+                    char * text = strdup (buffer);
+                    strcpy (text+strlen(text)-3, "loc");
+                    if (LocaleManager::getManager()->encodeExtra (buffer, text)) {
                         total += includeFile (fp, text, buffer, MAGIC_LOCALE, false);
-                        fclose (in);
-                        total += tmpTotal;
-                        free (text);
                     }
+                    free (text);
                     if (added) MultiPathFile::removePath (buffer);
                 }
             }

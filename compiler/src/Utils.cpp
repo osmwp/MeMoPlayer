@@ -174,6 +174,26 @@ char* MultiPathFile::find (const char * filename, const char * mode) {
 
 Link * MultiPathFile::s_path = NULL;
 
+// keep track of current iteration for fopenNext
+Link * MultiPathFile::s_current = NULL;
+
+// iterate over all files in paths with the same name
+FILE * MultiPathFile::fopenNext (const char * filename, const char * mode, bool first) {
+    if (first) {
+         s_current = s_path;
+    }
+    char buffer [4096];
+    while (s_current) {
+        sprintf (buffer, "%s/%s", s_current->value, filename);
+        FILE * fp = ::fopen (buffer, mode);
+        s_current = s_current->next;
+        if (fp) {
+            return fp;
+        }
+    }
+    return NULL;
+}
+
 // MediaList section
 
 extern int includeMediaFile (FILE * fp, const char * name, bool mandatory = true); // from Type.cpp :-/
