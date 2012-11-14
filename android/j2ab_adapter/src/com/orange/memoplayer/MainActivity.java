@@ -79,7 +79,17 @@ public class MainActivity extends Activity {
     	//View splash = this.getLayoutInflater().inflate( R.layout.splash, null, false );
     	this.defaultView = splash;
     	setContentView( splash );*/
-	}
+
+        // Fix orientation according to jad parameter
+        String androidOrientation = midlet.getAppProperty("MEMO-ANDROID-ORIENTATION");
+        if( androidOrientation != null ) {
+            if( androidOrientation.equals("portrait") ) {
+                setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_PORTRAIT );
+	        } else if( androidOrientation.equals("landscape") ) {
+	            setRequestedOrientation( ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE );
+	        }
+        }
+    }
 	
     @Override
     protected void onDestroy()
