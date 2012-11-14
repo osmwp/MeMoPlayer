@@ -168,7 +168,6 @@ public class MainActivity extends Activity {
 	    	        	{
 	    	        		midlet.doStartApp();
                             MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
                                 public void run() {
                                     MainActivity.this.setFixedOrientation();
                                 }
