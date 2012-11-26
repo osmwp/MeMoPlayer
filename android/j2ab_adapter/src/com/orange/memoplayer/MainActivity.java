@@ -182,19 +182,6 @@ public class MainActivity extends Activity {
 	    	};
 	    	thread.start();*/
         }
-        else
-        {
-	        try
-	        {
-        		this.midlet.doStartApp();
-	        }
-	        catch( Exception ex )
-	        {
-	        	ex.printStackTrace();
-	        	throw new RuntimeException( "couldn't start MIDlet" );
-	        }
-        }
-
     }
 
 	public boolean onPrepareOptionsMenu(Menu menu) {
