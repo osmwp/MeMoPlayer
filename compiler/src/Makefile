@@ -21,13 +21,7 @@ all: $(TARGET) $(DEPS)
 ../fontExtractor: fontExtractor.o
 	gcc -o fontExtractor fontExtractor.o $(FE_LDFLAGS)
 
-NodeTable.inc: NodeTable.def ../mkTable
-	../mkTable NodeTable.def NodeTable.inc
-
-ExternCalls.inc: ExternCalls.def ../mkTable
-	../mkTable ExternCalls.def ExternCalls.inc externCallsDef 
-
-$(TARGET) : NodeTable.inc ExternCalls.inc $(OBJS) 
+$(TARGET) : $(OBJS)
 	$(CCC) $(CCFLAGS) -o $(TARGET) $(OBJS)
 
 clean:

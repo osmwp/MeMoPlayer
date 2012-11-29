@@ -32,6 +32,8 @@
 
 extern FILE * myStderr;
 
+extern char* nodeTableDef;
+
 extern bool endsWith (const char * t, const char * e); // defined in Compiler.cpp
 extern bool startsWith (const char * t, const char * e); // defined in Compiler.cpp
 
@@ -1153,8 +1155,6 @@ void Route::print (int n) {
     spaces (n);
     printf ("ROUTE %d.%d TO %d.%d\n", m_nodeIn, m_fieldIn, m_nodeOut, m_fieldOut);
 }
-
-#include "NodeTable.inc"
 
 /***********************
  * Scene section      **

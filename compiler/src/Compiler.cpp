@@ -33,10 +33,17 @@
 extern void exchangeBytes (char * s);
 extern void write (FILE * fp, int f);
 extern int lastIndexOf (char * s, char c);
+extern void parseTable (char * inName, char *out);
 
 FILE * myStderr = NULL;
 
 char * execPath = (char *)".";
+
+char *externCallsDef;
+char *nodeTableDef;
+
+static char _externCallsDef[32768];
+static char _nodeTableDef[32768];
 
 bool endsWith (const char * t, const char * e) {
      int l1 = strlen (t);
@@ -158,6 +165,25 @@ int main (int argc, char * argv []) {
     myStderr = stderr;
     printf ("MeMo Compiler v%s\n", VERSION);
     setExePath (argv[0]);
+
+    /*
+        parse both NoteTable.def and ExtenCalls.def
+    */
+
+    char pathNode[260];
+    char pathExtern[260];
+    strcpy(pathNode,execPath);
+    strcpy(pathExtern,execPath);
+
+    strcat(pathNode, "/NodeTable.def");
+    strcat(pathExtern, "/ExternCalls.def");
+
+    externCallsDef = &(_externCallsDef[0]);
+    nodeTableDef   = &(_nodeTableDef[0]);
+
+    parseTable(pathNode, nodeTableDef );
+    parseTable(pathExtern, externCallsDef );
+
     if (argc < 2) {  usage (argv[0]); }
     if (strcmp (argv[1], "-d") ==0) {
         dumpTable (argv[2]);

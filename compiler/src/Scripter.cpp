@@ -21,9 +21,10 @@
 # include "Types.h"
 # include "Code.h"
 # include "Scripter.h"
-# include "ExternCalls.inc"
 
 extern FILE * myStderr;
+
+extern char* externCallsDef;
 
 void ensure (char c, const char * msg, Tokenizer * t) {
     if (t->check (c) == false) {
