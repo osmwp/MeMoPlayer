@@ -258,6 +258,9 @@ public abstract class Canvas extends Displayable {
                 buffer = Bitmap.createBitmap (canvas.getWidth (), canvas.getHeight (), Bitmap.Config.ARGB_8888);
                 graphics = new javax.microedition.lcdui.Graphics (buffer);
                 needsRepaint = true;
+                // FIX: after displaying native text box, display thread could be stopped
+                // call to showNotify will start rendering thread to avoid "black screen" issue
+                Canvas.this.showNotify();
             }
             synchronized (serviceRepaintLock) {
                 if (needsRepaint) {
